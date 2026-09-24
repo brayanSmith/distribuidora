@@ -95,9 +95,9 @@ cd /var/www/html
 
 php artisan storage:link --force || true
 
-if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
-    php artisan migrate --force
-fi
+# if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
+#     php artisan migrate --force
+# fi
 
 php artisan optimize
 
