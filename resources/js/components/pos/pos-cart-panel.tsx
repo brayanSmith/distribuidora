@@ -176,15 +176,17 @@ export default function PosCartPanel({
 
                     <div className="grid gap-2">
                         <Label required>Vendedor</Label>
-                        <Combobox
-                            options={vendedorOptions}
-                            value={header.vendedorId}
-                            onValueChange={(value) =>
-                                onFieldChange('vendedorId', value)
+                        {/* Always the logged-in user: shown, not edited. */}
+                        <Input
+                            value={
+                                vendedorOptions.find(
+                                    (option) =>
+                                        option.value === header.vendedorId,
+                                )?.label ?? ''
                             }
-                            searchPlaceholder="Buscar vendedor..."
-                            emptyText="No se encontraron vendedores."
-                            dataTest="pos-vendedor"
+                            readOnly
+                            className="bg-muted/40"
+                            data-test="pos-vendedor"
                         />
                         <InputError message={errors.user_id} />
                     </div>

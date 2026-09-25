@@ -137,6 +137,27 @@ export default function PosPage({
         }
     };
 
+    // The first authorized bodega is picked by default (a saved sale may
+    // carry one the user can no longer use), so a user with a single bodega
+    // never has to open the select.
+    useEffect(() => {
+        if (
+            bodegas.length > 0 &&
+            !bodegas.some((bodega) => String(bodega.id) === header.bodegaId)
+        ) {
+            setField('bodegaId', String(bodegas[0].id));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [header.bodegaId, bodegas]);
+
+    // The vendedor is always whoever is logged in (the server enforces it too).
+    useEffect(() => {
+        if (userId && header.vendedorId !== String(userId)) {
+            setField('vendedorId', String(userId));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [header.vendedorId, userId]);
+
     // A saved sale may carry a tipo precio this user can no longer use.
     const tiposPedidoKey = tiposPedido.join(',');
     useEffect(() => {

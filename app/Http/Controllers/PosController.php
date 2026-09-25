@@ -58,7 +58,8 @@ class PosController extends Controller
     {
         Gate::authorize('pos.create');
 
-        $pedido = $pedidoService->create($request->validated());
+        // A POS sale is always registered to whoever makes it.
+        $pedido = $pedidoService->create([...$request->validated(), 'user_id' => $request->user()->id]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Pedido created.')]);
         Inertia::flash('pedido_creado', $voucher->toArray($pedido));

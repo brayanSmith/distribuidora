@@ -107,7 +107,7 @@ export default function PosProductCard({
                 </Badge>
             </div>
 
-            <p className="line-clamp-2 text-xs font-medium" title={nombre}>
+            <p className="text-xs font-medium break-words" title={nombre}>
                 {nombre}
             </p>
 

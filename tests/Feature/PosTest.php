@@ -315,10 +315,13 @@ test('the POS history lists every pedido and filters by vendedor and date', func
     asignarRol($owner, 'Owner');
 
     $vendedorA = User::factory()->create();
+    asignarRol($vendedorA, 'Owner');
     $vendedorB = User::factory()->create();
+    asignarRol($vendedorB, 'Owner');
     $bodega = Bodega::factory()->create();
 
-    $crear = fn (User $vendedor, string $fecha) => $this->actingAs($owner)->post(route('pos.store'), [
+    // A POS sale is registered to whoever makes it.
+    $crear = fn (User $vendedor, string $fecha) => $this->actingAs($vendedor)->post(route('pos.store'), [
         'cliente_id' => Cliente::factory()->create()->id,
         'fecha' => $fecha,
         'user_id' => $vendedor->id,
@@ -398,7 +401,7 @@ test('the turno is generated from the bodega name and the pedido number of the d
 });
 
 test('checking out flashes the voucher data with the turno, totals and cliente', function () {
-    $owner = User::factory()->create();
+    $owner = User::factory()->create(['name' => 'SuperAdmin']);
     asignarRol($owner, 'Owner');
 
     $bodega = Bodega::factory()->create(['nombre_bodega' => 'Outlet Norte']);
@@ -408,7 +411,7 @@ test('checking out flashes the voucher data with the turno, totals and cliente',
     $response = $this->actingAs($owner)->post(route('pos.store'), [
         'cliente_id' => $cliente->id,
         'fecha' => '2026-03-10T15:00:00Z',
-        'user_id' => User::factory()->create(['name' => 'SuperAdmin'])->id,
+        'user_id' => $owner->id,
         'bodega_id' => $bodega->id,
         'tipo_precio' => 'DETAL',
         'aplica_turno' => '1',
@@ -522,4 +525,25 @@ test('the sidebar badges count all the pedidos and compras the user can see', fu
             ->where('navCounts.pedidos', 0)
             ->where('navCounts.pedidosMayoristas', 0)
         );
+});
+
+test('a POS sale is always registered to the logged-in user', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    $otroVendedor = User::factory()->create();
+    $bodega = Bodega::factory()->create();
+    $producto = Producto::factory()->create();
+
+    $this->actingAs($owner)->post(route('pos.store'), [
+        'cliente_id' => Cliente::factory()->create()->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'user_id' => $otroVendedor->id,
+        'bodega_id' => $bodega->id,
+        'tipo_precio' => 'DETAL',
+        'detalles' => [
+            ['producto_id' => $producto->id, 'cantidad' => 1, 'precio_unitario' => 100],
+        ],
+    ])->assertRedirect(route('pos.index'));
+
+    expect(Pedido::firstOrFail()->user_id)->toBe($owner->id);
 });
