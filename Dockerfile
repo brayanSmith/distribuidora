@@ -63,6 +63,12 @@ server {
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_hide_header X-Powered-By;
+        # Laravel sends a `Link: <asset>; rel=preload` header per Vite chunk
+        # (AddLinkHeadersForPreloadedAssets). On a full page load that can
+        # exceed nginx's default 4-8k header buffer and end in a 502.
+        fastcgi_buffer_size 32k;
+        fastcgi_buffers 16 16k;
+        fastcgi_busy_buffers_size 32k;
     }
 
     location ~ /\.(?!well-known).* {
