@@ -277,7 +277,7 @@ class ProductoController extends Controller
             ->where('detalle_compras.estado_entrega', 'PENDIENTE')
             ->whereNull('detalle_compras.deleted_at')
             ->whereNull('compras.deleted_at')
-            ->get(['detalle_compras.producto_id', 'detalle_compras.compra_id', "{$proveedores}.nombre_proveedor"])
+            ->get(['detalle_compras.producto_id', 'detalle_compras.cantidad', "{$proveedores}.nombre_proveedor"])
             ->groupBy('producto_id');
 
         $usuario = auth()->user();
@@ -328,7 +328,8 @@ class ProductoController extends Controller
                 'imagen_producto_url' => $producto->imagen_producto ? Storage::disk('public')->url($producto->imagen_producto) : null,
                 'concatenar_codigo_nombre' => $producto->concatenar_codigo_nombre,
                 'stock_total' => $verStockTotal ? (float) $filasStock->sum('stock') : null,
-                'pendiente' => $verPendiente ? $filasPendientes->pluck('compra_id')->unique()->count() : null,
+                // Units still to arrive: the quantity of every pending purchase line.
+                'pendiente' => $verPendiente ? (float) $filasPendientes->sum('cantidad') : null,
                 'proveedor_pendiente' => $verAlmacenP && $proveedores->isNotEmpty() ? $proveedores->implode(', ') : null,
                 'stock_por_bodega' => $verStockBodegas ? $filasStock->pluck('stock', 'bodega_id') : null,
             ];

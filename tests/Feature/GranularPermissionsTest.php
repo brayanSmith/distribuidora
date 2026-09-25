@@ -486,7 +486,9 @@ test('editing a role keeps its permissions of the previous system', function () 
 test('each column of the productos listing is only sent with its permission', function () {
     $producto = Producto::factory()->create(['inventariable' => true, 'valor_sin_instalacion' => 80]);
     $stock = StockBodega::factory()->create(['producto_id' => $producto->id, 'stock' => 5]);
-    DetalleCompra::factory()->create(['producto_id' => $producto->id]);
+    DetalleCompra::factory()->create(['producto_id' => $producto->id, 'estado_entrega' => 'PENDIENTE', 'cantidad' => 4]);
+    DetalleCompra::factory()->create(['producto_id' => $producto->id, 'estado_entrega' => 'PENDIENTE', 'cantidad' => 3]);
+    DetalleCompra::factory()->create(['producto_id' => $producto->id, 'estado_entrega' => 'RECIBIDA', 'cantidad' => 10]);
     concederPermisos($this->miembro, ['productos.view']);
 
     $this->actingAs($this->miembro)->get(route('productos.index'))
@@ -505,7 +507,7 @@ test('each column of the productos listing is only sent with its permission', fu
     $this->actingAs($this->miembro)->get(route('productos.index'))
         ->assertInertia(fn ($page) => $page
             ->where('productos.0.stock_total', 5)
-            ->where('productos.0.pendiente', 1)
+            ->where('productos.0.pendiente', 7)
             ->whereType('productos.0.proveedor_pendiente', 'string')
             ->where('productos.0.valor_sin_instalacion', '80.00')
             ->where("productos.0.stock_por_bodega.{$stock->bodega_id}", 5)
