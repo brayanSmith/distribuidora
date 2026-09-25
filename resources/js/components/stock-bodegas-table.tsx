@@ -19,6 +19,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import ActionsCell from '@/components/actions-cell';
 import { Badge } from '@/components/ui/badge';
 import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
@@ -78,6 +79,9 @@ type ColumnMeta = {
 };
 
 const BODEGA_PREFIX = 'bodega:';
+
+/** Width key of the extra "Acciones" column (the traslado button). */
+const ACCIONES_KEY = 'acciones';
 
 function bodegaColumnKey(bodegaId: number): string {
     return `${BODEGA_PREFIX}${bodegaId}`;
@@ -165,6 +169,7 @@ const VALOR_TOTAL_INVERSION_COLUMN: ColumnMeta = {
 };
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+    acciones: 140,
     producto: 260,
     stockTotal: 110,
     valorVenta: 140,
@@ -617,7 +622,7 @@ export default function StockBodegasTable({
     const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
         () =>
             Object.fromEntries(
-                columnKeys.map((key) => [
+                [...columnKeys, ACCIONES_KEY].map((key) => [
                     key,
                     DEFAULT_COLUMN_WIDTHS[key] ?? DEFAULT_BODEGA_COLUMN_WIDTH,
                 ]),
@@ -1134,7 +1139,11 @@ export default function StockBodegasTable({
                                 style={{ width: columnWidths[key] }}
                             />
                         ))}
-                        {showTraslado ? <col style={{ width: 120 }} /> : null}
+                        {showTraslado ? (
+                            <col
+                                style={{ width: columnWidths[ACCIONES_KEY] }}
+                            />
+                        ) : null}
                     </colgroup>
                     <TableHeader className="bg-muted sticky top-0 z-20 shadow-sm">
                         <TableRow>
@@ -1163,8 +1172,11 @@ export default function StockBodegasTable({
                                 );
                             })}
                             {showTraslado ? (
-                                <TableHead className="text-center">
+                                <TableHead className="relative text-center">
                                     Acciones
+                                    <ResizeHandle
+                                        onMouseDown={startResize(ACCIONES_KEY)}
+                                    />
                                 </TableHead>
                             ) : null}
                         </TableRow>
@@ -1202,21 +1214,23 @@ export default function StockBodegasTable({
                                             );
                                         })}
                                         {showTraslado ? (
-                                            <TableCell className="text-center">
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    data-test="stock-bodega-traslado"
-                                                    onClick={() =>
-                                                        onTraslado?.(
-                                                            row.productoId,
-                                                        )
-                                                    }
-                                                >
-                                                    <Truck className="size-4" />
-                                                    Traslado
-                                                </Button>
+                                            <TableCell>
+                                                <ActionsCell className="justify-center">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        data-test="stock-bodega-traslado"
+                                                        onClick={() =>
+                                                            onTraslado?.(
+                                                                row.productoId,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Truck className="size-4" />
+                                                        Traslado
+                                                    </Button>
+                                                </ActionsCell>
                                             </TableCell>
                                         ) : null}
                                     </TableRow>

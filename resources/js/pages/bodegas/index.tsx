@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import ActionsCell from '@/components/actions-cell';
 import CreateBodegaModal from '@/components/create-bodega-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
 import DeleteBodegaModal from '@/components/delete-bodega-modal';
@@ -10,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { index } from '@/routes/bodegas';
@@ -57,49 +57,43 @@ export default function BodegasIndex({ bodegas, permissions }: Props) {
                 align: 'right',
                 filter: 'none',
                 render: (bodega) => (
-                    <TooltipProvider>
-                        <div className="flex justify-end gap-2">
-                            {permissions.canUpdate ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="edit-bodega-button"
-                                            onClick={() =>
-                                                openEditDialog(bodega)
-                                            }
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Editar</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : null}
+                    <ActionsCell>
+                        {permissions.canUpdate ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="edit-bodega-button"
+                                        onClick={() => openEditDialog(bodega)}
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Editar</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
 
-                            {permissions.canDelete ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="delete-bodega-button"
-                                            onClick={() =>
-                                                openDeleteDialog(bodega)
-                                            }
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Eliminar</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : null}
-                        </div>
-                    </TooltipProvider>
+                        {permissions.canDelete ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="delete-bodega-button"
+                                        onClick={() => openDeleteDialog(bodega)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Eliminar</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
+                    </ActionsCell>
                 ),
             },
         ],

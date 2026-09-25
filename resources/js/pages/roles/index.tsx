@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import ActionsCell from '@/components/actions-cell';
 import CreateRoleModal from '@/components/create-role-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
 import DeleteRoleModal from '@/components/delete-role-modal';
@@ -12,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { index } from '@/routes/roles';
@@ -137,47 +137,43 @@ export default function RolesIndex({
                 align: 'right',
                 filter: 'none',
                 render: (role) => (
-                    <TooltipProvider>
-                        <div className="flex justify-end gap-2">
-                            {permissionsFlags.canUpdate ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="edit-role-button"
-                                            onClick={() => openEditDialog(role)}
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Editar rol</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : null}
+                    <ActionsCell>
+                        {permissionsFlags.canUpdate ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="edit-role-button"
+                                        onClick={() => openEditDialog(role)}
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Editar rol</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
 
-                            {permissionsFlags.canDelete ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="delete-role-button"
-                                            onClick={() =>
-                                                openDeleteDialog(role)
-                                            }
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Eliminar rol</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : null}
-                        </div>
-                    </TooltipProvider>
+                        {permissionsFlags.canDelete ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="delete-role-button"
+                                        onClick={() => openDeleteDialog(role)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Eliminar rol</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
+                    </ActionsCell>
                 ),
             },
         ],

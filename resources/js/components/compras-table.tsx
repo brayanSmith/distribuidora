@@ -16,6 +16,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import DateRangeFilter, {
     type DateRangeValue,
 } from '@/components/date-range-filter';
+import ActionsCell from '@/components/actions-cell';
 import DeleteCompraModal from '@/components/delete-compra-modal';
 import VerCompraModal from '@/components/ver-compra-modal';
 import RestoreButton from '@/components/restore-button';
@@ -48,7 +49,6 @@ import {
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -412,10 +412,7 @@ function HeaderCell({
                     <span className="text-muted-foreground">{meta.label}</span>
                 )}
             </div>
-            {/* The actions column keeps its fixed width. */}
-            {meta.key !== 'acciones' ? (
-                <ResizeHandle onMouseDown={onResizeStart} />
-            ) : null}
+            <ResizeHandle onMouseDown={onResizeStart} />
         </TableHead>
     );
 }
@@ -914,41 +911,7 @@ export default function ComprasTable({
             case 'acciones':
                 if (eliminados) {
                     return (
-                        <TooltipProvider>
-                            <div className="flex justify-end gap-2">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="view-compra-button"
-                                            onClick={() =>
-                                                setCompraToView(compra)
-                                            }
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Ver</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                {permissions.canRestore ? (
-                                    <RestoreButton
-                                        action={restore([compra.id])}
-                                        nombre={`la compra ${compra.factura}`}
-                                        aviso="El stock de las líneas recibidas se sumará de nuevo a sus bodegas."
-                                        dataTest="restore-compra-button"
-                                    />
-                                ) : null}
-                            </div>
-                        </TooltipProvider>
-                    );
-                }
-
-                return (
-                    <TooltipProvider>
-                        <div className="flex justify-end gap-2">
+                        <ActionsCell>
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button
@@ -964,47 +927,73 @@ export default function ComprasTable({
                                     <p>Ver</p>
                                 </TooltipContent>
                             </Tooltip>
-                            {permissions.canUpdate ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="edit-compra-button"
-                                            asChild
-                                        >
-                                            <Link href={edit([compra.id])}>
-                                                <Pencil className="h-4 w-4" />
-                                            </Link>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Editar</p>
-                                    </TooltipContent>
-                                </Tooltip>
+                            {permissions.canRestore ? (
+                                <RestoreButton
+                                    action={restore([compra.id])}
+                                    nombre={`la compra ${compra.factura}`}
+                                    aviso="El stock de las líneas recibidas se sumará de nuevo a sus bodegas."
+                                    dataTest="restore-compra-button"
+                                />
                             ) : null}
+                        </ActionsCell>
+                    );
+                }
 
-                            {permissions.canDelete ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="delete-compra-button"
-                                            onClick={() =>
-                                                openDeleteDialog(compra)
-                                            }
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Eliminar</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : null}
-                        </div>
-                    </TooltipProvider>
+                return (
+                    <ActionsCell>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    data-test="view-compra-button"
+                                    onClick={() => setCompraToView(compra)}
+                                >
+                                    <Eye className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Ver</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        {permissions.canUpdate ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="edit-compra-button"
+                                        asChild
+                                    >
+                                        <Link href={edit([compra.id])}>
+                                            <Pencil className="h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Editar</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
+
+                        {permissions.canDelete ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="delete-compra-button"
+                                        onClick={() => openDeleteDialog(compra)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Eliminar</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
+                    </ActionsCell>
                 );
             default: {
                 const bodegaId = bodegaIdFromColumnKey(key);

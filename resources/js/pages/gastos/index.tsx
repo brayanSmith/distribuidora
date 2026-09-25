@@ -2,6 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 import { formatFechaCorta } from '@/lib/fechas';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import ActionsCell from '@/components/actions-cell';
 import CreateGastoModal from '@/components/create-gasto-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
 import DeleteGastoModal from '@/components/delete-gasto-modal';
@@ -13,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { index, restore } from '@/routes/gastos';
@@ -99,49 +99,47 @@ export default function GastosIndex({
                             </div>
                         ) : null
                     ) : (
-                        <TooltipProvider>
-                            <div className="flex justify-end gap-2">
-                                {permissions.canUpdate ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                data-test="edit-gasto-button"
-                                                onClick={() =>
-                                                    openEditDialog(gasto)
-                                                }
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Editar</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
+                        <ActionsCell>
+                            {permissions.canUpdate ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="edit-gasto-button"
+                                            onClick={() =>
+                                                openEditDialog(gasto)
+                                            }
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Editar</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
 
-                                {permissions.canDelete ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                data-test="delete-gasto-button"
-                                                onClick={() =>
-                                                    openDeleteDialog(gasto)
-                                                }
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Eliminar</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
-                            </div>
-                        </TooltipProvider>
+                            {permissions.canDelete ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="delete-gasto-button"
+                                            onClick={() =>
+                                                openDeleteDialog(gasto)
+                                            }
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Eliminar</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
+                        </ActionsCell>
                     ),
             },
         ],

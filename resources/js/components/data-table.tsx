@@ -406,9 +406,6 @@ export default function DataTable<T>({
                                             className={cn(
                                                 column.align === 'right' &&
                                                     'text-right',
-                                                // Narrowing the column stacks the buttons instead of hiding them.
-                                                isAcciones &&
-                                                    '[&>div]:flex-wrap',
                                             )}
                                             onClick={
                                                 isAcciones

@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import ActionsCell from '@/components/actions-cell';
 import CreateProveedorModal from '@/components/create-proveedor-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
 import DeleteProveedorModal from '@/components/delete-proveedor-modal';
@@ -13,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { index, restore } from '@/routes/proveedores';
@@ -114,49 +114,47 @@ export default function ProveedoresIndex({
                             </div>
                         ) : null
                     ) : (
-                        <TooltipProvider>
-                            <div className="flex justify-end gap-2">
-                                {permissions.canUpdate ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                data-test="edit-proveedor-button"
-                                                onClick={() =>
-                                                    openEditDialog(proveedor)
-                                                }
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Editar</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
+                        <ActionsCell>
+                            {permissions.canUpdate ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="edit-proveedor-button"
+                                            onClick={() =>
+                                                openEditDialog(proveedor)
+                                            }
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Editar</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
 
-                                {permissions.canDelete ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                data-test="delete-proveedor-button"
-                                                onClick={() =>
-                                                    openDeleteDialog(proveedor)
-                                                }
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Eliminar</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
-                            </div>
-                        </TooltipProvider>
+                            {permissions.canDelete ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="delete-proveedor-button"
+                                            onClick={() =>
+                                                openDeleteDialog(proveedor)
+                                            }
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Eliminar</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
+                        </ActionsCell>
                     ),
             },
         ],

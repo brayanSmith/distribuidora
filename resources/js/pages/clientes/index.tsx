@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import ActionsCell from '@/components/actions-cell';
 import CreateClienteModal from '@/components/create-cliente-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
 import DeleteClienteModal from '@/components/delete-cliente-modal';
@@ -13,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { index, restore } from '@/routes/clientes';
@@ -113,49 +113,47 @@ export default function ClientesIndex({
                             </div>
                         ) : null
                     ) : (
-                        <TooltipProvider>
-                            <div className="flex justify-end gap-2">
-                                {permissions.canUpdate ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                data-test="edit-cliente-button"
-                                                onClick={() =>
-                                                    openEditDialog(cliente)
-                                                }
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Editar</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
+                        <ActionsCell>
+                            {permissions.canUpdate ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="edit-cliente-button"
+                                            onClick={() =>
+                                                openEditDialog(cliente)
+                                            }
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Editar</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
 
-                                {permissions.canDelete ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                data-test="delete-cliente-button"
-                                                onClick={() =>
-                                                    openDeleteDialog(cliente)
-                                                }
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Eliminar</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
-                            </div>
-                        </TooltipProvider>
+                            {permissions.canDelete ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="delete-cliente-button"
+                                            onClick={() =>
+                                                openDeleteDialog(cliente)
+                                            }
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Eliminar</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
+                        </ActionsCell>
                     ),
             },
         ],

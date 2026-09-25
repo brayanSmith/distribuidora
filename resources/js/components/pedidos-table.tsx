@@ -17,6 +17,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import DateRangeFilter, {
     type DateRangeValue,
 } from '@/components/date-range-filter';
+import ActionsCell from '@/components/actions-cell';
 import DeletePedidoModal from '@/components/delete-pedido-modal';
 import RegistrarPagoModal from '@/components/registrar-pago-modal';
 import VerPedidoModal from '@/components/ver-pedido-modal';
@@ -51,7 +52,6 @@ import {
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -493,10 +493,7 @@ function HeaderCell({
                     <span className="text-muted-foreground">{meta.label}</span>
                 )}
             </div>
-            {/* The actions column keeps its fixed width. */}
-            {meta.key !== 'acciones' ? (
-                <ResizeHandle onMouseDown={onResizeStart} />
-            ) : null}
+            <ResizeHandle onMouseDown={onResizeStart} />
         </TableHead>
     );
 }
@@ -952,43 +949,7 @@ export default function PedidosTable({
             case 'acciones':
                 if (eliminados) {
                     return (
-                        <TooltipProvider>
-                            <div className="flex justify-end gap-2">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="view-pedido-button"
-                                            onClick={() =>
-                                                setPedidoToView(pedido)
-                                            }
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Ver</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                {permissions.canRestore ? (
-                                    <RestoreButton
-                                        action={routes.pedidos.restore([
-                                            pedido.id,
-                                        ])}
-                                        nombre={`el pedido #${pedido.id}`}
-                                        aviso="El stock de sus productos se descontará de nuevo de la bodega."
-                                        dataTest="restore-pedido-button"
-                                    />
-                                ) : null}
-                            </div>
-                        </TooltipProvider>
-                    );
-                }
-
-                return (
-                    <TooltipProvider>
-                        <div className="flex justify-end gap-2">
+                        <ActionsCell>
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button
@@ -1004,76 +965,102 @@ export default function PedidosTable({
                                     <p>Ver</p>
                                 </TooltipContent>
                             </Tooltip>
-                            <VoucherButton
-                                action={routes.pedidos.voucher([pedido.id])}
-                                dataTest="voucher-pedido-button"
-                            />
-                            {permissions.canCreateAbono &&
-                            Number(pedido.saldo_pendiente) > 0 ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="abono-pedido-button"
-                                            onClick={() =>
-                                                setPedidoToAbonar(pedido)
-                                            }
-                                        >
-                                            <Banknote className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Registrar abono</p>
-                                    </TooltipContent>
-                                </Tooltip>
+                            {permissions.canRestore ? (
+                                <RestoreButton
+                                    action={routes.pedidos.restore([pedido.id])}
+                                    nombre={`el pedido #${pedido.id}`}
+                                    aviso="El stock de sus productos se descontará de nuevo de la bodega."
+                                    dataTest="restore-pedido-button"
+                                />
                             ) : null}
+                        </ActionsCell>
+                    );
+                }
 
-                            {permissions.canUpdate ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="edit-pedido-button"
-                                            asChild
-                                        >
-                                            <Link
-                                                href={routes.pedidos.edit([
-                                                    pedido.id,
-                                                ])}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Link>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Editar</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : null}
+                return (
+                    <ActionsCell>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    data-test="view-pedido-button"
+                                    onClick={() => setPedidoToView(pedido)}
+                                >
+                                    <Eye className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Ver</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        <VoucherButton
+                            action={routes.pedidos.voucher([pedido.id])}
+                            dataTest="voucher-pedido-button"
+                        />
+                        {permissions.canCreateAbono &&
+                        Number(pedido.saldo_pendiente) > 0 ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="abono-pedido-button"
+                                        onClick={() =>
+                                            setPedidoToAbonar(pedido)
+                                        }
+                                    >
+                                        <Banknote className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Registrar abono</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
 
-                            {permissions.canDelete ? (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            data-test="delete-pedido-button"
-                                            onClick={() =>
-                                                openDeleteDialog(pedido)
-                                            }
+                        {permissions.canUpdate ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="edit-pedido-button"
+                                        asChild
+                                    >
+                                        <Link
+                                            href={routes.pedidos.edit([
+                                                pedido.id,
+                                            ])}
                                         >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Eliminar</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : null}
-                        </div>
-                    </TooltipProvider>
+                                            <Pencil className="h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Editar</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
+
+                        {permissions.canDelete ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="delete-pedido-button"
+                                        onClick={() => openDeleteDialog(pedido)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Eliminar</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
+                    </ActionsCell>
                 );
             default:
                 return null;

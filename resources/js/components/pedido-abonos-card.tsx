@@ -1,5 +1,6 @@
 import { CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import ActionsCell from '@/components/actions-cell';
 import DeleteAbonoModal from '@/components/delete-abono-modal';
 import EditAbonoModal from '@/components/edit-abono-modal';
 import RegistrarPagoModal from '@/components/registrar-pago-modal';
@@ -138,7 +139,7 @@ export default function PedidoAbonosCard({
                                             : '—'}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
+                                        <ActionsCell>
                                             {canUpdate ? (
                                                 <Button
                                                     type="button"
@@ -165,7 +166,7 @@ export default function PedidoAbonosCard({
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             ) : null}
-                                        </div>
+                                        </ActionsCell>
                                     </TableCell>
                                 </TableRow>
                             ))}

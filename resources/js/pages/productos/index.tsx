@@ -10,6 +10,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import ActionsCell from '@/components/actions-cell';
 import CreateProductoModal from '@/components/create-producto-modal';
 import CreateTrasladoModal from '@/components/create-traslado-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
@@ -31,7 +32,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
@@ -308,71 +308,69 @@ export default function ProductosIndex({
                             </div>
                         ) : null
                     ) : (
-                        <TooltipProvider>
-                            <div className="flex justify-end gap-2">
-                                {permissions.canUpdate ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                data-test="edit-producto-button"
-                                                onClick={() =>
-                                                    openEditDialog(producto)
-                                                }
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Editar</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
+                        <ActionsCell>
+                            {permissions.canUpdate ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="edit-producto-button"
+                                            onClick={() =>
+                                                openEditDialog(producto)
+                                            }
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Editar</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
 
-                                {permissions.canDelete ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                data-test="delete-producto-button"
-                                                onClick={() =>
-                                                    openDeleteDialog(producto)
-                                                }
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Eliminar</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
+                            {permissions.canDelete ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="delete-producto-button"
+                                            onClick={() =>
+                                                openDeleteDialog(producto)
+                                            }
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Eliminar</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
 
-                                {permissions.canCreateTraslado ? (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                data-test="traslado-producto-button"
-                                                onClick={() =>
-                                                    setTrasladoProductoId(
-                                                        producto.id,
-                                                    )
-                                                }
-                                            >
-                                                <ArrowLeftRight className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Traslado</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                ) : null}
-                            </div>
-                        </TooltipProvider>
+                            {permissions.canCreateTraslado ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="traslado-producto-button"
+                                            onClick={() =>
+                                                setTrasladoProductoId(
+                                                    producto.id,
+                                                )
+                                            }
+                                        >
+                                            <ArrowLeftRight className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Traslado</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
+                        </ActionsCell>
                     ),
             },
             {
