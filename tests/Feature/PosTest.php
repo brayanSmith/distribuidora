@@ -547,3 +547,21 @@ test('a POS sale is always registered to the logged-in user', function () {
 
     expect(Pedido::firstOrFail()->user_id)->toBe($owner->id);
 });
+
+test('a POS sale sent in UTC is stored in Colombia time', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $this->actingAs($owner)->post(route('pos.store'), [
+        'cliente_id' => Cliente::factory()->create()->id,
+        'fecha' => '2026-03-10T15:00:00.000Z',
+        'user_id' => $owner->id,
+        'bodega_id' => Bodega::factory()->create()->id,
+        'tipo_precio' => 'DETAL',
+        'detalles' => [
+            ['producto_id' => Producto::factory()->create()->id, 'cantidad' => 1, 'precio_unitario' => 100],
+        ],
+    ])->assertRedirect(route('pos.index'));
+
+    expect(Pedido::firstOrFail()->getRawOriginal('fecha'))->toBe('2026-03-10 10:00:00');
+});

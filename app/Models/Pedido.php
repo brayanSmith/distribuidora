@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\LogsDetalles;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -45,6 +46,25 @@ class Pedido extends Model
         'retefuente',
         'facturacion_electronica',
     ];
+
+    /**
+     * Read in America/Bogota. A fecha that carries its own zone (the POS
+     * sends it in UTC, e.g. "2026-03-10T15:00:00Z") is stored as the app's
+     * local time (10:00 in Bogotá); otherwise it would be saved 5 hours ahead.
+     *
+     * @return Attribute<Carbon|null, string|null>
+     */
+    protected function fecha(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value): ?Carbon => $value === null
+                ? null
+                : Carbon::parse($value)->setTimezone('America/Bogota'),
+            set: fn (mixed $value): ?string => $value === null || $value === ''
+                ? null
+                : Carbon::parse($value)->setTimezone(config('app.timezone'))->format('Y-m-d H:i:s'),
+        );
+    }
 
     protected $casts = [
         'fecha' => 'datetime',
@@ -167,15 +187,5 @@ class Pedido extends Model
             'estado_pago' => $saldoPendiente <= 0 && $totalAPagar > 0 ? 'SALDADO' : 'EN_CARTERA',
             'estado' => $saldoPendiente <= 0 ? 'COMPLETADO' : 'PENDIENTE',
         ]);
-    }
-
-    // Atributo: devolver fecha en America/Bogota
-    public function getFechaAttribute($value)
-    {
-        if (is_null($value)) {
-            return null;
-        }
-
-        return Carbon::parse($value)->setTimezone('America/Bogota');
     }
 }

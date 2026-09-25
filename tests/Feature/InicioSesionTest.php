@@ -79,3 +79,12 @@ test('members without permission cannot view the logins', function () {
 
     $this->actingAs($member)->get(route('inicios-sesion.index'))->assertOk();
 });
+
+test('a login is recorded in the app time, not the database clock', function () {
+    $this->travelTo(now()->setDateTime(2026, 3, 10, 10, 0));
+    $user = User::factory()->create();
+
+    $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password']);
+
+    expect(InicioSesion::firstOrFail()->getRawOriginal('created_at'))->toBe('2026-03-10 10:00:00');
+});

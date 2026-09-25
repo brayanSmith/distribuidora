@@ -34,6 +34,9 @@ class RegistrarInicioSesion
             'ip' => $this->request->ip(),
             'user_agent' => $userAgent,
             ...UserAgent::parse($userAgent),
+            // Set here, in the app's zone: the column's default would take the
+            // database server's clock, which in production runs on UTC.
+            'created_at' => now(),
         ]);
     }
 }
