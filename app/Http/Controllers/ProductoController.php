@@ -68,7 +68,8 @@ class ProductoController extends Controller
             403,
         );
 
-        $data = $request->validated();
+        // A price the user cannot see is left at its default.
+        $data = $request->safe()->except($this->preciosOcultos($request));
 
         if ($request->hasFile('imagen_producto')) {
             $data['imagen_producto'] = $request->file('imagen_producto')->store('productos', 'public');
@@ -94,6 +95,8 @@ class ProductoController extends Controller
     public function show(Request $request, Producto $producto): Response
     {
         Gate::authorize('productos.view');
+
+        $producto->makeHidden($this->preciosOcultos($request));
 
         return Inertia::render('productos/show', [
             'producto' => $producto->load('marca'),
@@ -148,6 +151,8 @@ class ProductoController extends Controller
     {
         Gate::authorize('productos.update');
 
+        $producto->makeHidden($this->preciosOcultos($request));
+
         return Inertia::render('productos/edit', [
             'producto' => $producto->load('marca'),
             'marcas' => Marca::orderBy('marca')->get(['id', 'marca']),
@@ -162,7 +167,8 @@ class ProductoController extends Controller
     {
         Gate::authorize('productos.update');
 
-        $data = $request->safe()->except(['imagen_producto', 'remove_imagen_producto']);
+        // A price the user cannot see is not overwritten from the form.
+        $data = $request->safe()->except(['imagen_producto', 'remove_imagen_producto', ...$this->preciosOcultos($request)]);
 
         if ($request->hasFile('imagen_producto')) {
             if ($producto->imagen_producto) {
@@ -203,6 +209,24 @@ class ProductoController extends Controller
      *
      * @param  array<string, mixed>  $data
      */
+    /**
+     * The price columns this user may not see: they are neither sent to them
+     * nor taken from their forms.
+     *
+     * @return list<string>
+     */
+    private function preciosOcultos(Request $request): array
+    {
+        $usuario = $request->user();
+
+        return array_values(array_filter([
+            $usuario->puedeVerPrecio('costo') ? null : 'costo_producto',
+            $usuario->puedeVerPrecio('valor_detal') ? null : 'valor_detal',
+            $usuario->puedeVerPrecio('valor_mayorista') ? null : 'valor_mayorista',
+            $usuario->can('productos.view-sin-instalacion') ? null : 'valor_sin_instalacion',
+        ]));
+    }
+
     private function buildConcatenacion(array $data): string
     {
         $marca = Marca::whereKey($data['marca_id'] ?? null)->first();
@@ -259,7 +283,22 @@ class ProductoController extends Controller
         $usuario = auth()->user();
         $dinero = fn (mixed $valor): ?string => $valor === null ? null : number_format((float) $valor, 2, '.', '');
 
-        return $productos->map(function (object $producto) use ($marcas, $stock, $pendientes, $dinero, $usuario): array {
+        $puede = fn (string $accion): bool => $usuario->can("productos.{$accion}");
+        $verStockTotal = $puede('view-stock-total');
+        $verPendiente = $puede('view-pendiente');
+        $verAlmacenP = $puede('view-almacen-p');
+        $verSinInstalacion = $puede('view-sin-instalacion');
+        $verStockBodegas = $puede('view-stock-bodegas');
+
+        // Without `productos.view-sin-stock`, inventoried products with no stock
+        // and no pending purchase are left out: nothing says they will come back.
+        if (! $puede('view-sin-stock')) {
+            $productos = $productos->reject(fn (object $producto): bool => $producto->inventariable
+                && $stock->get($producto->id, collect())->sum('stock') <= 0
+                && ! $pendientes->has($producto->id))->values();
+        }
+
+        return $productos->map(function (object $producto) use ($marcas, $stock, $pendientes, $dinero, $usuario, $verStockTotal, $verPendiente, $verAlmacenP, $verSinInstalacion, $verStockBodegas): array {
             $filasStock = $stock->get($producto->id, collect());
             $filasPendientes = $pendientes->get($producto->id, collect());
             $proveedores = $filasPendientes->pluck('nombre_proveedor')->filter()->unique()->values();
@@ -285,19 +324,19 @@ class ProductoController extends Controller
                 'costo_producto' => $usuario->puedeVerPrecio('costo') ? $dinero($producto->costo_producto) : null,
                 'valor_detal' => $usuario->puedeVerPrecio('valor_detal') ? $dinero($producto->valor_detal) : null,
                 'valor_mayorista' => $usuario->puedeVerPrecio('valor_mayorista') ? $dinero($producto->valor_mayorista) : null,
-                'valor_sin_instalacion' => $dinero($producto->valor_sin_instalacion),
+                'valor_sin_instalacion' => $verSinInstalacion ? $dinero($producto->valor_sin_instalacion) : null,
                 'imagen_producto_url' => $producto->imagen_producto ? Storage::disk('public')->url($producto->imagen_producto) : null,
                 'concatenar_codigo_nombre' => $producto->concatenar_codigo_nombre,
-                'stock_total' => (float) $filasStock->sum('stock'),
-                'pendiente' => $filasPendientes->pluck('compra_id')->unique()->count(),
-                'proveedor_pendiente' => $proveedores->isEmpty() ? null : $proveedores->implode(', '),
-                'stock_por_bodega' => $filasStock->pluck('stock', 'bodega_id'),
+                'stock_total' => $verStockTotal ? (float) $filasStock->sum('stock') : null,
+                'pendiente' => $verPendiente ? $filasPendientes->pluck('compra_id')->unique()->count() : null,
+                'proveedor_pendiente' => $verAlmacenP && $proveedores->isNotEmpty() ? $proveedores->implode(', ') : null,
+                'stock_por_bodega' => $verStockBodegas ? $filasStock->pluck('stock', 'bodega_id') : null,
             ];
         })->all();
     }
 
     /**
-     * @return array{canCreate: bool, canUpdate: bool, canDelete: bool}
+     * @return array<string, bool>
      */
     private function permissions(Request $request): array
     {
@@ -307,6 +346,11 @@ class ProductoController extends Controller
             'canDelete' => $request->user()->can('productos.delete'),
             'canViewDeleted' => $request->user()->can('productos.view-deleted'),
             'canRestore' => $request->user()->can('productos.restore'),
+            'canViewStockTotal' => $request->user()->can('productos.view-stock-total'),
+            'canViewPendiente' => $request->user()->can('productos.view-pendiente'),
+            'canViewAlmacenP' => $request->user()->can('productos.view-almacen-p'),
+            'canViewSinInstalacion' => $request->user()->can('productos.view-sin-instalacion'),
+            'canViewStockBodegas' => $request->user()->can('productos.view-stock-bodegas'),
         ];
     }
 

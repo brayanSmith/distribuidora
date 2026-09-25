@@ -45,6 +45,7 @@ class PedidoController extends Controller
         Gate::authorize("{$module}.view");
 
         $eliminados = $this->verEliminados($request, $module);
+        $permissions = $this->permissions($request, $module);
 
         return Inertia::render("{$module}/index", [
             // Only the fields the listing shows: every pedido brings its lines,
@@ -78,7 +79,10 @@ class PedidoController extends Controller
                     ? null
                     : $pedido->detalles->each->makeHidden(['costo_unitario', 'costo_total', 'ganancia_total'])),
             'eliminados' => $eliminados,
-            'permissions' => $this->permissions($request, $module),
+            'permissions' => $permissions,
+            // For registering a payment right from the listing.
+            'pucs' => $permissions['canCreateAbono'] ? Puc::orderBy('concatenar_subcuenta_concepto')->get(['id', 'concatenar_subcuenta_concepto']) : [],
+            'vendedores' => $permissions['canCreateAbono'] ? User::orderBy('name')->get(['id', 'name']) : [],
         ]);
     }
 
@@ -292,6 +296,8 @@ class PedidoController extends Controller
             'canViewDeleted' => $request->user()->can("{$module}.view-deleted"),
             'canRestore' => $request->user()->can("{$module}.restore"),
             'canViewDetalle' => $request->user()->can("{$module}.view-detalle"),
+            // Registering an abono also needs `update`, as AbonoController::store checks.
+            'canCreateAbono' => $request->user()->can("{$module}.update") && $request->user()->can("{$module}.create-abono"),
         ];
     }
 

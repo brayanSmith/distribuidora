@@ -126,3 +126,27 @@ test('the allowed prices can be changed inline, keeping at least one', function 
         'tipos_precio_permitidos' => ['costo'],
     ])->assertForbidden();
 });
+
+test('the prices saved by the previous system are understood', function (?array $guardados, array $esperados) {
+    $empleado = User::factory()->create(['tipos_precio_permitidos' => $guardados]);
+
+    expect($empleado->tiposPrecioPermitidos())->toBe($esperados);
+})->with([
+    'its own names' => [['MAYORISTA', 'DETAL'], ['valor_detal', 'valor_mayorista']],
+    'both systems names' => [['valor_detal', 'DETAL'], ['valor_detal']],
+    'empty means every price' => [[], ['valor_detal', 'valor_mayorista', 'costo']],
+]);
+
+test('saving a user keeps the prices readable by the previous system', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    $empleado = User::factory()->create(['tipos_precio_permitidos' => ['DETAL']]);
+
+    $this->actingAs($owner)->patch(route('usuarios.update', [$empleado]), [
+        'name' => $empleado->name,
+        'email' => $empleado->email,
+        'tipos_precio_permitidos' => ['valor_mayorista', 'costo'],
+    ])->assertRedirect();
+
+    expect($empleado->fresh()->tipos_precio_permitidos)->toBe(['valor_mayorista', 'costo', 'MAYORISTA', 'COSTO']);
+});

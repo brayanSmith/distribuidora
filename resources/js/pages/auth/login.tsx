@@ -32,7 +32,7 @@ export default function Login({ status, canResetPassword }: Props) {
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="email">
+                                <Label required htmlFor="email">
                                     Correo electrónico
                                 </Label>
                                 <Input
@@ -50,7 +50,9 @@ export default function Login({ status, canResetPassword }: Props) {
 
                             <div className="grid gap-2">
                                 <div className="flex items-center">
-                                    <Label htmlFor="password">Contraseña</Label>
+                                    <Label required htmlFor="password">
+                                        Contraseña
+                                    </Label>
                                     {canResetPassword && (
                                         <TextLink
                                             href={request()}

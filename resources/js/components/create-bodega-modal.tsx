@@ -43,7 +43,7 @@ export default function CreateBodegaModal({ children }: Props) {
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="nombre_bodega">
+                                    <Label required htmlFor="nombre_bodega">
                                         Nombre
                                     </Label>
                                     <Input

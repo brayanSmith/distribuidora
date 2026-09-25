@@ -1,4 +1,6 @@
 import { Head } from '@inertiajs/react';
+import { useState } from 'react';
+import CreateTrasladoModal from '@/components/create-traslado-modal';
 import Heading from '@/components/heading';
 import StockBodegasTable from '@/components/stock-bodegas-table';
 import { index } from '@/routes/stock-bodegas';
@@ -9,6 +11,9 @@ type Props = {
     productos: NonNullable<StockBodega['producto']>[];
     bodegas: Bodega[];
     canViewInversion: boolean;
+    canCreateTraslado: boolean;
+    /** Every bodega, as a traslado may go to one without stock yet. */
+    bodegasTraslado: Bodega[];
 };
 
 export default function StockBodegasIndex({
@@ -16,7 +21,13 @@ export default function StockBodegasIndex({
     productos,
     bodegas,
     canViewInversion,
+    canCreateTraslado,
+    bodegasTraslado,
 }: Props) {
+    const [trasladoProductoId, setTrasladoProductoId] = useState<number | null>(
+        null,
+    );
+
     return (
         <>
             <Head title="Stock por bodega" />
@@ -33,8 +44,25 @@ export default function StockBodegasIndex({
                     productos={productos}
                     bodegas={bodegas}
                     canViewInversion={canViewInversion}
+                    onTraslado={
+                        canCreateTraslado ? setTrasladoProductoId : undefined
+                    }
                 />
             </div>
+
+            {canCreateTraslado ? (
+                <CreateTrasladoModal
+                    productos={productos}
+                    bodegas={bodegasTraslado}
+                    productoInicialId={trasladoProductoId ?? undefined}
+                    open={trasladoProductoId !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setTrasladoProductoId(null);
+                        }
+                    }}
+                />
+            ) : null}
         </>
     );
 }

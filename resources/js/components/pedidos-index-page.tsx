@@ -5,13 +5,21 @@ import TrashToggle from '@/components/trash-toggle';
 import PedidoDetallesTable from '@/components/pedido-detalles-table';
 import PedidosTable from '@/components/pedidos-table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import type { Pedido, PedidoPermissions, PedidoRoutes } from '@/types';
+import type {
+    Pedido,
+    PedidoPermissions,
+    PedidoRoutes,
+    PucOption,
+    VendedorOption,
+} from '@/types';
 
 type Props = {
     pedidos: Pedido[];
     permissions: PedidoPermissions;
     routes: PedidoRoutes;
     eliminados: boolean;
+    pucs: PucOption[];
+    vendedores: VendedorOption[];
     title: string;
     description: string;
 };
@@ -23,6 +31,8 @@ export default function PedidosIndexPage({
     permissions,
     routes,
     eliminados,
+    pucs,
+    vendedores,
     title,
     description,
 }: Props) {
@@ -87,6 +97,8 @@ export default function PedidosIndexPage({
                         permissions={permissions}
                         routes={routes}
                         eliminados={eliminados}
+                        pucs={pucs}
+                        vendedores={vendedores}
                     />
                 ) : (
                     <PedidoDetallesTable

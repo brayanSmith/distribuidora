@@ -1,6 +1,6 @@
 import { Form } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Combobox from '@/components/combobox';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -21,16 +21,28 @@ import { store } from '@/routes/traslados';
 import type { Bodega, ProductoOption } from '@/types';
 
 type Props = PropsWithChildren<{
-    productos: ProductoOption[];
-    bodegas: Bodega[];
+    productos: Pick<
+        ProductoOption,
+        'id' | 'referencia_producto' | 'concatenar_codigo_nombre'
+    >[];
+    bodegas: Pick<Bodega, 'id' | 'nombre_bodega'>[];
+    /** Product already picked when the modal opens. */
+    productoInicialId?: number;
+    /** Controlled mode, to open it without a trigger (e.g. from a table row). */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }>;
 
 export default function CreateTrasladoModal({
     productos,
     bodegas,
+    productoInicialId,
+    open: openProp,
+    onOpenChange,
     children,
 }: Props) {
-    const [open, setOpen] = useState(false);
+    const [openState, setOpenState] = useState(false);
+    const open = openProp ?? openState;
     const [productoId, setProductoId] = useState<string>('');
     const [bodegaDonanteId, setBodegaDonanteId] = useState<string>('');
     const [bodegaDestinoId, setBodegaDestinoId] = useState<string>('');
@@ -55,8 +67,15 @@ export default function CreateTrasladoModal({
         [bodegas],
     );
 
+    useEffect(() => {
+        if (open) {
+            setProductoId(productoInicialId ? String(productoInicialId) : '');
+        }
+    }, [open, productoInicialId]);
+
     const handleOpenChange = (nextOpen: boolean) => {
-        setOpen(nextOpen);
+        setOpenState(nextOpen);
+        onOpenChange?.(nextOpen);
 
         if (!nextOpen) {
             setProductoId('');
@@ -67,7 +86,9 @@ export default function CreateTrasladoModal({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogTrigger asChild>{children}</DialogTrigger>
+            {children ? (
+                <DialogTrigger asChild>{children}</DialogTrigger>
+            ) : null}
             <DialogContent>
                 <Form
                     key={String(open)}
@@ -86,7 +107,7 @@ export default function CreateTrasladoModal({
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Producto</Label>
+                                    <Label required>Producto</Label>
                                     <Combobox
                                         options={productoOptions}
                                         value={productoId}
@@ -105,7 +126,7 @@ export default function CreateTrasladoModal({
 
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label>Bodega donante</Label>
+                                        <Label required>Bodega donante</Label>
                                         <Combobox
                                             options={bodegaOptions}
                                             value={bodegaDonanteId}
@@ -125,7 +146,7 @@ export default function CreateTrasladoModal({
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label>Bodega destino</Label>
+                                        <Label required>Bodega destino</Label>
                                         <Combobox
                                             options={bodegaOptions}
                                             value={bodegaDestinoId}
@@ -146,7 +167,9 @@ export default function CreateTrasladoModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="cantidad">Cantidad</Label>
+                                    <Label required htmlFor="cantidad">
+                                        Cantidad
+                                    </Label>
                                     <Input
                                         id="cantidad"
                                         name="cantidad"

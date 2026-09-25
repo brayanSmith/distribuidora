@@ -81,7 +81,7 @@ export default function EditGastoModal({
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_descripcion">
+                                    <Label required htmlFor="edit_descripcion">
                                         Descripción
                                     </Label>
                                     <Input
@@ -96,7 +96,7 @@ export default function EditGastoModal({
 
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="edit_monto">
+                                        <Label required htmlFor="edit_monto">
                                             Monto
                                         </Label>
                                         <Input
@@ -113,7 +113,10 @@ export default function EditGastoModal({
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="edit_fecha_gasto">
+                                        <Label
+                                            required
+                                            htmlFor="edit_fecha_gasto"
+                                        >
                                             Fecha
                                         </Label>
                                         <Input

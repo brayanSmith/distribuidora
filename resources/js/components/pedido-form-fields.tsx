@@ -305,7 +305,7 @@ export default function PedidoFormFields({
                 >
                     <div className="grid gap-4 sm:grid-cols-3">
                         <div className="grid gap-2">
-                            <Label>Cliente</Label>
+                            <Label required>Cliente</Label>
                             <Combobox
                                 options={clienteOptions}
                                 value={clienteId}
@@ -323,7 +323,9 @@ export default function PedidoFormFields({
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="fecha">Fecha</Label>
+                            <Label required htmlFor="fecha">
+                                Fecha
+                            </Label>
                             <Input
                                 id="fecha"
                                 name="fecha"
@@ -338,7 +340,7 @@ export default function PedidoFormFields({
                         </div>
 
                         <div className="grid gap-2">
-                            <Label>Vendedor</Label>
+                            <Label required>Vendedor</Label>
                             <Combobox
                                 options={vendedorOptions}
                                 value={vendedorId}
@@ -410,7 +412,7 @@ export default function PedidoFormFields({
                         </div>
 
                         <div className="grid gap-2">
-                            <Label>Tipo Precio</Label>
+                            <Label required>Tipo Precio</Label>
                             <Select
                                 value={tipoPrecio}
                                 onValueChange={(value) =>
@@ -450,7 +452,7 @@ export default function PedidoFormFields({
                         </div>
 
                         <div className="grid gap-2">
-                            <Label>Bodega</Label>
+                            <Label required>Bodega</Label>
                             <Combobox
                                 options={bodegaOptions}
                                 value={bodegaId}
@@ -519,12 +521,32 @@ export default function PedidoFormFields({
                 <Table className="[&_tr]:divide-x">
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Producto</TableHead>
+                            <TableHead>
+                                Producto
+                                <span
+                                    aria-hidden="true"
+                                    className="text-destructive ml-0.5"
+                                >
+                                    *
+                                </span>
+                            </TableHead>
                             <TableHead className="text-center">
                                 Cantidad
+                                <span
+                                    aria-hidden="true"
+                                    className="text-destructive ml-0.5"
+                                >
+                                    *
+                                </span>
                             </TableHead>
                             <TableHead className="text-center">
                                 Precio Unitario
+                                <span
+                                    aria-hidden="true"
+                                    className="text-destructive ml-0.5"
+                                >
+                                    *
+                                </span>
                             </TableHead>
                             <TableHead className="text-center">
                                 Subtotal

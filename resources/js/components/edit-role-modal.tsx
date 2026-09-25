@@ -63,7 +63,7 @@ export default function EditRoleModal({
                             </DialogHeader>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="edit-role-name">
+                                <Label required htmlFor="edit-role-name">
                                     Nombre del rol
                                 </Label>
                                 <Input

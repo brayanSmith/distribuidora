@@ -73,7 +73,7 @@ export default function CreatePucModal({ children }: Props) {
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Tipo</Label>
+                                    <Label required>Tipo</Label>
                                     <Select
                                         value={tipo}
                                         onValueChange={(value) =>
@@ -106,7 +106,9 @@ export default function CreatePucModal({ children }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="cuenta">Cuenta</Label>
+                                    <Label required htmlFor="cuenta">
+                                        Cuenta
+                                    </Label>
                                     <Input
                                         id="cuenta"
                                         name="cuenta"
@@ -117,7 +119,9 @@ export default function CreatePucModal({ children }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="subcuenta">Subcuenta</Label>
+                                    <Label required htmlFor="subcuenta">
+                                        Subcuenta
+                                    </Label>
                                     <Input
                                         id="subcuenta"
                                         name="subcuenta"
@@ -128,7 +132,9 @@ export default function CreatePucModal({ children }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="concepto">Concepto</Label>
+                                    <Label required htmlFor="concepto">
+                                        Concepto
+                                    </Label>
                                     <Input
                                         id="concepto"
                                         name="concepto"

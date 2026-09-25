@@ -28,14 +28,14 @@ export type Producto = {
     costo_producto: string;
     valor_detal: string;
     valor_mayorista: string;
-    valor_sin_instalacion: string;
+    valor_sin_instalacion: string | null;
     imagen_producto: string | null;
     imagen_producto_url: string | null;
     concatenar_codigo_nombre: string | null;
-    stock_total?: number;
-    pendiente?: number;
+    stock_total?: number | null;
+    pendiente?: number | null;
     proveedor_pendiente?: string | null;
-    stock_por_bodega?: Record<string, number>;
+    stock_por_bodega?: Record<string, number> | null;
 };
 
 export type ProductoPermissions = {
@@ -44,6 +44,11 @@ export type ProductoPermissions = {
     canDelete: boolean;
     canViewDeleted: boolean;
     canRestore: boolean;
+    canViewStockTotal: boolean;
+    canViewPendiente: boolean;
+    canViewAlmacenP: boolean;
+    canViewSinInstalacion: boolean;
+    canViewStockBodegas: boolean;
 };
 
 export type LaravelPaginator<T> = {

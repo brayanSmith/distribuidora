@@ -61,6 +61,13 @@ const ACTION_LABELS: Record<string, string> = {
     'chart-pedidos': 'Gráfico: pedidos, gastos + inversión y ganancia',
     'alerta-stock': 'Alerta: productos sin stock con ventas',
     'view-all-pedidos': 'Ver el historial de todos los pedidos',
+    'view-stock-total': 'Ver columna Stock total',
+    'view-pendiente': 'Ver columna Pendiente',
+    'view-almacen-p': 'Ver columna Almacén P',
+    'view-sin-instalacion': 'Ver valor sin instalación',
+    'view-stock-bodegas': 'Ver stock por bodega',
+    'view-sin-stock': 'Ver productos sin stock',
+    'create-traslado': 'Crear traslados',
 };
 
 /** Extra explanation shown as a tooltip next to a permission. */
@@ -69,8 +76,13 @@ const ACTION_HINTS: Record<string, string> = {
         'Desmarcado, en el POS solo se ve el historial de los pedidos del vendedor autenticado.',
     'update-datos':
         'Cliente, fecha, vendedor, bodega, tipo de precio, placa, facturación, flete, descuento y retenciones. La observación y la observación de pago siempre se pueden editar con "Editar".',
-    'create-abono': 'Solo aplica en el formulario de edición del pedido.',
+    'create-abono':
+        'Desde el formulario de edición y desde la tabla de pedidos. También requiere "Editar".',
     'create-detalle': 'Solo aplica en el formulario de edición del pedido.',
+    'view-sin-stock':
+        'Desmarcado, no se listan los productos sin stock que tampoco tienen compras pendientes.',
+    'view-stock-bodegas':
+        'Las columnas de cada bodega en la tabla de productos y en su detalle.',
 };
 
 /** A permission name (`pedidos.create-abono`) as the label people read ("Registrar abonos"). */

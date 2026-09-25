@@ -74,7 +74,9 @@ export default function CreateUsuarioModal({
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="usuario_name">Nombre</Label>
+                                    <Label required htmlFor="usuario_name">
+                                        Nombre
+                                    </Label>
                                     <Input
                                         id="usuario_name"
                                         name="name"
@@ -85,7 +87,9 @@ export default function CreateUsuarioModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="usuario_email">Email</Label>
+                                    <Label required htmlFor="usuario_email">
+                                        Email
+                                    </Label>
                                     <Input
                                         id="usuario_email"
                                         name="email"
@@ -97,7 +101,7 @@ export default function CreateUsuarioModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="usuario_password">
+                                    <Label required htmlFor="usuario_password">
                                         Contraseña
                                     </Label>
                                     <PasswordInput
@@ -110,7 +114,10 @@ export default function CreateUsuarioModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="usuario_password_confirmation">
+                                    <Label
+                                        required
+                                        htmlFor="usuario_password_confirmation"
+                                    >
                                         Confirmar contraseña
                                     </Label>
                                     <PasswordInput

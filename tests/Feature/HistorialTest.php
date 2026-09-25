@@ -280,7 +280,7 @@ test('the history records the changes of usuarios, their roles and the permissio
     $this->patch(route('usuarios.precios.update', [$usuario]), ['tipos_precio_permitidos' => ['valor_detal', 'costo']])->assertRedirect();
 
     $editado = Activity::where('description', 'Usuario editado')->firstOrFail();
-    expect($editado->properties['attributes']['tipos_precio_permitidos'])->toBe(['valor_detal', 'costo']);
+    expect($editado->properties['attributes']['tipos_precio_permitidos'])->toBe(['valor_detal', 'costo', 'DETAL', 'COSTO']);
 
     // No entry ever carries the password.
     expect(Activity::all()->contains(fn ($a) => str_contains($a->properties->toJson(), 'password')))->toBeFalse();

@@ -51,7 +51,7 @@ class UsuarioController extends Controller
                 'name' => $request->validated('name'),
                 'email' => $request->validated('email'),
                 'password' => $request->validated('password'),
-                'tipos_precio_permitidos' => $request->validated('tipos_precio_permitidos'),
+                'tipos_precio_permitidos' => User::tiposPrecioParaGuardar($request->validated('tipos_precio_permitidos')),
             ]);
 
             $usuario->forceFill(['email_verified_at' => now()])->save();
@@ -74,7 +74,7 @@ class UsuarioController extends Controller
             $data = [
                 'name' => $request->validated('name'),
                 'email' => $request->validated('email'),
-                'tipos_precio_permitidos' => $request->validated('tipos_precio_permitidos'),
+                'tipos_precio_permitidos' => User::tiposPrecioParaGuardar($request->validated('tipos_precio_permitidos')),
             ];
 
             if ($password = $request->validated('password')) {
@@ -103,7 +103,7 @@ class UsuarioController extends Controller
             'tipos_precio_permitidos.*' => ['string', 'in:'.implode(',', User::TIPOS_PRECIO)],
         ]);
 
-        $usuario->update($data);
+        $usuario->update(['tipos_precio_permitidos' => User::tiposPrecioParaGuardar($data['tipos_precio_permitidos'])]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Usuario updated.')]);
 

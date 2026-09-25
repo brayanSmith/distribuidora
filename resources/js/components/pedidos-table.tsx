@@ -3,6 +3,7 @@ import {
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
+    Banknote,
     Columns3,
     GripVertical,
     Eye,
@@ -17,6 +18,7 @@ import DateRangeFilter, {
     type DateRangeValue,
 } from '@/components/date-range-filter';
 import DeletePedidoModal from '@/components/delete-pedido-modal';
+import RegistrarPagoModal from '@/components/registrar-pago-modal';
 import VerPedidoModal from '@/components/ver-pedido-modal';
 import VoucherButton from '@/components/voucher-button';
 import RestoreButton from '@/components/restore-button';
@@ -53,7 +55,13 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import type { Pedido, PedidoPermissions, PedidoRoutes } from '@/types';
+import type {
+    Pedido,
+    PedidoPermissions,
+    PedidoRoutes,
+    PucOption,
+    VendedorOption,
+} from '@/types';
 
 type Props = {
     pedidos: Pedido[];
@@ -61,6 +69,9 @@ type Props = {
     routes: PedidoRoutes;
     /** Showing the deleted pedidos: rows offer "restaurar" instead of edit/delete. */
     eliminados?: boolean;
+    /** Options of the "Registrar pago" modal, sent only with `canCreateAbono`. */
+    pucs?: PucOption[];
+    vendedores?: VendedorOption[];
 };
 
 type SortKey =
@@ -180,7 +191,7 @@ const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
     observacion_pago: 180,
     observacion: 180,
     estado_pago: 120,
-    acciones: 200,
+    acciones: 240,
 };
 
 const MIN_COLUMN_WIDTH = 60;
@@ -495,8 +506,11 @@ export default function PedidosTable({
     permissions,
     routes,
     eliminados = false,
+    pucs = [],
+    vendedores = [],
 }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [pedidoToAbonar, setPedidoToAbonar] = useState<Pedido | null>(null);
     const [pedidoToDelete, setPedidoToDelete] = useState<Pedido | null>(null);
     const [pedidoToView, setPedidoToView] = useState<Pedido | null>(null);
     const [search, setSearch] = useState('');
@@ -994,6 +1008,27 @@ export default function PedidosTable({
                                 action={routes.pedidos.voucher([pedido.id])}
                                 dataTest="voucher-pedido-button"
                             />
+                            {permissions.canCreateAbono &&
+                            Number(pedido.saldo_pendiente) > 0 ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            data-test="abono-pedido-button"
+                                            onClick={() =>
+                                                setPedidoToAbonar(pedido)
+                                            }
+                                        >
+                                            <Banknote className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Registrar abono</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
+
                             {permissions.canUpdate ? (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -1193,6 +1228,22 @@ export default function PedidosTable({
                 routes={routes}
                 onClose={() => setPedidoToView(null)}
             />
+
+            {pedidoToAbonar ? (
+                <RegistrarPagoModal
+                    key={pedidoToAbonar.id}
+                    pedido={pedidoToAbonar}
+                    routes={routes}
+                    pucs={pucs}
+                    vendedores={vendedores}
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setPedidoToAbonar(null);
+                        }
+                    }}
+                />
+            ) : null}
 
             <DeletePedidoModal
                 pedido={pedidoToDelete}

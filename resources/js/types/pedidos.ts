@@ -133,4 +133,6 @@ export type PedidoPermissions = {
     canViewDeleted: boolean;
     canRestore: boolean;
     canViewDetalle: boolean;
+    /** Registering an abono from the listing (needs `update` too). */
+    canCreateAbono: boolean;
 };

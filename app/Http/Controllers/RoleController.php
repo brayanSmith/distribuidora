@@ -30,10 +30,10 @@ class RoleController extends Controller
                 ->map(fn (Role $role) => [
                     'id' => $role->id,
                     'name' => $role->name,
-                    'permissions' => $role->permissions->pluck('name')->values(),
+                    'permissions' => $role->permissions->pluck('name')->reject(fn (string $permiso) => Role::esPermisoLegacy($permiso))->values(),
                     'bodegas' => $role->bodegas->pluck('id')->values(),
                 ]),
-            'permissions' => Permission::orderBy('name')->pluck('name'),
+            'permissions' => Permission::orderBy('name')->pluck('name')->reject(fn (string $permiso) => Role::esPermisoLegacy($permiso))->values(),
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
             'members' => User::query()->with('roles')->orderBy('name')->get()->map(fn (User $member) => [
                 'id' => $member->id,
@@ -56,7 +56,7 @@ class RoleController extends Controller
 
         $role = Role::create(['name' => $request->validated('name')]);
 
-        $role->syncPermissions($request->validated('permissions', []));
+        $role->syncPermisosApp($request->validated('permissions', []));
         $role->bodegas()->sync($request->validated('bodegas', []));
         $role->registrarCambioAcceso(null);
 
@@ -72,7 +72,7 @@ class RoleController extends Controller
         $antes = $role->acceso();
 
         $role->update(['name' => $request->validated('name')]);
-        $role->syncPermissions($request->validated('permissions', []));
+        $role->syncPermisosApp($request->validated('permissions', []));
         $role->bodegas()->sync($request->validated('bodegas', []));
         $role->registrarCambioAcceso($antes);
 

@@ -122,7 +122,7 @@ export default function EditAbonoModal({
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Método de pago</Label>
+                                    <Label required>Método de pago</Label>
                                     <Combobox
                                         options={pucOptions}
                                         value={pucId}
@@ -141,7 +141,7 @@ export default function EditAbonoModal({
 
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="edit_monto">
+                                        <Label required htmlFor="edit_monto">
                                             Monto
                                         </Label>
                                         <Input

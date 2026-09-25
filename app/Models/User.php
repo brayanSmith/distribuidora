@@ -96,6 +96,9 @@ class User extends Authenticatable implements PasskeyUser
     /** The product prices a user can be allowed to see and use. */
     public const TIPOS_PRECIO = ['valor_detal', 'valor_mayorista', 'costo'];
 
+    /** The previous (Filament) system's name of each price => this app's. */
+    public const TIPOS_PRECIO_LEGACY = ['DETAL' => 'valor_detal', 'MAYORISTA' => 'valor_mayorista', 'COSTO' => 'costo'];
+
     /**
      * The prices this user may see and use; all of them until restricted.
      *
@@ -103,7 +106,31 @@ class User extends Authenticatable implements PasskeyUser
      */
     public function tiposPrecioPermitidos(): array
     {
-        return $this->tipos_precio_permitidos ?? self::TIPOS_PRECIO;
+        $guardados = $this->tipos_precio_permitidos;
+
+        // Empty means no restriction, as in the previous system.
+        if (empty($guardados)) {
+            return self::TIPOS_PRECIO;
+        }
+
+        $tipos = array_map(fn (string $tipo): string => self::TIPOS_PRECIO_LEGACY[$tipo] ?? $tipo, $guardados);
+
+        return array_values(array_intersect(self::TIPOS_PRECIO, $tipos));
+    }
+
+    /**
+     * The value to store for the given prices: this app's names plus the
+     * previous system's, which shares the column and ignores names it does
+     * not know.
+     *
+     * @param  list<string>  $tipos
+     * @return list<string>
+     */
+    public static function tiposPrecioParaGuardar(array $tipos): array
+    {
+        $legacy = array_keys(array_intersect(self::TIPOS_PRECIO_LEGACY, $tipos));
+
+        return array_values(array_unique([...$tipos, ...$legacy]));
     }
 
     public function puedeVerPrecio(string $tipo): bool

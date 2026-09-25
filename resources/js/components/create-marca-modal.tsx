@@ -44,7 +44,9 @@ export default function CreateMarcaModal({ children }: Props) {
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="marca">Nombre</Label>
+                                    <Label required htmlFor="marca">
+                                        Nombre
+                                    </Label>
                                     <Input
                                         id="marca"
                                         name="marca"

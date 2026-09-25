@@ -3,12 +3,14 @@
 use App\Models\Abono;
 use App\Models\Bodega;
 use App\Models\Cliente;
+use App\Models\DetalleCompra;
 use App\Models\DetallePedido;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\Puc;
 use App\Models\Role;
 use App\Models\StockBodega;
+use App\Models\Traslado;
 use App\Models\User;
 use Spatie\Permission\Models\Permission;
 
@@ -357,7 +359,7 @@ test('a user without the costo price gets no costs in the POS, productos or pedi
     $producto = Producto::factory()->create(['inventariable' => true, 'categoria' => 'LLANTA', 'costo_producto' => 50, 'valor_detal' => 100, 'valor_mayorista' => 90]);
     $pedido = Pedido::factory()->create(['tipo_precio' => 'DETAL']);
     DetallePedido::factory()->create(['pedido_id' => $pedido->id, 'producto_id' => $producto->id, 'costo_unitario' => 50, 'costo_total' => 100, 'ganancia_total' => 100]);
-    concederPermisos($this->miembro, ['pos.view', 'productos.view', 'pedidos.view']);
+    concederPermisos($this->miembro, ['pos.view', 'productos.view', 'productos.view-sin-stock', 'pedidos.view']);
     $this->miembro->update(['tipos_precio_permitidos' => ['valor_detal']]);
 
     $this->actingAs($this->miembro)->get(route('pos.index'))
@@ -449,4 +451,151 @@ test('paying less than the monto registers a partial abono of what was paid', fu
 
     expect((float) $abono->fresh()->monto)->toBe(2000.0);
     expect((float) $abono->fresh()->cambio)->toBe(500.0);
+});
+
+test('the roles screen hides the permissions of the previous system', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    $rol = Role::create(['name' => 'Legacy']);
+    $rol->givePermissionTo([Permission::findOrCreate('ViewAny:ProductoResource'), 'pedidos.view']);
+
+    $this->actingAs($owner)->get(route('roles.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('permissions', fn ($permisos) => ! collect($permisos)->contains('ViewAny:ProductoResource') && collect($permisos)->contains('pedidos.view'))
+            ->where('roles', fn ($roles) => collect($roles)->firstWhere('name', 'Legacy')['permissions'] === ['pedidos.view'])
+        );
+});
+
+test('editing a role keeps its permissions of the previous system', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    Permission::findOrCreate('Create:PedidoResource');
+    $rol = Role::create(['name' => 'Legacy']);
+    $rol->givePermissionTo([Permission::findOrCreate('ViewAny:ProductoResource'), 'pedidos.view']);
+
+    $this->actingAs($owner)->patch(route('roles.update', [$rol]), [
+        'name' => 'Legacy',
+        'permissions' => ['clientes.view', 'Create:PedidoResource'],
+        'bodegas' => [],
+    ])->assertRedirect();
+
+    expect($rol->fresh()->permissions->pluck('name')->sort()->values()->all())
+        ->toBe(['ViewAny:ProductoResource', 'clientes.view']);
+});
+
+test('each column of the productos listing is only sent with its permission', function () {
+    $producto = Producto::factory()->create(['inventariable' => true, 'valor_sin_instalacion' => 80]);
+    $stock = StockBodega::factory()->create(['producto_id' => $producto->id, 'stock' => 5]);
+    DetalleCompra::factory()->create(['producto_id' => $producto->id]);
+    concederPermisos($this->miembro, ['productos.view']);
+
+    $this->actingAs($this->miembro)->get(route('productos.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('productos.0.stock_total', null)
+            ->where('productos.0.pendiente', null)
+            ->where('productos.0.proveedor_pendiente', null)
+            ->where('productos.0.valor_sin_instalacion', null)
+            ->where('productos.0.stock_por_bodega', null)
+            ->where('permissions.canViewStockTotal', false)
+            ->where('permissions.canViewStockBodegas', false)
+        );
+
+    concederPermisos($this->miembro, ['productos.view-stock-total', 'productos.view-pendiente', 'productos.view-almacen-p', 'productos.view-sin-instalacion', 'productos.view-stock-bodegas']);
+
+    $this->actingAs($this->miembro)->get(route('productos.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('productos.0.stock_total', 5)
+            ->where('productos.0.pendiente', 1)
+            ->whereType('productos.0.proveedor_pendiente', 'string')
+            ->where('productos.0.valor_sin_instalacion', '80.00')
+            ->where("productos.0.stock_por_bodega.{$stock->bodega_id}", 5)
+            ->where('permissions.canViewStockTotal', true)
+            ->where('permissions.canViewStockBodegas', true)
+        );
+});
+
+test('products with no stock and no pending purchase are only listed with productos.view-sin-stock', function () {
+    $conStock = Producto::factory()->create(['inventariable' => true]);
+    StockBodega::factory()->create(['producto_id' => $conStock->id, 'stock' => 3]);
+    $conCompraPendiente = Producto::factory()->create(['inventariable' => true]);
+    DetalleCompra::factory()->create(['producto_id' => $conCompraPendiente->id]);
+    $servicio = Producto::factory()->create(['inventariable' => false]);
+    $sinStock = Producto::factory()->create(['inventariable' => true]);
+    concederPermisos($this->miembro, ['productos.view']);
+
+    $this->actingAs($this->miembro)->get(route('productos.index'))
+        ->assertInertia(fn ($page) => $page->where('productos', fn ($productos) => collect($productos)->pluck('id')->sort()->values()->all()
+            === collect([$conStock->id, $conCompraPendiente->id, $servicio->id])->sort()->values()->all()));
+
+    concederPermisos($this->miembro, ['productos.view-sin-stock']);
+
+    $this->actingAs($this->miembro)->get(route('productos.index'))
+        ->assertInertia(fn ($page) => $page->where('productos', fn ($productos) => collect($productos)->pluck('id')->contains($sinStock->id)));
+});
+
+test('the prices the user cannot see are neither sent to the edit page nor overwritten', function () {
+    $producto = Producto::factory()->create(['categoria' => 'LLANTA', 'tipo' => 'NUEVO', 'costo_producto' => 50, 'valor_detal' => 100, 'valor_mayorista' => 90, 'valor_sin_instalacion' => 80]);
+    concederPermisos($this->miembro, ['productos.view', 'productos.update']);
+    $this->miembro->update(['tipos_precio_permitidos' => ['valor_detal']]);
+
+    $this->actingAs($this->miembro)->get(route('productos.edit', [$producto]))
+        ->assertInertia(fn ($page) => $page
+            ->where('producto.valor_detal', '100.00')
+            ->missing('producto.costo_producto')
+            ->missing('producto.valor_mayorista')
+            ->missing('producto.valor_sin_instalacion')
+        );
+
+    $this->actingAs($this->miembro)->patch(route('productos.update', [$producto]), [
+        'categoria' => 'LLANTA',
+        'tipo' => 'NUEVO',
+        'costo_producto' => 0,
+        'valor_detal' => 120,
+        'valor_mayorista' => 0,
+        'valor_sin_instalacion' => 0,
+    ])->assertSessionHasNoErrors();
+
+    $producto->refresh();
+    expect((float) $producto->valor_detal)->toBe(120.0)
+        ->and((float) $producto->costo_producto)->toBe(50.0)
+        ->and((float) $producto->valor_mayorista)->toBe(90.0)
+        ->and((float) $producto->valor_sin_instalacion)->toBe(80.0);
+});
+
+test('a traslado can be created from stock por bodega with its own permission', function () {
+    [$origen, $destino] = Bodega::factory()->count(2)->create();
+    $producto = Producto::factory()->create(['inventariable' => true]);
+    StockBodega::factory()->create(['producto_id' => $producto->id, 'bodega_id' => $origen->id, 'stock' => 10]);
+    $datos = ['producto_id' => $producto->id, 'bodega_donante_id' => $origen->id, 'bodega_destino_id' => $destino->id, 'cantidad' => 2];
+    concederPermisos($this->miembro, ['stock-bodegas.view']);
+
+    $this->actingAs($this->miembro)->get(route('stock-bodegas.index'))
+        ->assertInertia(fn ($page) => $page->where('canCreateTraslado', false)->where('bodegasTraslado', []));
+    $this->actingAs($this->miembro)->post(route('traslados.store'), $datos)->assertForbidden();
+
+    concederPermisos($this->miembro, ['stock-bodegas.create-traslado']);
+
+    $this->actingAs($this->miembro)->get(route('stock-bodegas.index'))
+        ->assertInertia(fn ($page) => $page->where('canCreateTraslado', true)->has('bodegasTraslado', 2));
+    $this->actingAs($this->miembro)->post(route('traslados.store'), $datos)->assertRedirect();
+
+    expect(Traslado::where('producto_id', $producto->id)->where('bodega_destino_id', $destino->id)->exists())->toBeTrue();
+});
+
+test('the pedidos listing offers registering an abono only with create-abono and update', function () {
+    $pedido = Pedido::factory()->create(['tipo_precio' => 'DETAL', 'total_a_pagar' => 1000, 'saldo_pendiente' => 1000]);
+    $puc = Puc::factory()->create();
+    concederPermisos($this->miembro, ['pedidos.view', 'pedidos.create-abono']);
+
+    $this->actingAs($this->miembro)->get(route('pedidos.index'))
+        ->assertInertia(fn ($page) => $page->where('permissions.canCreateAbono', false)->where('pucs', []));
+
+    concederPermisos($this->miembro, ['pedidos.update']);
+
+    $this->actingAs($this->miembro)->get(route('pedidos.index'))
+        ->assertInertia(fn ($page) => $page->where('permissions.canCreateAbono', true)->has('pucs', 1));
+
+    $this->actingAs($this->miembro)->from(route('pedidos.index'))
+        ->post(route('pedidos.abonos.store', [$pedido]), ['puc_id' => $puc->id, 'monto' => 100])
+        ->assertRedirect(route('pedidos.index'));
 });

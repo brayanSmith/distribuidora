@@ -278,7 +278,9 @@ export default function CompraFormFields({
 
                 <div className="grid gap-4 sm:grid-cols-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="factura">Factura</Label>
+                        <Label required htmlFor="factura">
+                            Factura
+                        </Label>
                         <Input
                             id="factura"
                             name="factura"
@@ -290,7 +292,7 @@ export default function CompraFormFields({
                     </div>
 
                     <div className="grid gap-2">
-                        <Label>Proveedor</Label>
+                        <Label required>Proveedor</Label>
                         <Combobox
                             options={proveedorOptions}
                             value={proveedorId}
@@ -308,7 +310,9 @@ export default function CompraFormFields({
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="fecha">Fecha</Label>
+                        <Label required htmlFor="fecha">
+                            Fecha
+                        </Label>
                         <Input
                             id="fecha"
                             name="fecha"
@@ -363,7 +367,15 @@ export default function CompraFormFields({
                 <Table className="[&_tr]:divide-x">
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Producto</TableHead>
+                            <TableHead>
+                                Producto
+                                <span
+                                    aria-hidden="true"
+                                    className="text-destructive ml-0.5"
+                                >
+                                    *
+                                </span>
+                            </TableHead>
                             {bodegas.map((bodega) => (
                                 <TableHead
                                     key={bodega.id}
@@ -374,6 +386,12 @@ export default function CompraFormFields({
                             ))}
                             <TableHead className="text-center">
                                 Precio Unitario
+                                <span
+                                    aria-hidden="true"
+                                    className="text-destructive ml-0.5"
+                                >
+                                    *
+                                </span>
                             </TableHead>
                             <TableHead className="text-center">
                                 Subtotal

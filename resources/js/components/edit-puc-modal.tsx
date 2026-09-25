@@ -74,7 +74,7 @@ export default function EditPucModal({ puc, open, onOpenChange }: Props) {
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Tipo</Label>
+                                    <Label required>Tipo</Label>
                                     <Select
                                         value={tipo}
                                         onValueChange={(value) =>
@@ -107,7 +107,9 @@ export default function EditPucModal({ puc, open, onOpenChange }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_cuenta">Cuenta</Label>
+                                    <Label required htmlFor="edit_cuenta">
+                                        Cuenta
+                                    </Label>
                                     <Input
                                         id="edit_cuenta"
                                         name="cuenta"
@@ -119,7 +121,7 @@ export default function EditPucModal({ puc, open, onOpenChange }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_subcuenta">
+                                    <Label required htmlFor="edit_subcuenta">
                                         Subcuenta
                                     </Label>
                                     <Input
@@ -133,7 +135,7 @@ export default function EditPucModal({ puc, open, onOpenChange }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_concepto">
+                                    <Label required htmlFor="edit_concepto">
                                         Concepto
                                     </Label>
                                     <Input

@@ -32,7 +32,7 @@ export default function EmpresaEdit({ empresa, permissions }: Props) {
                         <>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="nombre_empresa">
+                                    <Label required htmlFor="nombre_empresa">
                                         Nombre
                                     </Label>
                                     <Input

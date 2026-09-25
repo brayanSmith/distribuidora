@@ -119,7 +119,7 @@ export default function RegistrarPagoModal({
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Método de pago</Label>
+                                    <Label required>Método de pago</Label>
                                     <Combobox
                                         options={pucOptions}
                                         value={pucId}

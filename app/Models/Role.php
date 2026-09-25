@@ -27,6 +27,31 @@ class Role extends SpatieRole
     }
 
     /**
+     * Whether the permission belongs to the previous (Filament) system, whose
+     * permissions are named "Accion:Recurso" and share the same tables.
+     */
+    public static function esPermisoLegacy(string $permiso): bool
+    {
+        return str_contains($permiso, ':');
+    }
+
+    /**
+     * Replaces the role's permissions of this app, keeping the ones of the
+     * previous system, which that system still relies on.
+     *
+     * @param  list<string>  $permisos
+     */
+    public function syncPermisosApp(array $permisos): void
+    {
+        $legacy = $this->permissions()->pluck('name')->filter(fn (string $permiso) => self::esPermisoLegacy($permiso));
+
+        $this->syncPermissions([
+            ...array_filter($permisos, fn (string $permiso) => ! self::esPermisoLegacy($permiso)),
+            ...$legacy,
+        ]);
+    }
+
+    /**
      * What the role grants, as names: its permissions and its bodegas.
      *
      * @return array{permisos: list<string>, bodegas: list<string>}

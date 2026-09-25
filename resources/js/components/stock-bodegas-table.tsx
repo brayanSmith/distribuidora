@@ -7,6 +7,7 @@ import {
     Minus,
     Plus,
     Search,
+    Truck,
     X,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -47,6 +48,8 @@ type Props = {
     bodegas: Bodega[];
     /** The "Inversión" view (costs and prices) is only offered with `stock-bodegas.view-inversion`. */
     canViewInversion: boolean;
+    /** Given only to whoever may create traslados: adds a "Traslado" button per row. */
+    onTraslado?: (productoId: number) => void;
 };
 
 type Vista = 'stock' | 'inversion';
@@ -520,9 +523,12 @@ export default function StockBodegasTable({
     productos,
     bodegas: bodegasProp,
     canViewInversion,
+    onTraslado,
 }: Props) {
     const [vistaElegida, setVista] = useState<Vista>('stock');
     const vista: Vista = canViewInversion ? vistaElegida : 'stock';
+    // As in the previous system, the traslado is offered in the stock view only.
+    const showTraslado = onTraslado !== undefined && vista === 'stock';
     const [search, setSearch] = useState('');
     const [sortKey, setSortKey] = useState<ColumnKey | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -1128,6 +1134,7 @@ export default function StockBodegasTable({
                                 style={{ width: columnWidths[key] }}
                             />
                         ))}
+                        {showTraslado ? <col style={{ width: 120 }} /> : null}
                     </colgroup>
                     <TableHeader className="bg-muted sticky top-0 z-20 shadow-sm">
                         <TableRow>
@@ -1155,11 +1162,17 @@ export default function StockBodegasTable({
                                     />
                                 );
                             })}
+                            {showTraslado ? (
+                                <TableHead className="text-center">
+                                    Acciones
+                                </TableHead>
+                            ) : null}
                         </TableRow>
                         <TableRow>
                             {visibleColumnOrder.map((key) =>
                                 renderFilterHead(columnDefsMap.get(key)!),
                             )}
+                            {showTraslado ? <TableHead /> : null}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1188,12 +1201,31 @@ export default function StockBodegasTable({
                                                 </TableCell>
                                             );
                                         })}
+                                        {showTraslado ? (
+                                            <TableCell className="text-center">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    data-test="stock-bodega-traslado"
+                                                    onClick={() =>
+                                                        onTraslado?.(
+                                                            row.productoId,
+                                                        )
+                                                    }
+                                                >
+                                                    <Truck className="size-4" />
+                                                    Traslado
+                                                </Button>
+                                            </TableCell>
+                                        ) : null}
                                     </TableRow>
                                     {expanded ? (
                                         <TableRow data-test="stock-bodega-detail">
                                             <TableCell
                                                 colSpan={
-                                                    visibleColumnOrder.length
+                                                    visibleColumnOrder.length +
+                                                    (showTraslado ? 1 : 0)
                                                 }
                                                 className="bg-muted/10 p-3"
                                             >

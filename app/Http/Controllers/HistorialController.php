@@ -283,7 +283,11 @@ class HistorialController extends Controller
         }
 
         if ($campo === 'tipos_precio_permitidos' && is_array($valor)) {
-            return collect($valor)->map(fn (string $tipo): string => self::PRECIOS_PERMITIDOS[$tipo] ?? $tipo)->implode(', ');
+            // The previous system's names ("DETAL") are stored next to this app's: shown once.
+            return collect($valor)
+                ->map(fn (string $tipo): string => self::PRECIOS_PERMITIDOS[User::TIPOS_PRECIO_LEGACY[$tipo] ?? $tipo] ?? $tipo)
+                ->unique()
+                ->implode(', ');
         }
 
         if (is_array($valor) && $campo !== 'productos') {

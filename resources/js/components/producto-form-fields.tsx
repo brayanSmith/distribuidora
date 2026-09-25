@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import Combobox from '@/components/combobox';
 import InputError from '@/components/input-error';
@@ -13,6 +14,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import type {
     CategoriaProducto,
     MarcaOption,
@@ -49,6 +51,8 @@ export default function ProductoFormFields({
     errors,
     onImageChange,
 }: Props) {
+    const { canViewSinInstalacion } = usePage().props;
+    const { puedeCosto, puedeDetal, puedeMayorista } = useTiposPrecio();
     const [categoria, setCategoria] = useState<CategoriaProducto>(
         producto?.categoria ?? 'LLANTA',
     );
@@ -202,7 +206,9 @@ export default function ProductoFormFields({
         <div className="space-y-6">
             <div className="bg-card flex flex-wrap items-center gap-8 rounded-lg border p-4">
                 <div className="flex flex-wrap items-center gap-4">
-                    <Label className="font-semibold">Categoría</Label>
+                    <Label required className="font-semibold">
+                        Categoría
+                    </Label>
                     <RadioGroup
                         value={categoria}
                         onValueChange={(value) =>
@@ -225,7 +231,9 @@ export default function ProductoFormFields({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4">
-                    <Label className="font-semibold">Tipo</Label>
+                    <Label required className="font-semibold">
+                        Tipo
+                    </Label>
                     <RadioGroup
                         value={tipo}
                         onValueChange={(value) =>
@@ -649,58 +657,70 @@ export default function ProductoFormFields({
             <div className="bg-card space-y-4 rounded-lg border p-4">
                 <div className="font-semibold">Precios y Porcentajes</div>
                 <div className="grid gap-4 sm:grid-cols-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="costo_producto">Costo</Label>
-                        <Input
-                            id="costo_producto"
-                            name="costo_producto"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            defaultValue={producto?.costo_producto ?? '0'}
-                        />
-                        <InputError message={errors.costo_producto} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="valor_detal">Valor Detal</Label>
-                        <Input
-                            id="valor_detal"
-                            name="valor_detal"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            defaultValue={producto?.valor_detal ?? '0'}
-                        />
-                        <InputError message={errors.valor_detal} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="valor_mayorista">Valor Mayorista</Label>
-                        <Input
-                            id="valor_mayorista"
-                            name="valor_mayorista"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            defaultValue={producto?.valor_mayorista ?? '0'}
-                        />
-                        <InputError message={errors.valor_mayorista} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="valor_sin_instalacion">
-                            Valor Sin Instalación
-                        </Label>
-                        <Input
-                            id="valor_sin_instalacion"
-                            name="valor_sin_instalacion"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            defaultValue={
-                                producto?.valor_sin_instalacion ?? '0'
-                            }
-                        />
-                        <InputError message={errors.valor_sin_instalacion} />
-                    </div>
+                    {puedeCosto ? (
+                        <div className="grid gap-2">
+                            <Label htmlFor="costo_producto">Costo</Label>
+                            <Input
+                                id="costo_producto"
+                                name="costo_producto"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                defaultValue={producto?.costo_producto ?? '0'}
+                            />
+                            <InputError message={errors.costo_producto} />
+                        </div>
+                    ) : null}
+                    {puedeDetal ? (
+                        <div className="grid gap-2">
+                            <Label htmlFor="valor_detal">Valor Detal</Label>
+                            <Input
+                                id="valor_detal"
+                                name="valor_detal"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                defaultValue={producto?.valor_detal ?? '0'}
+                            />
+                            <InputError message={errors.valor_detal} />
+                        </div>
+                    ) : null}
+                    {puedeMayorista ? (
+                        <div className="grid gap-2">
+                            <Label htmlFor="valor_mayorista">
+                                Valor Mayorista
+                            </Label>
+                            <Input
+                                id="valor_mayorista"
+                                name="valor_mayorista"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                defaultValue={producto?.valor_mayorista ?? '0'}
+                            />
+                            <InputError message={errors.valor_mayorista} />
+                        </div>
+                    ) : null}
+                    {canViewSinInstalacion ? (
+                        <div className="grid gap-2">
+                            <Label htmlFor="valor_sin_instalacion">
+                                Valor Sin Instalación
+                            </Label>
+                            <Input
+                                id="valor_sin_instalacion"
+                                name="valor_sin_instalacion"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                defaultValue={
+                                    producto?.valor_sin_instalacion ?? '0'
+                                }
+                            />
+                            <InputError
+                                message={errors.valor_sin_instalacion}
+                            />
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>

@@ -25,6 +25,7 @@ class StockBodegaController extends Controller
         Gate::authorize('stock-bodegas.view');
 
         $puedeVerInversion = $request->user()->can('stock-bodegas.view-inversion');
+        $puedeTrasladar = $request->user()->can('stock-bodegas.create-traslado');
 
         // Stock rows whose product no longer exists are orphans: not listed.
         $productosVigentes = Producto::select('id');
@@ -52,6 +53,9 @@ class StockBodegaController extends Controller
                     : ['id', 'referencia_producto', 'concatenar_codigo_nombre']),
             'canViewInversion' => $puedeVerInversion,
             'bodegas' => Bodega::whereIn('id', $bodegaIds)->get(['id', 'nombre_bodega']),
+            'canCreateTraslado' => $puedeTrasladar,
+            // A traslado may go to any bodega, not only those that already have stock.
+            'bodegasTraslado' => $puedeTrasladar ? Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']) : [],
         ]);
     }
 }

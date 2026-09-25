@@ -15,7 +15,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $this->mergeRolesIntoOneTeam();
+        if (Schema::hasColumn('roles', 'team_id')) {
+            $this->mergeRolesIntoOneTeam();
+        }
+
         $this->replaceTeamPermissionsWithRolePermissions();
 
         Schema::table('users', function (Blueprint $table) {

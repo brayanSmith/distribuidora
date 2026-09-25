@@ -46,7 +46,10 @@ export default function EditBodegaModal({ bodega, open, onOpenChange }: Props) {
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_nombre_bodega">
+                                    <Label
+                                        required
+                                        htmlFor="edit_nombre_bodega"
+                                    >
                                         Nombre
                                     </Label>
                                     <Input

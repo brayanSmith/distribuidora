@@ -65,7 +65,7 @@ export default function CreateGastoModal({ bodegas, children }: Props) {
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="descripcion">
+                                    <Label required htmlFor="descripcion">
                                         Descripción
                                     </Label>
                                     <Input
@@ -79,7 +79,9 @@ export default function CreateGastoModal({ bodegas, children }: Props) {
 
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="monto">Monto</Label>
+                                        <Label required htmlFor="monto">
+                                            Monto
+                                        </Label>
                                         <Input
                                             id="monto"
                                             name="monto"
@@ -93,7 +95,7 @@ export default function CreateGastoModal({ bodegas, children }: Props) {
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="fecha_gasto">
+                                        <Label required htmlFor="fecha_gasto">
                                             Fecha
                                         </Label>
                                         <Input

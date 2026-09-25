@@ -98,7 +98,7 @@ export default function EditTrasladoModal({
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Producto</Label>
+                                    <Label required>Producto</Label>
                                     <Combobox
                                         options={productoOptions}
                                         value={productoId}
@@ -117,7 +117,7 @@ export default function EditTrasladoModal({
 
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label>Bodega donante</Label>
+                                        <Label required>Bodega donante</Label>
                                         <Combobox
                                             options={bodegaOptions}
                                             value={bodegaDonanteId}
@@ -137,7 +137,7 @@ export default function EditTrasladoModal({
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label>Bodega destino</Label>
+                                        <Label required>Bodega destino</Label>
                                         <Combobox
                                             options={bodegaOptions}
                                             value={bodegaDestinoId}
@@ -158,7 +158,7 @@ export default function EditTrasladoModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_cantidad">
+                                    <Label required htmlFor="edit_cantidad">
                                         Cantidad
                                     </Label>
                                     <Input

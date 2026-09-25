@@ -93,7 +93,7 @@ export default function EditStockInicialModal({
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Producto</Label>
+                                    <Label required>Producto</Label>
                                     <Combobox
                                         options={productoOptions}
                                         value={productoId}
@@ -111,7 +111,7 @@ export default function EditStockInicialModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label>Bodega</Label>
+                                    <Label required>Bodega</Label>
                                     <Combobox
                                         options={bodegaOptions}
                                         value={bodegaId}
@@ -129,7 +129,7 @@ export default function EditStockInicialModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_cantidad">
+                                    <Label required htmlFor="edit_cantidad">
                                         Cantidad
                                     </Label>
                                     <Input

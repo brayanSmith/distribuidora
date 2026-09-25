@@ -56,7 +56,9 @@ export default function Profile({
                             />
 
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Nombre</Label>
+                                <Label required htmlFor="name">
+                                    Nombre
+                                </Label>
 
                                 <Input
                                     id="name"
@@ -75,7 +77,7 @@ export default function Profile({
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="email">
+                                <Label required htmlFor="email">
                                     Correo electrónico
                                 </Label>
 

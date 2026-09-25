@@ -310,6 +310,7 @@ export default function ProductoDetalleModal({
     onOpenChange,
 }: Props) {
     const { puedeCosto, puedeDetal, puedeMayorista } = useTiposPrecio();
+    const { canViewSinInstalacion } = usePage().props;
     const { submit } = useHttp();
 
     const [pedidosPage, setPedidosPage] = useState(1);
@@ -520,26 +521,30 @@ export default function ProductoDetalleModal({
                                         colorClassName="text-amber-600 dark:text-amber-400"
                                     />
                                 ) : null}
-                                <PrecioField
-                                    label="Sin Instalación"
-                                    value={Number(
-                                        producto.valor_sin_instalacion,
-                                    )}
-                                    colorClassName="text-red-600 dark:text-red-400"
-                                />
+                                {canViewSinInstalacion ? (
+                                    <PrecioField
+                                        label="Sin Instalación"
+                                        value={Number(
+                                            producto.valor_sin_instalacion,
+                                        )}
+                                        colorClassName="text-red-600 dark:text-red-400"
+                                    />
+                                ) : null}
                             </div>
                         </SectionCard>
 
                         <SectionCard icon={Warehouse} title="Stock por bodega">
                             <div className="flex flex-wrap gap-4">
-                                <div className="grid gap-1">
-                                    <span className="text-muted-foreground text-xs">
-                                        Stock Total
-                                    </span>
-                                    <ValueBadge
-                                        value={producto.stock_total ?? 0}
-                                    />
-                                </div>
+                                {producto.stock_total != null ? (
+                                    <div className="grid gap-1">
+                                        <span className="text-muted-foreground text-xs">
+                                            Stock Total
+                                        </span>
+                                        <ValueBadge
+                                            value={producto.stock_total}
+                                        />
+                                    </div>
+                                ) : null}
                                 <div className="grid gap-1">
                                     <span className="text-muted-foreground text-xs">
                                         Cantidad Comprada
@@ -560,22 +565,27 @@ export default function ProductoDetalleModal({
                                 </div>
                             </div>
 
-                            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                                {bodegas.map((bodega) => (
-                                    <div key={bodega.id} className="grid gap-1">
-                                        <span className="text-muted-foreground truncate text-xs">
-                                            {bodega.nombre_bodega}
-                                        </span>
-                                        <ValueBadge
-                                            value={
-                                                producto.stock_por_bodega?.[
-                                                    bodega.id
-                                                ] ?? 0
-                                            }
-                                        />
-                                    </div>
-                                ))}
-                            </div>
+                            {producto.stock_por_bodega != null ? (
+                                <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                                    {bodegas.map((bodega) => (
+                                        <div
+                                            key={bodega.id}
+                                            className="grid gap-1"
+                                        >
+                                            <span className="text-muted-foreground truncate text-xs">
+                                                {bodega.nombre_bodega}
+                                            </span>
+                                            <ValueBadge
+                                                value={
+                                                    producto.stock_por_bodega?.[
+                                                        bodega.id
+                                                    ] ?? 0
+                                                }
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
                         </SectionCard>
                     </div>
 

@@ -16,6 +16,12 @@ return new class extends Migration
             $table->decimal('stock_inicial')->default(0)->after('producto_id');
         });
 
+        if (DB::table('migrations')->where('migration', '2025_11_28_152404_create_permission_tables')->exists()) {
+            $this->splitLegacyStock();
+
+            return;
+        }
+
         $stockIniciales = DB::table('stock_inicials')
             ->select('producto_id', 'bodega_id', DB::raw('SUM(cantidad) as total'))
             ->groupBy('producto_id', 'bodega_id')
@@ -48,6 +54,24 @@ return new class extends Migration
                 ]);
             }
         }
+    }
+
+    /**
+     * The previous (Filament) system folds the stock inicial into `entradas`
+     * and takes outgoing traslados off `entradas`, while this app keeps the
+     * stock inicial apart and counts outgoing traslados as `salidas`. The
+     * columns are split into this app's meaning; `stock` stays the same.
+     */
+    private function splitLegacyStock(): void
+    {
+        $inicial = '(select coalesce(sum(cantidad), 0) from stock_inicials where stock_inicials.producto_id = stock_bodegas.producto_id and stock_inicials.bodega_id = stock_bodegas.bodega_id)';
+        $trasladosSalida = '(select coalesce(sum(cantidad), 0) from traslados where traslados.producto_id = stock_bodegas.producto_id and traslados.bodega_donante_id = stock_bodegas.bodega_id)';
+
+        DB::table('stock_bodegas')->update([
+            'stock_inicial' => DB::raw($inicial),
+            'entradas' => DB::raw("entradas - {$inicial} + {$trasladosSalida}"),
+            'salidas' => DB::raw("salidas + {$trasladosSalida}"),
+        ]);
     }
 
     /**

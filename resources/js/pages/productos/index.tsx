@@ -411,11 +411,16 @@ export default function ProductosIndex({
                 (key) =>
                     (key !== 'costo' || puedeCosto) &&
                     (key !== 'detal' || puedeDetal) &&
-                    (key !== 'mayorista' || puedeMayorista),
+                    (key !== 'mayorista' || puedeMayorista) &&
+                    (key !== 'stock_total' || permissions.canViewStockTotal) &&
+                    (key !== 'pendiente' || permissions.canViewPendiente) &&
+                    (key !== 'almacen_p' || permissions.canViewAlmacenP) &&
+                    (key !== 'sin_instalacion' ||
+                        permissions.canViewSinInstalacion),
             ),
-            ...bodegaColumnKeys,
+            ...(permissions.canViewStockBodegas ? bodegaColumnKeys : []),
         ],
-        [bodegaColumnKeys, puedeCosto, puedeDetal, puedeMayorista],
+        [bodegaColumnKeys, puedeCosto, puedeDetal, puedeMayorista, permissions],
     );
 
     const allColumnKeys = useMemo(

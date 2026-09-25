@@ -96,7 +96,7 @@ export default function EditClienteModal({
 
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="grid gap-2">
-                                    <Label>Tipo de documento</Label>
+                                    <Label required>Tipo de documento</Label>
                                     <Select
                                         value={tipoDocumento}
                                         onValueChange={(value) =>
@@ -133,7 +133,10 @@ export default function EditClienteModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_numero_documento">
+                                    <Label
+                                        required
+                                        htmlFor="edit_numero_documento"
+                                    >
                                         Número de documento
                                     </Label>
                                     <Input
@@ -149,7 +152,7 @@ export default function EditClienteModal({
                                 </div>
 
                                 <div className="grid gap-2 sm:col-span-2">
-                                    <Label htmlFor="edit_razon_social">
+                                    <Label required htmlFor="edit_razon_social">
                                         Razón social
                                     </Label>
                                     <Input
@@ -208,7 +211,7 @@ export default function EditClienteModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label>Retenedor de fuente</Label>
+                                    <Label required>Retenedor de fuente</Label>
                                     <Select
                                         value={retenedorFuente}
                                         onValueChange={(value) =>

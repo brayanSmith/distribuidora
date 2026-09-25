@@ -77,7 +77,7 @@ export default function EditUsuarioModal({
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_usuario_name">
+                                    <Label required htmlFor="edit_usuario_name">
                                         Nombre
                                     </Label>
                                     <Input
@@ -91,7 +91,10 @@ export default function EditUsuarioModal({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_usuario_email">
+                                    <Label
+                                        required
+                                        htmlFor="edit_usuario_email"
+                                    >
                                         Email
                                     </Label>
                                     <Input

@@ -92,7 +92,10 @@ export default function CreateProveedorModal({ children }: Props) {
                             <div className="max-h-[60vh] space-y-6 overflow-y-auto pr-1">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="nombre_proveedor">
+                                        <Label
+                                            required
+                                            htmlFor="nombre_proveedor"
+                                        >
                                             Nombre
                                         </Label>
                                         <Input
@@ -122,7 +125,7 @@ export default function CreateProveedorModal({ children }: Props) {
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="nit_proveedor">
+                                        <Label required htmlFor="nit_proveedor">
                                             NIT
                                         </Label>
                                         <Input
@@ -137,7 +140,9 @@ export default function CreateProveedorModal({ children }: Props) {
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label>Tipo de proveedor</Label>
+                                        <Label required>
+                                            Tipo de proveedor
+                                        </Label>
                                         <Select
                                             value={tipoProveedor}
                                             onValueChange={(value) =>
@@ -169,7 +174,7 @@ export default function CreateProveedorModal({ children }: Props) {
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label>Categoría</Label>
+                                        <Label required>Categoría</Label>
                                         <Select
                                             value={categoriaProveedor}
                                             onValueChange={(value) =>

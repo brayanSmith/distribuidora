@@ -26,6 +26,7 @@ function Field({
 
 export default function ProductoShow({ producto }: Props) {
     const { puedeCosto, puedeDetal, puedeMayorista } = useTiposPrecio();
+    const { canViewSinInstalacion } = usePage().props;
     const nombre = producto.concatenar_codigo_nombre || 'Producto';
 
     return (
@@ -126,10 +127,12 @@ export default function ProductoShow({ producto }: Props) {
                                 value={producto.valor_mayorista}
                             />
                         ) : null}
-                        <Field
-                            label="Valor Sin Instalación"
-                            value={producto.valor_sin_instalacion}
-                        />
+                        {canViewSinInstalacion ? (
+                            <Field
+                                label="Valor Sin Instalación"
+                                value={producto.valor_sin_instalacion}
+                            />
+                        ) : null}
                     </div>
                 </div>
             </div>

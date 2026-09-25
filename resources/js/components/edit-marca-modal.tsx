@@ -46,7 +46,9 @@ export default function EditMarcaModal({ marca, open, onOpenChange }: Props) {
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_marca">Nombre</Label>
+                                    <Label required htmlFor="edit_marca">
+                                        Nombre
+                                    </Label>
                                     <Input
                                         id="edit_marca"
                                         name="marca"

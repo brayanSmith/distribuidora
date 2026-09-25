@@ -52,7 +52,8 @@ class AbonoController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Pago registrado.')]);
 
-        return to_route("{$module}.edit", ['pedido' => $pedido]);
+        // Registered from the edit page or from the listing: stays where it was.
+        return back();
     }
 
     /**

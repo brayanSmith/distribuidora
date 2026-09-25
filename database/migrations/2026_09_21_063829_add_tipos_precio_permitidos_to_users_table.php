@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('users', 'tipos_precio_permitidos')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $table->json('tipos_precio_permitidos')->nullable()->after('password');
         });

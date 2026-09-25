@@ -44,7 +44,8 @@ class TrasladoController extends Controller
      */
     public function store(StoreTrasladoRequest $request): RedirectResponse
     {
-        Gate::authorize('traslados.create');
+        // Also created from the "Stock por bodega" table.
+        abort_unless(Gate::any(['traslados.create', 'stock-bodegas.create-traslado']), 403);
 
         $data = $request->validated();
 

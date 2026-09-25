@@ -169,7 +169,7 @@ export default function PosAddProductModal({
 
                 <div className="grid gap-4">
                     <div className="grid gap-2">
-                        <Label>Bodega</Label>
+                        <Label required>Bodega</Label>
                         <Select
                             value={bodegaId}
                             onValueChange={handleBodegaChange}
@@ -208,7 +208,7 @@ export default function PosAddProductModal({
                     </div>
 
                     <div className="grid gap-2">
-                        <Label>Cantidad</Label>
+                        <Label required>Cantidad</Label>
                         <div className="flex items-center gap-2">
                             <Button
                                 type="button"
@@ -254,7 +254,9 @@ export default function PosAddProductModal({
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="pos-add-precio">Valor unitario</Label>
+                        <Label required htmlFor="pos-add-precio">
+                            Valor unitario
+                        </Label>
                         <Input
                             id="pos-add-precio"
                             type="number"

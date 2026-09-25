@@ -125,7 +125,7 @@ export default function PosCartPanel({
 
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
                 <div className="grid gap-2">
-                    <Label>Cliente</Label>
+                    <Label required>Cliente</Label>
                     <div className="flex gap-2">
                         <Button
                             type="button"
@@ -160,7 +160,7 @@ export default function PosCartPanel({
 
                 <div className="grid grid-cols-2 gap-2">
                     <div className="grid gap-2">
-                        <Label>Bodega</Label>
+                        <Label required>Bodega</Label>
                         <Combobox
                             options={bodegaOptions}
                             value={header.bodegaId}
@@ -175,7 +175,7 @@ export default function PosCartPanel({
                     </div>
 
                     <div className="grid gap-2">
-                        <Label>Vendedor</Label>
+                        <Label required>Vendedor</Label>
                         <Combobox
                             options={vendedorOptions}
                             value={header.vendedorId}
@@ -191,7 +191,7 @@ export default function PosCartPanel({
                 </div>
 
                 <div className="grid gap-2">
-                    <Label>Tipo de precio</Label>
+                    <Label required>Tipo de precio</Label>
                     <Select
                         value={header.tipoPrecio}
                         onValueChange={(value) =>
