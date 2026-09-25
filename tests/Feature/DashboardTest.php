@@ -315,3 +315,30 @@ test('the chart adds up to the same figures as the widgets', function () {
             expect((float) array_sum(array_column($dias, 'valor')))->toBe((float) $props['resumen']['valorPedidos']['valor']);
         });
 });
+
+test('the hasta date keeps the orders of that whole day, also when desde is the same day', function () {
+    $user = User::factory()->create();
+    asignarRol($user);
+    $bodega = Bodega::factory()->create();
+    $producto = Producto::factory()->create();
+
+    $mayorista = Pedido::factory()->create(['bodega_id' => $bodega->id, 'tipo_precio' => 'MAYORISTA', 'fecha' => '2026-05-10 17:20:00', 'total_a_pagar' => 700]);
+    DetallePedido::factory()->create(['pedido_id' => $mayorista->id, 'producto_id' => $producto->id, 'bodega_id' => $bodega->id, 'cantidad' => 7, 'subtotal' => 700]);
+    Gasto::factory()->create(['bodega_id' => $bodega->id, 'monto' => 30, 'fecha_gasto' => '2026-05-10']);
+
+    $this->actingAs($user)
+        ->get(route('dashboard', ['bodega_ids' => ['mayorista'], 'desde' => '2026-05-10', 'hasta' => '2026-05-10']))
+        ->assertInertia(fn ($page) => $page
+            ->where('resumen.productosVendidos.cantidad', 7)
+            ->where('resumen.valorPedidos.valor', 700)
+            ->where('cantidadPorBodega.totales.total', 7)
+            ->where('graficos.categorias.0.cantidad', 7)
+        );
+
+    $this->actingAs($user)
+        ->get(route('dashboard', ['desde' => '2026-05-01', 'hasta' => '2026-05-10']))
+        ->assertInertia(fn ($page) => $page
+            ->where('resumen.productosVendidos.cantidad', 7)
+            ->where('resumen.gastos', 30)
+        );
+});

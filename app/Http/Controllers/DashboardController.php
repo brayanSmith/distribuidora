@@ -9,6 +9,7 @@ use App\Models\Producto;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -96,6 +97,15 @@ class DashboardController extends Controller
     }
 
     /**
+     * The day after the "hasta" date: the orders carry a time, so the last
+     * day is kept by comparing against the start of the next one.
+     */
+    private function diaSiguiente(string $fecha): string
+    {
+        return Carbon::parse($fecha)->addDay()->toDateString();
+    }
+
+    /**
      * Sold lines (of non-deleted orders) narrowed by the dashboard filters.
      *
      * @param  array<string, mixed>  $filtros
@@ -108,7 +118,7 @@ class DashboardController extends Controller
             ->whereNull('pedidos.deleted_at')
             ->when($filtros['bodega_ids'] !== [], fn (Builder $query) => $this->limitarPorBodegas($query, $filtros, 'COALESCE(detalle_pedidos.bodega_id, pedidos.bodega_id)'))
             ->when($filtros['desde'] !== '', fn (Builder $query) => $query->where('pedidos.fecha', '>=', $filtros['desde']))
-            ->when($filtros['hasta'] !== '', fn (Builder $query) => $query->where('pedidos.fecha', '<=', $filtros['hasta']))
+            ->when($filtros['hasta'] !== '', fn (Builder $query) => $query->where('pedidos.fecha', '<', $this->diaSiguiente($filtros['hasta'])))
             ->when($filtros['tipo_vehiculo'] !== '', fn (Builder $query) => $query->where('productos.tipo_vehiculo', $filtros['tipo_vehiculo']))
             ->when($filtros['producto_ids'] !== [], fn (Builder $query) => $query->whereIn('detalle_pedidos.producto_id', $filtros['producto_ids']));
     }
@@ -125,7 +135,7 @@ class DashboardController extends Controller
         return Gasto::query()
             ->when($filtros['bodega_ids'] !== [], fn ($query) => $query->whereIn('bodega_id', array_filter($filtros['bodega_ids'], fn (string $id) => $id !== 'mayorista')))
             ->when($filtros['desde'] !== '', fn ($query) => $query->where('fecha_gasto', '>=', $filtros['desde']))
-            ->when($filtros['hasta'] !== '', fn ($query) => $query->where('fecha_gasto', '<=', $filtros['hasta']));
+            ->when($filtros['hasta'] !== '', fn ($query) => $query->where('fecha_gasto', '<', $this->diaSiguiente($filtros['hasta'])));
     }
 
     /**
@@ -197,7 +207,7 @@ class DashboardController extends Controller
                 fn ($query) => $query
                     ->when($filtros['bodega_ids'] !== [], fn ($query) => $this->limitarPorBodegas($query, $filtros, 'pedidos.bodega_id'))
                     ->when($filtros['desde'] !== '', fn ($query) => $query->where('fecha', '>=', $filtros['desde']))
-                    ->when($filtros['hasta'] !== '', fn ($query) => $query->where('fecha', '<=', $filtros['hasta'])));
+                    ->when($filtros['hasta'] !== '', fn ($query) => $query->where('fecha', '<', $this->diaSiguiente($filtros['hasta']))));
     }
 
     /**
