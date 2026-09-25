@@ -101,7 +101,10 @@ php artisan storage:link --force || true
 
 php artisan optimize
 
-chown -R www-data:www-data storage bootstrap/cache
+# Only what this app writes: storage/app/public may be a volume shared with
+# another app (the images), whose files must keep their owner.
+mkdir -p storage/app/private storage/framework storage/logs
+chown -R www-data:www-data storage/app/private storage/framework storage/logs bootstrap/cache
 
 php-fpm -D
 exec nginx -g 'daemon off;'
