@@ -98,12 +98,14 @@ export default function PosProductCard({
                 <Badge
                     className={cn(
                         'absolute top-1 right-1 border-transparent',
-                        hasStock
-                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
-                            : 'bg-red-100 text-red-700 hover:bg-red-100',
+                        !producto.inventariable
+                            ? 'bg-sky-100 text-sky-700 hover:bg-sky-100'
+                            : hasStock
+                              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                              : 'bg-red-100 text-red-700 hover:bg-red-100',
                     )}
                 >
-                    {stockDisponible}
+                    {producto.inventariable ? stockDisponible : 'Servicio'}
                 </Badge>
             </div>
 

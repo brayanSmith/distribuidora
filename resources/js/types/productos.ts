@@ -49,6 +49,7 @@ export type ProductoPermissions = {
     canViewAlmacenP: boolean;
     canViewSinInstalacion: boolean;
     canViewStockBodegas: boolean;
+    canCreateTraslado: boolean;
 };
 
 export type LaravelPaginator<T> = {

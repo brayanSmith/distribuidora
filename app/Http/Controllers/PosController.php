@@ -173,9 +173,9 @@ class PosController extends Controller
     {
         $usuario = auth()->user();
 
-        return Producto::where('categoria', '!=', 'SERVICIO')
-            ->where('inventariable', true)
-            ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'categoria', 'sku', 'valor_detal', 'valor_mayorista', 'valor_sin_instalacion', 'costo_producto', 'imagen_producto'])
+        // Servicios are not inventariable but are sold like any other producto.
+        return Producto::where(fn (Builder $query) => $query->where('inventariable', true)->orWhere('categoria', 'SERVICIO'))
+            ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'categoria', 'inventariable', 'sku', 'valor_detal', 'valor_mayorista', 'valor_sin_instalacion', 'costo_producto', 'imagen_producto'])
             ->with('stockBodegas:id,producto_id,bodega_id,stock')
             ->orderBy('referencia_producto')
             ->get()
@@ -184,6 +184,7 @@ class PosController extends Controller
                 'referencia_producto' => $producto->referencia_producto,
                 'concatenar_codigo_nombre' => $producto->concatenar_codigo_nombre,
                 'categoria' => $producto->categoria,
+                'inventariable' => (bool) $producto->inventariable,
                 'sku' => $producto->sku,
                 'valor_detal' => $usuario->puedeVerPrecio('valor_detal') ? $producto->valor_detal : null,
                 'valor_mayorista' => $usuario->puedeVerPrecio('valor_mayorista') ? $producto->valor_mayorista : null,

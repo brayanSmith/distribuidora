@@ -89,7 +89,12 @@ export default function PosPage({
         ventas.setHeader,
     );
     const cart = usePosCart(ventas.activa.lines, ventas.setLines);
-    const abonos = usePosAbonos(ventas.activa.abonos, ventas.setAbonos);
+    const abonos = usePosAbonos(
+        ventas.activa.abonos,
+        ventas.setAbonos,
+        header.observacionPago,
+        (observacion) => setField('observacionPago', observacion),
+    );
 
     const { depurar } = ventas;
     useEffect(() => {
@@ -581,6 +586,9 @@ export default function PosPage({
                     onRemoveAbono={abonos.removeAbono}
                     totalAbonado={abonos.totalAbonado}
                     observacionPago={abonos.observacionPago}
+                    onObservacionPagoChange={(observacion) =>
+                        setField('observacionPago', observacion)
+                    }
                     errors={pageErrors}
                     processing={processing}
                     onClose={() => setPagoOpen(false)}

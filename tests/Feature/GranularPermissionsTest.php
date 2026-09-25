@@ -582,6 +582,18 @@ test('a traslado can be created from stock por bodega with its own permission', 
     expect(Traslado::where('producto_id', $producto->id)->where('bodega_destino_id', $destino->id)->exists())->toBeTrue();
 });
 
+test('the productos listing offers a traslado only to whoever may create one', function () {
+    concederPermisos($this->miembro, ['productos.view']);
+
+    $this->actingAs($this->miembro)->get(route('productos.index'))
+        ->assertInertia(fn ($page) => $page->where('permissions.canCreateTraslado', false));
+
+    concederPermisos($this->miembro, ['traslados.create']);
+
+    $this->actingAs($this->miembro)->get(route('productos.index'))
+        ->assertInertia(fn ($page) => $page->where('permissions.canCreateTraslado', true));
+});
+
 test('the pedidos listing offers registering an abono only with create-abono and update', function () {
     $pedido = Pedido::factory()->create(['tipo_precio' => 'DETAL', 'total_a_pagar' => 1000, 'saldo_pendiente' => 1000]);
     $puc = Puc::factory()->create();

@@ -36,8 +36,9 @@ type Props = {
     onAddAbono: (abono: PosNewAbono) => void;
     onRemoveAbono: (id: number) => void;
     totalAbonado: number;
-    /** Read-only list built from the abonos' descriptions. */
+    /** Built from the abonos' descriptions until it is edited by hand. */
     observacionPago: string;
+    onObservacionPagoChange: (observacion: string) => void;
     errors: Partial<Record<string, string>>;
     processing: boolean;
     onClose: () => void;
@@ -71,6 +72,7 @@ export default function PosPagoModal({
     onRemoveAbono,
     totalAbonado,
     observacionPago,
+    onObservacionPagoChange,
     errors,
     processing,
     onClose,
@@ -370,9 +372,10 @@ export default function PosPagoModal({
                         id="pos-observacion-pago"
                         rows={Math.max(observacionPago.split('\n').length, 2)}
                         value={observacionPago}
-                        readOnly
-                        placeholder="Se llena con las descripciones de los abonos."
-                        className="bg-muted/40"
+                        onChange={(event) =>
+                            onObservacionPagoChange(event.target.value)
+                        }
+                        placeholder="Se llena con las descripciones de los abonos; puedes editarla."
                         data-test="pos-observacion-pago"
                     />
                 </div>

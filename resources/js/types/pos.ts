@@ -6,6 +6,8 @@ export type PosCatalogoProducto = {
     referencia_producto: string | null;
     concatenar_codigo_nombre: string | null;
     categoria: string | null;
+    /** False for servicios: they have no stock. */
+    inventariable: boolean;
     sku: string | null;
     valor_detal: string | null;
     valor_mayorista: string | null;

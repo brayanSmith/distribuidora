@@ -58,6 +58,7 @@ type ColumnKey =
     | 'tipoVehiculo'
     | 'producto'
     | 'fecha'
+    | 'estado'
     | 'cantidad'
     | 'precioUnitario'
     | 'costoUnitario'
@@ -69,7 +70,7 @@ type ColumnKey =
 
 type SortDirection = 'asc' | 'desc';
 
-type FilterVariant = 'text' | 'tipoVehiculo' | 'date';
+type FilterVariant = 'text' | 'tipoVehiculo' | 'estado' | 'date';
 
 type ColumnMeta = {
     key: ColumnKey;
@@ -86,6 +87,7 @@ const COLUMN_DEFS: ColumnMeta[] = [
     { key: 'tipoVehiculo', label: 'Tipo Vehículo', filter: 'tipoVehiculo' },
     { key: 'producto', label: 'Producto', filter: 'text' },
     { key: 'fecha', label: 'Fecha', filter: 'date' },
+    { key: 'estado', label: 'Estado', filter: 'estado' },
     { key: 'cantidad', label: 'Cantidad', filter: 'text', align: 'center' },
     {
         key: 'precioUnitario',
@@ -134,6 +136,7 @@ const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
     tipoVehiculo: 130,
     producto: 220,
     fecha: 150,
+    estado: 120,
     cantidad: 100,
     precioUnitario: 140,
     costoUnitario: 140,
@@ -151,6 +154,11 @@ const TIPO_VEHICULO_OPTIONS = [
     { value: 'MOTO', label: 'Moto' },
 ];
 
+const ESTADO_OPTIONS = [
+    { value: 'PENDIENTE', label: 'Pendiente' },
+    { value: 'COMPLETADO', label: 'Completado' },
+];
+
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
@@ -165,6 +173,8 @@ type DetalleRow = {
     tipoVehiculo: string;
     producto: string;
     fecha: string | null;
+    /** The estado of the detalle's pedido. */
+    estado: string;
     cantidad: number;
     precioUnitario: number;
     costoUnitario: number;
@@ -203,6 +213,8 @@ function getSortValue(row: DetalleRow, key: ColumnKey): string | number {
             return row.producto;
         case 'fecha':
             return row.fecha ? new Date(row.fecha).getTime() : 0;
+        case 'estado':
+            return row.estado;
         case 'cantidad':
             return row.cantidad;
         case 'precioUnitario':
@@ -230,6 +242,7 @@ function searchableText(row: DetalleRow): string {
         row.bodega,
         row.pedidoId,
         row.tipoVehiculo,
+        row.estado,
         row.producto,
         row.cliente,
         row.usuario,
@@ -264,7 +277,7 @@ type FilterCellProps = {
     filterKey: ColumnKey;
     value: string;
     onChange: (key: ColumnKey, value: string) => void;
-    variant?: 'text' | 'tipoVehiculo';
+    variant?: 'text' | 'tipoVehiculo' | 'estado';
     align?: 'right' | 'center';
 };
 
@@ -282,7 +295,10 @@ function FilterCell({
               ? 'text-center'
               : undefined;
 
-    if (variant === 'tipoVehiculo') {
+    if (variant === 'tipoVehiculo' || variant === 'estado') {
+        const options =
+            variant === 'estado' ? ESTADO_OPTIONS : TIPO_VEHICULO_OPTIONS;
+
         return (
             <TableHead className={alignClass}>
                 <Select
@@ -300,7 +316,7 @@ function FilterCell({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="ALL">Todos</SelectItem>
-                        {TIPO_VEHICULO_OPTIONS.map((option) => (
+                        {options.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                                 {option.label}
                             </SelectItem>
@@ -639,6 +655,7 @@ export default function PedidoDetallesTable({
                     tipoVehiculo: detalle.producto?.tipo_vehiculo ?? '—',
                     producto: productoLabelFor(detalle),
                     fecha: pedido.fecha,
+                    estado: pedido.estado,
                     cantidad: Number(detalle.cantidad),
                     precioUnitario: Number(detalle.precio_unitario),
                     costoUnitario: Number(detalle.costo_unitario ?? 0),
@@ -693,7 +710,7 @@ export default function PedidoDetallesTable({
                     .toLowerCase()
                     .trim();
 
-                if (key === 'tipoVehiculo') {
+                if (key === 'tipoVehiculo' || key === 'estado') {
                     return cellValue === value.toLowerCase();
                 }
 
@@ -757,7 +774,9 @@ export default function PedidoDetallesTable({
                 value={filters[meta.key] ?? ''}
                 onChange={setFilter}
                 variant={
-                    meta.filter === 'tipoVehiculo' ? 'tipoVehiculo' : 'text'
+                    meta.filter === 'tipoVehiculo' || meta.filter === 'estado'
+                        ? meta.filter
+                        : 'text'
                 }
                 align={meta.align === 'center' ? 'center' : meta.align}
             />
@@ -812,6 +831,19 @@ export default function PedidoDetallesTable({
                 return row.fecha
                     ? new Date(row.fecha).toLocaleDateString('es-CO')
                     : '—';
+            case 'estado':
+                return (
+                    <Badge
+                        className={cn(
+                            'border-transparent',
+                            row.estado === 'COMPLETADO'
+                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                                : 'bg-amber-100 text-amber-700 hover:bg-amber-100',
+                        )}
+                    >
+                        {row.estado}
+                    </Badge>
+                );
             case 'cantidad':
                 return row.cantidad;
             case 'precioUnitario':

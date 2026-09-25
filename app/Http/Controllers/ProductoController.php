@@ -351,6 +351,8 @@ class ProductoController extends Controller
             'canViewAlmacenP' => $request->user()->can('productos.view-almacen-p'),
             'canViewSinInstalacion' => $request->user()->can('productos.view-sin-instalacion'),
             'canViewStockBodegas' => $request->user()->can('productos.view-stock-bodegas'),
+            // The same permissions the traslado store accepts.
+            'canCreateTraslado' => $request->user()->canAny(['traslados.create', 'stock-bodegas.create-traslado']),
         ];
     }
 

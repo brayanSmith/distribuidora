@@ -67,6 +67,8 @@ export type UseDataTableOptions<T> = {
     paginate?: boolean;
     /** Overrides the default (all columns with `getValue`, joined) search text builder. */
     searchableText?: (row: T) => string;
+    /** Goes back to the first page whenever this changes (e.g. an outside filter on `data`). */
+    pageResetKey?: string;
 };
 
 function normalizeColumn<T>(
@@ -103,6 +105,7 @@ export function useDataTable<T>({
     pageSize: requestedPageSize = DEFAULT_PAGE_SIZE,
     paginate = true,
     searchableText,
+    pageResetKey,
 }: UseDataTableOptions<T>) {
     const pageSize = paginate ? requestedPageSize : Number.MAX_SAFE_INTEGER;
     // The "acciones" column always leads, so a row's buttons are at its
@@ -497,7 +500,7 @@ export function useDataTable<T>({
     useEffect(() => {
         setPage(1);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search, filters, dateRanges, sort]);
+    }, [search, filters, dateRanges, sort, pageResetKey]);
 
     return {
         columns: normalizedColumns,

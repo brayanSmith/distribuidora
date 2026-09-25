@@ -165,10 +165,14 @@ class PedidoService
 
     /**
      * Apply (sign -1) or revert (sign +1) a detalle's quantity on the
-     * pedido's warehouse stock.
+     * pedido's warehouse stock. Servicios have no stock to move.
      */
     public function adjustStock(DetallePedido $detalle, Pedido $pedido, int $sign): void
     {
+        if (Producto::whereKey($detalle->producto_id)->where('categoria', 'SERVICIO')->exists()) {
+            return;
+        }
+
         $stockBodega = StockBodega::firstOrNew([
             'bodega_id' => $detalle->bodega_id ?? $pedido->bodega_id,
             'producto_id' => $detalle->producto_id,

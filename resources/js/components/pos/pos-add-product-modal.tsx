@@ -88,7 +88,19 @@ export default function PosAddProductModal({
     const precioDefault = String(precioParaTipo(producto, tipoPrecio));
     // Reopening a product that is already in the cart shows what was saved.
     const existente = lineFor(producto.id, Number(bodegaId));
-    const [cantidad, setCantidad] = useState(existente?.cantidad ?? 1);
+    // Kept as text so the field can be emptied while typing a new number.
+    const [cantidadTexto, setCantidadTexto] = useState(
+        String(existente?.cantidad ?? 1),
+    );
+    const cantidad = Math.max(Math.floor(Number(cantidadTexto)) || 0, 0);
+    const setCantidad = (siguiente: number | ((prev: number) => number)) =>
+        setCantidadTexto(
+            String(
+                typeof siguiente === 'function'
+                    ? siguiente(cantidad)
+                    : siguiente,
+            ),
+        );
     const [precio, setPrecio] = useState(
         existente ? String(existente.precioUnitario) : precioDefault,
     );
@@ -113,7 +125,7 @@ export default function PosAddProductModal({
     const bodega = bodegas.find((item) => String(item.id) === bodegaId);
     const disponible = bodega ? disponibleEn(bodega.id) : 0;
     const precioNum = Number(precio) || 0;
-    const sobrepasaStock = cantidad > disponible;
+    const sobrepasaStock = producto.inventariable && cantidad > disponible;
 
     const handleConfirm = () => {
         if (!bodega || cantidad <= 0) {
@@ -186,8 +198,10 @@ export default function PosAddProductModal({
                                         key={item.id}
                                         value={String(item.id)}
                                     >
-                                        {item.nombre_bodega} ·{' '}
-                                        {disponibleEn(item.id)} disp.
+                                        {item.nombre_bodega}
+                                        {producto.inventariable
+                                            ? ` · ${disponibleEn(item.id)} disp.`
+                                            : ''}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -200,7 +214,9 @@ export default function PosAddProductModal({
                                     : 'text-muted-foreground',
                             )}
                         >
-                            Disponible en esta bodega: {disponible}
+                            {producto.inventariable
+                                ? `Disponible en esta bodega: ${disponible}`
+                                : 'Servicio: no maneja stock'}
                             {sobrepasaStock
                                 ? ' — la cantidad supera el stock'
                                 : ''}
@@ -226,15 +242,15 @@ export default function PosAddProductModal({
                             <Input
                                 type="number"
                                 min={1}
-                                value={cantidad}
+                                value={cantidadTexto}
                                 onChange={(event) =>
-                                    setCantidad(
-                                        Math.max(
-                                            Number(event.target.value) || 1,
-                                            1,
-                                        ),
-                                    )
+                                    setCantidadTexto(event.target.value)
                                 }
+                                onBlur={() => {
+                                    if (cantidad < 1) {
+                                        setCantidad(1);
+                                    }
+                                }}
                                 className="text-center"
                                 autoFocus
                                 onFocus={(event) => event.target.select()}

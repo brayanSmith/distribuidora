@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { PosCartLine } from '@/hooks/use-pos-cart';
@@ -24,6 +25,9 @@ export default function PosCartItem({
     onEdit,
     onRemove,
 }: Props) {
+    // What is being typed in the quantity field; null shows the line's own.
+    const [cantidadTexto, setCantidadTexto] = useState<string | null>(null);
+
     return (
         <div
             className="flex items-start gap-2 border-b py-2 last:border-b-0"
@@ -53,10 +57,19 @@ export default function PosCartItem({
             <Input
                 type="number"
                 min={1}
-                value={line.cantidad}
-                onChange={(event) =>
-                    onCantidadChange(Number(event.target.value) || 0)
-                }
+                value={cantidadTexto ?? line.cantidad}
+                onChange={(event) => {
+                    setCantidadTexto(event.target.value);
+
+                    // An emptied field waits for the new number instead of
+                    // taking the line out of the cart.
+                    const cantidad = Number(event.target.value);
+
+                    if (cantidad > 0) {
+                        onCantidadChange(cantidad);
+                    }
+                }}
+                onBlur={() => setCantidadTexto(null)}
                 className="h-8 w-16 text-right"
                 data-test="pos-cart-item-cantidad"
             />

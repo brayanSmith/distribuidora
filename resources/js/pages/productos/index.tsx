@@ -1,18 +1,18 @@
-import { Head, usePage } from '@inertiajs/react';
-import { useTiposPrecio } from '@/hooks/use-tipos-precio';
+import { Head } from '@inertiajs/react';
 import {
-    ArrowDown,
-    ArrowUp,
-    ArrowUpDown,
+    ArrowLeftRight,
     ChevronDown,
     ChevronRight,
+    PanelLeftClose,
+    PanelLeftOpen,
     Pencil,
     Plus,
     Trash2,
-    X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import CreateProductoModal from '@/components/create-producto-modal';
+import CreateTrasladoModal from '@/components/create-traslado-modal';
+import DataTable, { type DataTableColumn } from '@/components/data-table';
 import DeleteProductoModal from '@/components/delete-producto-modal';
 import EditProductoModal from '@/components/edit-producto-modal';
 import Heading from '@/components/heading';
@@ -20,7 +20,6 @@ import ProductoDetalleModal from '@/components/producto-detalle-modal';
 import RestoreButton from '@/components/restore-button';
 import TrashToggle from '@/components/trash-toggle';
 import { Badge } from '@/components/ui/badge';
-import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -28,15 +27,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Tooltip,
@@ -44,6 +34,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import { cn } from '@/lib/utils';
 import { index, restore } from '@/routes/productos';
 import type {
@@ -74,32 +65,19 @@ type Props = {
 
 type Accessor = {
     label: string;
+    width: number;
     align?: 'right';
     color?: string;
     get: (producto: Producto) => string | number;
 };
 
-type SortEntry = { key: string; direction: 'asc' | 'desc' };
-
 const SIN_TIPO = 'Sin tipo';
 const SIN_RIN = 'Sin rin';
 
-const MIN_COLUMN_WIDTH = 60;
-
-const STATIC_COLUMN_WIDTHS: Record<string, number> = {
-    imagen: 70,
-    producto: 220,
-    stock_total: 100,
-    pendiente: 100,
-    almacen_p: 150,
-    costo: 110,
-    detal: 110,
-    mayorista: 110,
-    sin_instalacion: 130,
-    acciones: 112,
-};
-
 const DEFAULT_BODEGA_WIDTH = 110;
+/** Fits the edit / delete / traslado buttons on one line. */
+const ACCIONES_WIDTH = 140;
+const FILTRO_COMPACTO_KEY = 'productos:filtro-compacto';
 
 const STATIC_COLUMN_ORDER = [
     'producto',
@@ -115,165 +93,101 @@ const STATIC_COLUMN_ORDER = [
 const STATIC_ACCESSORS: Record<string, Accessor> = {
     producto: {
         label: 'Producto',
+        width: 220,
         get: (p) => p.concatenar_codigo_nombre ?? p.referencia_producto ?? '',
     },
     stock_total: {
         label: 'Stock total',
+        width: 100,
         align: 'right',
         get: (p) => p.stock_total ?? 0,
     },
     pendiente: {
         label: 'Pendiente',
+        width: 100,
         align: 'right',
         get: (p) => p.pendiente ?? 0,
     },
     almacen_p: {
         label: 'Almacen_P',
+        width: 150,
         get: (p) => p.proveedor_pendiente ?? '',
     },
     costo: {
         label: 'Costo',
+        width: 110,
         align: 'right',
         color: 'text-blue-600 dark:text-blue-400',
         get: (p) => Number(p.costo_producto ?? 0),
     },
     detal: {
         label: 'Detal',
+        width: 110,
         align: 'right',
         color: 'text-emerald-600 dark:text-emerald-400',
         get: (p) => Number(p.valor_detal ?? 0),
     },
     mayorista: {
         label: 'Mayorista',
+        width: 110,
         align: 'right',
         color: 'text-amber-600 dark:text-amber-400',
         get: (p) => Number(p.valor_mayorista ?? 0),
     },
     sin_instalacion: {
         label: 'Sin Instalación',
+        width: 130,
         align: 'right',
         color: 'text-red-600 dark:text-red-400',
         get: (p) => Number(p.valor_sin_instalacion ?? 0),
     },
 };
 
-function compareValues(a: string | number, b: string | number): number {
-    if (typeof a === 'number' && typeof b === 'number') {
-        return a - b;
+function renderCellValue(key: string, accessor: Accessor, producto: Producto) {
+    const value = accessor.get(producto);
+
+    if (key === 'pendiente') {
+        return value ? <Badge variant="secondary">{value}</Badge> : 0;
     }
 
-    return String(a).localeCompare(String(b), 'es', {
-        sensitivity: 'base',
-        numeric: true,
-    });
-}
+    if (key === 'stock_total' || key.startsWith('bodega_')) {
+        const hasStock = Number(value) > 0;
 
-function ResizeHandle({
-    columnKey,
-    onMouseDown,
-}: {
-    columnKey: string;
-    onMouseDown: (event: React.MouseEvent) => void;
-}) {
-    return (
-        <span
-            onMouseDown={onMouseDown}
-            data-test={`productos-resize-${columnKey}`}
-            className="hover:bg-primary/50 absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none"
-        />
-    );
-}
-
-function SortableHead({
-    columnKey,
-    accessor,
-    sorts,
-    onSort,
-    onRemoveSort,
-    onResizeStart,
-}: {
-    columnKey: string;
-    accessor: Accessor;
-    sorts: SortEntry[];
-    onSort: (key: string) => void;
-    onRemoveSort: (key: string) => void;
-    onResizeStart: (event: React.MouseEvent) => void;
-}) {
-    const activeIndex = sorts.findIndex((s) => s.key === columnKey);
-    const isActive = activeIndex !== -1;
-    const direction = isActive ? sorts[activeIndex].direction : 'asc';
-    const Icon = isActive
-        ? direction === 'asc'
-            ? ArrowUp
-            : ArrowDown
-        : ArrowUpDown;
-
-    return (
-        <TableHead
-            className={cn(
-                'relative',
-                accessor.align === 'right' ? 'text-right' : undefined,
-            )}
-        >
-            <span
+        return (
+            <Badge
                 className={cn(
-                    'inline-flex items-center gap-1 whitespace-nowrap',
-                    accessor.align === 'right' && 'flex-row-reverse',
+                    'border-transparent',
+                    hasStock
+                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-400'
+                        : 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-400',
                 )}
             >
-                <button
-                    type="button"
-                    onClick={() => onSort(columnKey)}
-                    data-test={`productos-sort-${columnKey}`}
-                    className={cn(
-                        'hover:text-foreground inline-flex items-center gap-1',
-                        isActive ? 'text-foreground' : 'text-muted-foreground',
-                    )}
-                >
-                    {accessor.label}
-                    <Icon className="size-3.5" />
-                </button>
-                {isActive && sorts.length > 1 ? (
-                    <button
-                        type="button"
-                        onClick={() => onRemoveSort(columnKey)}
-                        title="Quitar del orden"
-                        data-test={`productos-sort-remove-${columnKey}`}
-                        className="bg-muted text-muted-foreground hover:bg-destructive rounded-full px-1.5 text-[10px] hover:text-white"
-                    >
-                        {activeIndex + 1}
-                    </button>
-                ) : null}
+                {value}
+            </Badge>
+        );
+    }
+
+    if (value === '' || value === null || value === undefined) {
+        return '—';
+    }
+
+    if (typeof value === 'string') {
+        return (
+            <span className="block truncate" title={value}>
+                {value}
             </span>
-            <ResizeHandle columnKey={columnKey} onMouseDown={onResizeStart} />
-        </TableHead>
-    );
+        );
+    }
+
+    return value;
 }
 
-function FilterHead({
-    columnKey,
-    accessor,
-    value,
-    onChange,
-}: {
-    columnKey: string;
-    accessor: Accessor;
-    value: string;
-    onChange: (key: string, value: string) => void;
-}) {
-    return (
-        <TableHead
-            className={accessor.align === 'right' ? 'text-right' : undefined}
-        >
-            <Input
-                value={value}
-                onChange={(event) => onChange(columnKey, event.target.value)}
-                placeholder="Filtrar..."
-                className="h-8 text-xs"
-                data-test={`productos-filter-${columnKey}`}
-            />
-        </TableHead>
-    );
+function leerFiltroCompacto(): boolean {
+    try {
+        return window.localStorage.getItem(FILTRO_COMPACTO_KEY) === '1';
+    } catch {
+        return false;
+    }
 }
 
 export default function ProductosIndex({
@@ -292,8 +206,9 @@ export default function ProductosIndex({
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [productoToView, setProductoToView] = useState<Producto | null>(null);
-    const [sorts, setSorts] = useState<SortEntry[]>([]);
-    const [filters, setFilters] = useState<Record<string, string>>({});
+    const [trasladoProductoId, setTrasladoProductoId] = useState<number | null>(
+        null,
+    );
     const [activeGroup, setActiveGroup] = useState<{
         tipoVehiculo: string;
         rin?: string;
@@ -314,60 +229,22 @@ export default function ProductosIndex({
         });
     // Phones only: whether the tipo de vehículo / rin filter is open (closed at first).
     const [filtroAbierto, setFiltroAbierto] = useState(false);
-    const [categoriaTab, setCategoriaTab] = useState<CategoriaTab>('TODOS');
-    const [page, setPage] = useState(1);
-    const pageSize = 25;
-    const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
-        () => {
-            const widths = { ...STATIC_COLUMN_WIDTHS };
-            bodegas.forEach((bodega) => {
-                widths[`bodega_${bodega.id}`] = DEFAULT_BODEGA_WIDTH;
-            });
-            return widths;
-        },
-    );
-    const resizingKeyRef = useRef<string | null>(null);
-    const resizeStartXRef = useRef(0);
-    const resizeStartWidthRef = useRef(0);
-
-    useEffect(() => {
-        const handleMouseMove = (event: MouseEvent) => {
-            const key = resizingKeyRef.current;
-
-            if (!key) {
-                return;
+    // Larger screens: the filter shrinks to a slim strip to give the table the width.
+    const [filtroCompacto, setFiltroCompacto] = useState(leerFiltroCompacto);
+    const toggleFiltroCompacto = () =>
+        setFiltroCompacto((current) => {
+            try {
+                window.localStorage.setItem(
+                    FILTRO_COMPACTO_KEY,
+                    current ? '0' : '1',
+                );
+            } catch {
+                // Storage unavailable: it just isn't remembered.
             }
 
-            const delta = event.clientX - resizeStartXRef.current;
-
-            setColumnWidths((prev) => ({
-                ...prev,
-                [key]: Math.max(
-                    resizeStartWidthRef.current + delta,
-                    MIN_COLUMN_WIDTH,
-                ),
-            }));
-        };
-
-        const handleMouseUp = () => {
-            resizingKeyRef.current = null;
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-
-        return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, []);
-
-    const startResize = (key: string) => (event: React.MouseEvent) => {
-        event.preventDefault();
-        resizingKeyRef.current = key;
-        resizeStartXRef.current = event.clientX;
-        resizeStartWidthRef.current = columnWidths[key] ?? MIN_COLUMN_WIDTH;
-    };
+            return !current;
+        });
+    const [categoriaTab, setCategoriaTab] = useState<CategoriaTab>('TODOS');
 
     const openDeleteDialog = (producto: Producto) => {
         setProductoToDelete(producto);
@@ -384,29 +261,10 @@ export default function ProductosIndex({
         setViewDialogOpen(true);
     };
 
-    const bodegaColumnKeys = useMemo(
-        () => bodegas.map((bodega) => `bodega_${bodega.id}`),
-        [bodegas],
-    );
-
-    const accessors = useMemo(() => {
-        const map: Record<string, Accessor> = { ...STATIC_ACCESSORS };
-
-        bodegas.forEach((bodega) => {
-            map[`bodega_${bodega.id}`] = {
-                label: bodega.nombre_bodega,
-                align: 'right',
-                get: (p) => p.stock_por_bodega?.[bodega.id] ?? 0,
-            };
-        });
-
-        return map;
-    }, [bodegas]);
-
     const { puedeCosto, puedeDetal, puedeMayorista } = useTiposPrecio();
 
-    const columnOrder = useMemo(
-        () => [
+    const columns = useMemo<DataTableColumn<Producto>[]>(() => {
+        const accessors: [string, Accessor][] = [
             ...STATIC_COLUMN_ORDER.filter(
                 (key) =>
                     (key !== 'costo' || puedeCosto) &&
@@ -417,16 +275,158 @@ export default function ProductosIndex({
                     (key !== 'almacen_p' || permissions.canViewAlmacenP) &&
                     (key !== 'sin_instalacion' ||
                         permissions.canViewSinInstalacion),
-            ),
-            ...(permissions.canViewStockBodegas ? bodegaColumnKeys : []),
-        ],
-        [bodegaColumnKeys, puedeCosto, puedeDetal, puedeMayorista, permissions],
-    );
+            ).map((key): [string, Accessor] => [key, STATIC_ACCESSORS[key]]),
+            ...(permissions.canViewStockBodegas
+                ? bodegas.map((bodega): [string, Accessor] => [
+                      `bodega_${bodega.id}`,
+                      {
+                          label: bodega.nombre_bodega,
+                          width: DEFAULT_BODEGA_WIDTH,
+                          align: 'right',
+                          get: (p) => p.stock_por_bodega?.[bodega.id] ?? 0,
+                      },
+                  ])
+                : []),
+        ];
 
-    const allColumnKeys = useMemo(
-        () => ['acciones', 'imagen', ...columnOrder],
-        [columnOrder],
-    );
+        return [
+            {
+                key: 'acciones',
+                label: 'Acciones',
+                align: 'right',
+                filter: 'none',
+                width: ACCIONES_WIDTH,
+                render: (producto) =>
+                    eliminados ? (
+                        permissions.canRestore ? (
+                            <div className="flex justify-end">
+                                <RestoreButton
+                                    action={restore([producto.id])}
+                                    nombre={`el producto ${producto.concatenar_codigo_nombre ?? producto.referencia_producto ?? producto.id}`}
+                                    dataTest="restore-producto-button"
+                                />
+                            </div>
+                        ) : null
+                    ) : (
+                        <TooltipProvider>
+                            <div className="flex justify-end gap-2">
+                                {permissions.canUpdate ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                data-test="edit-producto-button"
+                                                onClick={() =>
+                                                    openEditDialog(producto)
+                                                }
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Editar</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : null}
+
+                                {permissions.canDelete ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                data-test="delete-producto-button"
+                                                onClick={() =>
+                                                    openDeleteDialog(producto)
+                                                }
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Eliminar</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : null}
+
+                                {permissions.canCreateTraslado ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                data-test="traslado-producto-button"
+                                                onClick={() =>
+                                                    setTrasladoProductoId(
+                                                        producto.id,
+                                                    )
+                                                }
+                                            >
+                                                <ArrowLeftRight className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Traslado</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : null}
+                            </div>
+                        </TooltipProvider>
+                    ),
+            },
+            {
+                key: 'imagen',
+                label: 'Imagen',
+                filter: 'none',
+                hideable: true,
+                width: 70,
+                render: (producto) =>
+                    producto.imagen_producto_url ? (
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                setPreviewImage(producto.imagen_producto_url);
+                            }}
+                            data-test="producto-imagen-preview"
+                            className="cursor-zoom-in"
+                        >
+                            <img
+                                src={producto.imagen_producto_url}
+                                alt=""
+                                loading="lazy"
+                                className="h-10 w-10 rounded-md border object-cover transition hover:opacity-80"
+                            />
+                        </button>
+                    ) : (
+                        <div className="text-muted-foreground flex h-10 w-10 items-center justify-center rounded-md border text-xs">
+                            —
+                        </div>
+                    ),
+            },
+            ...accessors.map(([key, accessor]): DataTableColumn<Producto> => ({
+                key,
+                label: accessor.label,
+                align: accessor.align,
+                width: accessor.width,
+                getValue: accessor.get,
+                render: (producto) => (
+                    <span className={accessor.color}>
+                        {renderCellValue(key, accessor, producto)}
+                    </span>
+                ),
+            })),
+        ];
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        bodegas,
+        eliminados,
+        permissions,
+        puedeCosto,
+        puedeDetal,
+        puedeMayorista,
+    ]);
 
     const categoryFilteredProductos = useMemo(() => {
         if (categoriaTab === 'TODOS') {
@@ -482,167 +482,29 @@ export default function ProductosIndex({
             .sort((a, b) => a.tipo.localeCompare(b.tipo, 'es'));
     }, [categoryFilteredProductos]);
 
-    const handleSort = (key: string) => {
-        setSorts((prev) => {
-            const index = prev.findIndex((s) => s.key === key);
-
-            if (index === -1) {
-                return [...prev, { key, direction: 'asc' }];
-            }
-
-            if (prev[index].direction === 'asc') {
-                const next = [...prev];
-                next[index] = { key, direction: 'desc' };
-                return next;
-            }
-
-            return prev.filter((s) => s.key !== key);
-        });
-    };
-
-    const setFilter = (key: string, value: string) => {
-        setFilters((prev) => ({ ...prev, [key]: value }));
-    };
-
-    const resetSort = () => setSorts([]);
-
-    const removeSort = (key: string) => {
-        setSorts((prev) => prev.filter((s) => s.key !== key));
-    };
-
-    const clearFiltersAndGroup = () => {
-        setFilters({});
-        setActiveGroup(null);
-    };
-
-    const activeFilterCount = Object.values(filters).filter(
-        (value) => value.trim() !== '',
-    ).length;
-
-    const visibleProductos = useMemo(() => {
-        const activeFilters = Object.entries(filters).filter(
-            ([, value]) => value.trim() !== '',
-        );
-
-        let list = categoryFilteredProductos.filter((producto) => {
-            if (activeGroup) {
-                const tipo = producto.tipo_vehiculo ?? SIN_TIPO;
-
-                if (tipo !== activeGroup.tipoVehiculo) {
-                    return false;
-                }
-
-                if (activeGroup.rin) {
-                    const rin = producto.rin ?? SIN_RIN;
-
-                    if (rin !== activeGroup.rin) {
-                        return false;
-                    }
-                }
-            }
-
-            return activeFilters.every(([key, value]) => {
-                const accessor = accessors[key];
-
-                if (!accessor) {
-                    return true;
-                }
-
-                return String(accessor.get(producto))
-                    .toLowerCase()
-                    .includes(value.toLowerCase().trim());
-            });
-        });
-
-        if (sorts.length > 0) {
-            list = [...list].sort((a, b) => {
-                for (const { key, direction } of sorts) {
-                    const accessor = accessors[key];
-
-                    if (!accessor) {
-                        continue;
-                    }
-
-                    const comparison = compareValues(
-                        accessor.get(a),
-                        accessor.get(b),
-                    );
-
-                    if (comparison !== 0) {
-                        return direction === 'asc' ? comparison : -comparison;
-                    }
-                }
-
-                return 0;
-            });
+    const groupFilteredProductos = useMemo(() => {
+        if (!activeGroup) {
+            return categoryFilteredProductos;
         }
 
-        return list;
-    }, [categoryFilteredProductos, filters, sorts, activeGroup, accessors]);
-
-    const totalPages = Math.max(
-        Math.ceil(visibleProductos.length / pageSize),
-        1,
-    );
-    const currentPage = Math.min(page, totalPages);
-
-    const paginatedProductos = useMemo(
-        () =>
-            visibleProductos.slice(
-                (currentPage - 1) * pageSize,
-                currentPage * pageSize,
-            ),
-        [visibleProductos, currentPage],
-    );
-
-    useEffect(() => {
-        setPage(1);
-    }, [filters, sorts, activeGroup, categoriaTab]);
-
-    function renderCellValue(key: string, producto: Producto) {
-        const accessor = accessors[key];
-
-        if (!accessor) {
-            return null;
-        }
-
-        const value = accessor.get(producto);
-
-        if (key === 'pendiente') {
-            return value ? <Badge variant="secondary">{value}</Badge> : 0;
-        }
-
-        if (key === 'stock_total' || key.startsWith('bodega_')) {
-            const hasStock = Number(value) > 0;
+        return categoryFilteredProductos.filter((producto) => {
+            if (
+                (producto.tipo_vehiculo ?? SIN_TIPO) !==
+                activeGroup.tipoVehiculo
+            ) {
+                return false;
+            }
 
             return (
-                <Badge
-                    className={cn(
-                        'border-transparent',
-                        hasStock
-                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-400'
-                            : 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:text-red-400',
-                    )}
-                >
-                    {value}
-                </Badge>
+                !activeGroup.rin ||
+                (producto.rin ?? SIN_RIN) === activeGroup.rin
             );
-        }
+        });
+    }, [categoryFilteredProductos, activeGroup]);
 
-        if (value === '' || value === null || value === undefined) {
-            return '—';
-        }
-
-        if (typeof value === 'string') {
-            return (
-                <span className="block truncate" title={value}>
-                    {value}
-                </span>
-            );
-        }
-
-        return value;
-    }
+    const activeGroupLabel = activeGroup
+        ? `${activeGroup.tipoVehiculo}${activeGroup.rin ? ` · ${activeGroup.rin}` : ''}`
+        : null;
 
     return (
         <>
@@ -693,38 +555,70 @@ export default function ProductosIndex({
                 </Tabs>
 
                 <div className="flex flex-col gap-1 md:flex-row">
-                    <aside className="w-full shrink-0 rounded-lg border p-3 text-sm md:w-56">
-                        {/* On phones the filter is a collapsible bar above the table. */}
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setFiltroAbierto((current) => !current)
-                            }
-                            aria-expanded={filtroAbierto}
-                            data-test="productos-filtro-toggle"
-                            className="flex w-full items-center justify-between gap-2 text-left font-semibold md:pointer-events-none md:mb-2"
-                        >
-                            <span>Tipo de vehículo / Rin</span>
-                            <span className="flex items-center gap-2 md:hidden">
-                                {activeGroup ? (
-                                    <span className="text-muted-foreground text-xs font-normal">
-                                        {activeGroup.tipoVehiculo}
-                                        {activeGroup.rin
-                                            ? ` · ${activeGroup.rin}`
-                                            : ''}
-                                    </span>
+                    <aside
+                        className={cn(
+                            'w-full shrink-0 self-start rounded-lg border p-3 text-sm',
+                            filtroCompacto ? 'md:w-12 md:p-2' : 'md:w-56',
+                        )}
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            {/* On phones the filter is a collapsible bar above the table. */}
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setFiltroAbierto((current) => !current)
+                                }
+                                aria-expanded={filtroAbierto}
+                                data-test="productos-filtro-toggle"
+                                className={cn(
+                                    'flex flex-1 items-center justify-between gap-2 text-left font-semibold md:pointer-events-none',
+                                    filtroCompacto && 'md:hidden',
+                                )}
+                            >
+                                <span>Tipo de vehículo / Rin</span>
+                                <span className="flex items-center gap-2 md:hidden">
+                                    {activeGroupLabel ? (
+                                        <span className="text-muted-foreground text-xs font-normal">
+                                            {activeGroupLabel}
+                                        </span>
+                                    ) : null}
+                                    <ChevronDown
+                                        className={cn(
+                                            'size-4 transition-transform',
+                                            !filtroAbierto && '-rotate-90',
+                                        )}
+                                    />
+                                </span>
+                            </button>
+
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={toggleFiltroCompacto}
+                                aria-pressed={filtroCompacto}
+                                title={
+                                    filtroCompacto
+                                        ? `Expandir filtro${activeGroupLabel ? ` (${activeGroupLabel})` : ''}`
+                                        : 'Compactar filtro'
+                                }
+                                data-test="productos-filtro-compactar"
+                                className="relative hidden size-7 shrink-0 md:inline-flex"
+                            >
+                                {filtroCompacto ? (
+                                    <PanelLeftOpen className="size-4" />
+                                ) : (
+                                    <PanelLeftClose className="size-4" />
+                                )}
+                                {filtroCompacto && activeGroup ? (
+                                    <span className="bg-primary absolute top-0.5 right-0.5 size-2 rounded-full" />
                                 ) : null}
-                                <ChevronDown
-                                    className={cn(
-                                        'size-4 transition-transform',
-                                        !filtroAbierto && '-rotate-90',
-                                    )}
-                                />
-                            </span>
-                        </button>
+                            </Button>
+                        </div>
                         <div
                             className={cn(
-                                'mt-2 space-y-1 md:mt-0 md:block',
+                                'mt-2 space-y-1',
+                                filtroCompacto ? 'md:hidden' : 'md:block',
                                 !filtroAbierto && 'hidden',
                             )}
                         >
@@ -832,253 +726,22 @@ export default function ProductosIndex({
                         </div>
                     </aside>
 
-                    <div className="min-w-0 flex-1 space-y-3">
-                        <div className="overflow-x-auto rounded-lg border">
-                            <Table className="table-fixed [&_tr]:divide-x">
-                                <colgroup>
-                                    {allColumnKeys.map((key) => (
-                                        <col
-                                            key={key}
-                                            style={{
-                                                width: columnWidths[key],
-                                            }}
-                                        />
-                                    ))}
-                                </colgroup>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="relative text-right">
-                                            {sorts.length > 0 ? (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    data-test="productos-reset-sort"
-                                                    onClick={resetSort}
-                                                >
-                                                    <ArrowUpDown className="size-4" />
-                                                    Resetear orden
-                                                </Button>
-                                            ) : (
-                                                'Acciones'
-                                            )}
-                                        </TableHead>
-                                        <TableHead className="relative">
-                                            Imagen
-                                            <ResizeHandle
-                                                columnKey="imagen"
-                                                onMouseDown={startResize(
-                                                    'imagen',
-                                                )}
-                                            />
-                                        </TableHead>
-                                        {columnOrder.map((key) => (
-                                            <SortableHead
-                                                key={key}
-                                                columnKey={key}
-                                                accessor={accessors[key]}
-                                                sorts={sorts}
-                                                onSort={handleSort}
-                                                onRemoveSort={removeSort}
-                                                onResizeStart={startResize(key)}
-                                            />
-                                        ))}
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableHead className="text-right">
-                                            {activeFilterCount > 0 ||
-                                            activeGroup ? (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    data-test="productos-clear-filters"
-                                                    onClick={
-                                                        clearFiltersAndGroup
-                                                    }
-                                                >
-                                                    <X className="size-4" />
-                                                    Limpiar
-                                                </Button>
-                                            ) : null}
-                                        </TableHead>
-                                        <TableHead />
-                                        {columnOrder.map((key) => (
-                                            <FilterHead
-                                                key={key}
-                                                columnKey={key}
-                                                accessor={accessors[key]}
-                                                value={filters[key] ?? ''}
-                                                onChange={setFilter}
-                                            />
-                                        ))}
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {paginatedProductos.map((producto) => (
-                                        <TableRow
-                                            key={producto.id}
-                                            data-test="producto-row"
-                                            onClick={() =>
-                                                openViewDialog(producto)
-                                            }
-                                            className="cursor-pointer"
-                                        >
-                                            <TableCell
-                                                className="text-right"
-                                                onClick={(event) =>
-                                                    event.stopPropagation()
-                                                }
-                                            >
-                                                {eliminados ? (
-                                                    permissions.canRestore ? (
-                                                        <div className="flex justify-end">
-                                                            <RestoreButton
-                                                                action={restore(
-                                                                    [
-                                                                        producto.id,
-                                                                    ],
-                                                                )}
-                                                                nombre={`el producto ${producto.concatenar_codigo_nombre ?? producto.referencia_producto ?? producto.id}`}
-                                                                dataTest="restore-producto-button"
-                                                            />
-                                                        </div>
-                                                    ) : null
-                                                ) : (
-                                                    <TooltipProvider>
-                                                        <div className="flex justify-end gap-2">
-                                                            {permissions.canUpdate ? (
-                                                                <Tooltip>
-                                                                    <TooltipTrigger
-                                                                        asChild
-                                                                    >
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            data-test="edit-producto-button"
-                                                                            onClick={() =>
-                                                                                openEditDialog(
-                                                                                    producto,
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            <Pencil className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>
-                                                                            Editar
-                                                                        </p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            ) : null}
-
-                                                            {permissions.canDelete ? (
-                                                                <Tooltip>
-                                                                    <TooltipTrigger
-                                                                        asChild
-                                                                    >
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            data-test="delete-producto-button"
-                                                                            onClick={() =>
-                                                                                openDeleteDialog(
-                                                                                    producto,
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>
-                                                                            Eliminar
-                                                                        </p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            ) : null}
-                                                        </div>
-                                                    </TooltipProvider>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {producto.imagen_producto_url ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            setPreviewImage(
-                                                                producto.imagen_producto_url,
-                                                            );
-                                                        }}
-                                                        data-test="producto-imagen-preview"
-                                                        className="cursor-zoom-in"
-                                                    >
-                                                        <img
-                                                            src={
-                                                                producto.imagen_producto_url
-                                                            }
-                                                            alt=""
-                                                            loading="lazy"
-                                                            className="h-10 w-10 rounded-md border object-cover transition hover:opacity-80"
-                                                        />
-                                                    </button>
-                                                ) : (
-                                                    <div className="text-muted-foreground flex h-10 w-10 items-center justify-center rounded-md border text-xs">
-                                                        —
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                            {columnOrder.map((key) => (
-                                                <TableCell
-                                                    key={key}
-                                                    className={cn(
-                                                        accessors[key]
-                                                            ?.align ===
-                                                            'right' &&
-                                                            'text-right',
-                                                        accessors[key]?.color,
-                                                    )}
-                                                >
-                                                    {renderCellValue(
-                                                        key,
-                                                        producto,
-                                                    )}
-                                                </TableCell>
-                                            ))}
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                        {visibleProductos.length === 0 ? (
-                            <p className="text-muted-foreground py-8 text-center">
-                                {productos.length === 0
+                    <div className="min-w-0 flex-1">
+                        <DataTable
+                            data={groupFilteredProductos}
+                            columns={columns}
+                            getRowId={(producto) => producto.id}
+                            dataTestPrefix="productos"
+                            searchPlaceholder="Buscar productos..."
+                            emptyMessage={
+                                productos.length === 0
                                     ? 'No hay productos registrados.'
-                                    : 'Ningún producto coincide con los filtros.'}
-                            </p>
-                        ) : (
-                            <div className="flex items-center justify-between text-sm">
-                                <p className="text-muted-foreground">
-                                    Mostrando {(currentPage - 1) * pageSize + 1}
-                                    –
-                                    {Math.min(
-                                        currentPage * pageSize,
-                                        visibleProductos.length,
-                                    )}{' '}
-                                    de {visibleProductos.length} productos
-                                </p>
-
-                                <Pagination
-                                    page={currentPage}
-                                    totalPages={totalPages}
-                                    onPageChange={setPage}
-                                    dataTest="productos-page"
-                                />
-                            </div>
-                        )}
+                                    : 'Ningún producto coincide con los filtros.'
+                            }
+                            noResultsMessage="Ningún producto coincide con los filtros."
+                            onRowClick={openViewDialog}
+                            pageResetKey={`${categoriaTab}|${activeGroup?.tipoVehiculo ?? ''}|${activeGroup?.rin ?? ''}`}
+                        />
                     </div>
                 </div>
             </div>
@@ -1095,6 +758,20 @@ export default function ProductosIndex({
                 open={editDialogOpen}
                 onOpenChange={setEditDialogOpen}
             />
+
+            {permissions.canCreateTraslado && !eliminados ? (
+                <CreateTrasladoModal
+                    productos={productos}
+                    bodegas={bodegas}
+                    productoInicialId={trasladoProductoId ?? undefined}
+                    open={trasladoProductoId !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setTrasladoProductoId(null);
+                        }
+                    }}
+                />
+            ) : null}
 
             <Dialog
                 open={previewImage !== null}

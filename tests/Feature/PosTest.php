@@ -14,13 +14,14 @@ beforeEach(function () {
     Permission::findOrCreate('pos.create');
 });
 
-test('the POS page lists every sellable producto, including out-of-stock ones', function () {
+test('the POS page lists every sellable producto, including out-of-stock ones and servicios', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
     $conStock = Producto::factory()->create(['inventariable' => true, 'categoria' => 'LLANTA']);
     Producto::factory()->create(['inventariable' => true, 'categoria' => 'LLANTA']);
-    Producto::factory()->create(['inventariable' => true, 'categoria' => 'SERVICIO']);
+    Producto::factory()->create(['inventariable' => false, 'categoria' => 'SERVICIO']);
+    Producto::factory()->create(['inventariable' => false, 'categoria' => 'LLANTA']);
 
     StockBodega::create([
         'bodega_id' => Bodega::factory()->create()->id,
@@ -36,7 +37,8 @@ test('the POS page lists every sellable producto, including out-of-stock ones', 
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('pos/index')
-            ->has('productos', 2)
+            ->has('productos', 3)
+            ->has('productos.0.inventariable')
             ->has('clientes')
             ->has('bodegas')
             ->has('vendedores')
@@ -564,4 +566,25 @@ test('a POS sale sent in UTC is stored in Colombia time', function () {
     ])->assertRedirect(route('pos.index'));
 
     expect(Pedido::firstOrFail()->getRawOriginal('fecha'))->toBe('2026-03-10 10:00:00');
+});
+
+test('selling a servicio through the POS does not move any stock', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $servicio = Producto::factory()->create(['inventariable' => false, 'categoria' => 'SERVICIO', 'tipo' => 'SERVICIO']);
+
+    $this->actingAs($owner)->post(route('pos.store'), [
+        'cliente_id' => Cliente::factory()->create()->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'user_id' => User::factory()->create()->id,
+        'bodega_id' => Bodega::factory()->create()->id,
+        'tipo_precio' => 'DETAL',
+        'detalles' => [
+            ['producto_id' => $servicio->id, 'cantidad' => 2, 'precio_unitario' => 50],
+        ],
+    ])->assertRedirect(route('pos.index'));
+
+    expect(Pedido::firstOrFail()->detalles)->toHaveCount(1)
+        ->and(StockBodega::where('producto_id', $servicio->id)->exists())->toBeFalse();
 });

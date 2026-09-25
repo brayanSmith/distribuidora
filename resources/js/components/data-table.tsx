@@ -52,7 +52,11 @@ type DataTableProps<T> = UseDataTableOptions<T> & {
     toolbar?: boolean;
     emptyMessage?: string;
     noResultsMessage?: string;
+    /** Makes rows clickable. The "acciones" cell never triggers it. */
+    onRowClick?: (row: T) => void;
 };
+
+const ACCIONES_KEY = 'acciones';
 
 function ResizeHandle({
     onMouseDown,
@@ -134,10 +138,7 @@ function HeaderCell<T>({
                     </span>
                 )}
             </div>
-            {/* The actions column keeps its fixed width. */}
-            {column.key !== 'acciones' ? (
-                <ResizeHandle onMouseDown={handlers.onResizeStart} />
-            ) : null}
+            <ResizeHandle onMouseDown={handlers.onResizeStart} />
         </TableHead>
     );
 }
@@ -235,9 +236,11 @@ export default function DataTable<T>({
     toolbar = true,
     emptyMessage = 'No hay registros.',
     noResultsMessage = 'Ningún registro coincide con la búsqueda.',
+    onRowClick,
     pageSize,
     paginate = true,
     searchableText,
+    pageResetKey,
 }: DataTableProps<T>) {
     const table = useDataTable({
         data,
@@ -245,6 +248,7 @@ export default function DataTable<T>({
         pageSize,
         paginate,
         searchableText,
+        pageResetKey,
     });
 
     return (
@@ -383,16 +387,33 @@ export default function DataTable<T>({
                             <TableRow
                                 key={getRowId(row)}
                                 data-test={`${dataTestPrefix}-row`}
+                                onClick={
+                                    onRowClick
+                                        ? () => onRowClick(row)
+                                        : undefined
+                                }
+                                className={
+                                    onRowClick ? 'cursor-pointer' : undefined
+                                }
                             >
                                 {table.visibleColumnOrder.map((key) => {
                                     const column = table.columnsMap.get(key)!;
+                                    const isAcciones = key === ACCIONES_KEY;
 
                                     return (
                                         <TableCell
                                             key={key}
-                                            className={
-                                                column.align === 'right'
-                                                    ? 'text-right'
+                                            className={cn(
+                                                column.align === 'right' &&
+                                                    'text-right',
+                                                // Narrowing the column stacks the buttons instead of hiding them.
+                                                isAcciones &&
+                                                    '[&>div]:flex-wrap',
+                                            )}
+                                            onClick={
+                                                isAcciones
+                                                    ? (event) =>
+                                                          event.stopPropagation()
                                                     : undefined
                                             }
                                         >

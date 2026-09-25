@@ -12,6 +12,8 @@ export type PosHeaderState = {
     retefuente: string;
     tipoPago: TipoPagoPedido;
     observacion: string;
+    /** The observación de pago as edited by hand; null follows the abonos. */
+    observacionPago: string | null;
     placa: string;
     aplicaTurno: boolean;
     facturacionElectronica: boolean;
@@ -37,6 +39,7 @@ export const defaultPosHeader = (
     retefuente: '0',
     tipoPago: 'CONTADO',
     observacion: '',
+    observacionPago: null,
     placa: '',
     aplicaTurno: false,
     facturacionElectronica: false,
