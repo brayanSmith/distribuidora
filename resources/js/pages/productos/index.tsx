@@ -34,6 +34,10 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+    usePersistedSet,
+    usePersistedState,
+} from '@/hooks/use-persisted-state';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import { cn } from '@/lib/utils';
 import { index, restore } from '@/routes/productos';
@@ -77,7 +81,6 @@ const SIN_RIN = 'Sin rin';
 const DEFAULT_BODEGA_WIDTH = 110;
 /** Fits the edit / delete / traslado buttons on one line. */
 const ACCIONES_WIDTH = 140;
-const FILTRO_COMPACTO_KEY = 'productos:filtro-compacto';
 
 const STATIC_COLUMN_ORDER = [
     'producto',
@@ -182,14 +185,6 @@ function renderCellValue(key: string, accessor: Accessor, producto: Producto) {
     return value;
 }
 
-function leerFiltroCompacto(): boolean {
-    try {
-        return window.localStorage.getItem(FILTRO_COMPACTO_KEY) === '1';
-    } catch {
-        return false;
-    }
-}
-
 export default function ProductosIndex({
     productos,
     eliminados,
@@ -209,13 +204,30 @@ export default function ProductosIndex({
     const [trasladoProductoId, setTrasladoProductoId] = useState<number | null>(
         null,
     );
-    const [activeGroup, setActiveGroup] = useState<{
+    // The side filter and the tabs are remembered for the tab's session (the trash is its own list).
+    const storageKey = `productos${eliminados ? ':papelera' : ''}`;
+    const [activeGroup, setActiveGroup] = usePersistedState<{
         tipoVehiculo: string;
         rin?: string;
-    } | null>(null);
+    } | null>(`filtro:${storageKey}:grupo`, null, {
+        scope: 'session',
+        // A saved group whose productos are gone would show an empty table.
+        merge: (stored) =>
+            stored &&
+            productos.some(
+                (producto) =>
+                    (producto.tipo_vehiculo ?? SIN_TIPO) ===
+                        stored.tipoVehiculo &&
+                    (!stored.rin || (producto.rin ?? SIN_RIN) === stored.rin),
+            )
+                ? stored
+                : null,
+    });
     // Tipos de vehículo whose rines are open in the side filter (all closed at first).
-    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-        new Set(),
+    const [expandedGroups, setExpandedGroups] = usePersistedSet<string>(
+        `filtro:${storageKey}:abiertos`,
+        () => new Set(),
+        'session',
     );
     const toggleGroup = (tipo: string) =>
         setExpandedGroups((current) => {
@@ -230,21 +242,22 @@ export default function ProductosIndex({
     // Phones only: whether the tipo de vehículo / rin filter is open (closed at first).
     const [filtroAbierto, setFiltroAbierto] = useState(false);
     // Larger screens: the filter shrinks to a slim strip to give the table the width.
-    const [filtroCompacto, setFiltroCompacto] = useState(leerFiltroCompacto);
-    const toggleFiltroCompacto = () =>
-        setFiltroCompacto((current) => {
-            try {
-                window.localStorage.setItem(
-                    FILTRO_COMPACTO_KEY,
-                    current ? '0' : '1',
-                );
-            } catch {
-                // Storage unavailable: it just isn't remembered.
-            }
-
-            return !current;
-        });
-    const [categoriaTab, setCategoriaTab] = useState<CategoriaTab>('TODOS');
+    const [filtroCompacto, setFiltroCompacto] = usePersistedState(
+        'filtro:productos:compacto',
+        false,
+    );
+    const toggleFiltroCompacto = () => setFiltroCompacto((current) => !current);
+    const [categoriaTab, setCategoriaTab] = usePersistedState<CategoriaTab>(
+        `filtro:${storageKey}:categoria`,
+        'TODOS',
+        {
+            scope: 'session',
+            merge: (stored) =>
+                CATEGORIA_TABS.some((tab) => tab.value === stored)
+                    ? stored
+                    : 'TODOS',
+        },
+    );
 
     const openDeleteDialog = (producto: Producto) => {
         setProductoToDelete(producto);

@@ -40,6 +40,12 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    mergeColumnOrder,
+    mergeColumnWidths,
+    usePersistedSet,
+    usePersistedState,
+} from '@/hooks/use-persisted-state';
 import { cn } from '@/lib/utils';
 import type { Pedido, PedidoDetalle, PedidoRoutes } from '@/types';
 
@@ -425,23 +431,45 @@ export default function PedidoDetallesTable({
     eliminados = false,
 }: Props) {
     const { puedeCosto } = useTiposPrecio();
-    const [search, setSearch] = useState('');
-    const [sortKey, setSortKey] = useState<ColumnKey | null>(null);
-    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-    const [filters, setFilters] = useState<Partial<Record<ColumnKey, string>>>(
-        {},
+    const storageKey = `table:pedido-detalles${eliminados ? ':papelera' : ''}`;
+    const session = { scope: 'session' } as const;
+    const [search, setSearch] = usePersistedState(
+        `${storageKey}:search`,
+        '',
+        session,
     );
-    const [dateRange, setDateRange] = useState<DateRangeValue>({
-        from: '',
-        to: '',
-    });
+    const [sortKey, setSortKey] = usePersistedState<ColumnKey | null>(
+        `${storageKey}:sort-key`,
+        null,
+        session,
+    );
+    const [sortDirection, setSortDirection] = usePersistedState<SortDirection>(
+        `${storageKey}:sort-direction`,
+        'asc',
+        session,
+    );
+    const [filters, setFilters] = usePersistedState<
+        Partial<Record<ColumnKey, string>>
+    >(`${storageKey}:filters`, {}, session);
+    const [dateRange, setDateRange] = usePersistedState<DateRangeValue>(
+        `${storageKey}:dates`,
+        { from: '', to: '' },
+        session,
+    );
     const [page, setPage] = useState(1);
     const pageSize = 25;
-    const [columnWidths, setColumnWidths] = useState<Record<ColumnKey, number>>(
-        DEFAULT_COLUMN_WIDTHS,
+    const [columnWidths, setColumnWidths] = usePersistedState<
+        Record<ColumnKey, number>
+    >(`${storageKey}:widths`, DEFAULT_COLUMN_WIDTHS, {
+        merge: mergeColumnWidths,
+    });
+    const [columnOrder, setColumnOrder] = usePersistedState<ColumnKey[]>(
+        `${storageKey}:order`,
+        COLUMN_KEYS,
+        { merge: mergeColumnOrder },
     );
-    const [columnOrder, setColumnOrder] = useState<ColumnKey[]>(COLUMN_KEYS);
-    const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(
+    const [hiddenColumns, setHiddenColumns] = usePersistedSet<ColumnKey>(
+        `${storageKey}:hidden`,
         () => new Set<ColumnKey>(['codigoPedido']),
     );
     const [draggedKey, setDraggedKey] = useState<ColumnKey | null>(null);

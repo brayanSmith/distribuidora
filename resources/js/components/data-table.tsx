@@ -241,6 +241,7 @@ export default function DataTable<T>({
     paginate = true,
     searchableText,
     pageResetKey,
+    storageKey,
 }: DataTableProps<T>) {
     const table = useDataTable({
         data,
@@ -249,6 +250,7 @@ export default function DataTable<T>({
         paginate,
         searchableText,
         pageResetKey,
+        storageKey: storageKey ?? dataTestPrefix,
     });
 
     return (

@@ -40,6 +40,12 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+    mergeColumnOrder,
+    mergeColumnWidths,
+    usePersistedSet,
+    usePersistedState,
+} from '@/hooks/use-persisted-state';
 import { cn } from '@/lib/utils';
 import type { Bodega, StockBodega } from '@/types';
 
@@ -530,16 +536,34 @@ export default function StockBodegasTable({
     canViewInversion,
     onTraslado,
 }: Props) {
-    const [vistaElegida, setVista] = useState<Vista>('stock');
+    const storageKey = 'table:stock-bodegas';
+    const session = { scope: 'session' } as const;
+    const [vistaElegida, setVista] = usePersistedState<Vista>(
+        `${storageKey}:vista`,
+        'stock',
+        session,
+    );
     const vista: Vista = canViewInversion ? vistaElegida : 'stock';
     // As in the previous system, the traslado is offered in the stock view only.
     const showTraslado = onTraslado !== undefined && vista === 'stock';
-    const [search, setSearch] = useState('');
-    const [sortKey, setSortKey] = useState<ColumnKey | null>(null);
-    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-    const [filters, setFilters] = useState<Partial<Record<ColumnKey, string>>>(
-        {},
+    const [search, setSearch] = usePersistedState(
+        `${storageKey}:search`,
+        '',
+        session,
     );
+    const [sortKey, setSortKey] = usePersistedState<ColumnKey | null>(
+        `${storageKey}:sort-key`,
+        null,
+        session,
+    );
+    const [sortDirection, setSortDirection] = usePersistedState<'asc' | 'desc'>(
+        `${storageKey}:sort-direction`,
+        'asc',
+        session,
+    );
+    const [filters, setFilters] = usePersistedState<
+        Partial<Record<ColumnKey, string>>
+    >(`${storageKey}:filters`, {}, session);
     const [page, setPage] = useState(1);
     const pageSize = 25;
     const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -619,7 +643,10 @@ export default function StockBodegasTable({
         [columnDefs],
     );
 
-    const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
+    const [columnWidths, setColumnWidths] = usePersistedState<
+        Record<string, number>
+    >(
+        `${storageKey}:widths`,
         () =>
             Object.fromEntries(
                 [...columnKeys, ACCIONES_KEY].map((key) => [
@@ -627,10 +654,16 @@ export default function StockBodegasTable({
                     DEFAULT_COLUMN_WIDTHS[key] ?? DEFAULT_BODEGA_COLUMN_WIDTH,
                 ]),
             ),
+        { merge: mergeColumnWidths },
     );
-    const [columnOrder, setColumnOrder] = useState<ColumnKey[]>(columnKeys);
-    const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(
-        new Set(),
+    const [columnOrder, setColumnOrder] = usePersistedState<ColumnKey[]>(
+        `${storageKey}:order`,
+        columnKeys,
+        { merge: mergeColumnOrder },
+    );
+    const [hiddenColumns, setHiddenColumns] = usePersistedSet<ColumnKey>(
+        `${storageKey}:hidden`,
+        () => new Set(),
     );
 
     useEffect(() => {

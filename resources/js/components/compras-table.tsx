@@ -51,6 +51,12 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+    mergeColumnOrder,
+    mergeColumnWidths,
+    usePersistedSet,
+    usePersistedState,
+} from '@/hooks/use-persisted-state';
 import { cn } from '@/lib/utils';
 import { edit, restore } from '@/routes/compras';
 import type { Compra, CompraPermissions } from '@/types';
@@ -425,16 +431,31 @@ export default function ComprasTable({
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [compraToDelete, setCompraToDelete] = useState<Compra | null>(null);
     const [compraToView, setCompraToView] = useState<Compra | null>(null);
-    const [search, setSearch] = useState('');
-    const [sortKey, setSortKey] = useState<ColumnKey | null>(null);
-    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-    const [filters, setFilters] = useState<Partial<Record<ColumnKey, string>>>(
-        {},
+    const storageKey = `table:compras${eliminados ? ':papelera' : ''}`;
+    const session = { scope: 'session' } as const;
+    const [search, setSearch] = usePersistedState(
+        `${storageKey}:search`,
+        '',
+        session,
     );
-    const [dateRange, setDateRange] = useState<DateRangeValue>({
-        from: '',
-        to: '',
-    });
+    const [sortKey, setSortKey] = usePersistedState<ColumnKey | null>(
+        `${storageKey}:sort-key`,
+        null,
+        session,
+    );
+    const [sortDirection, setSortDirection] = usePersistedState<'asc' | 'desc'>(
+        `${storageKey}:sort-direction`,
+        'asc',
+        session,
+    );
+    const [filters, setFilters] = usePersistedState<
+        Partial<Record<ColumnKey, string>>
+    >(`${storageKey}:filters`, {}, session);
+    const [dateRange, setDateRange] = usePersistedState<DateRangeValue>(
+        `${storageKey}:dates`,
+        { from: '', to: '' },
+        session,
+    );
     const [page, setPage] = useState(1);
     const pageSize = 25;
 
@@ -485,7 +506,10 @@ export default function ComprasTable({
         [columnDefs],
     );
 
-    const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
+    const [columnWidths, setColumnWidths] = usePersistedState<
+        Record<string, number>
+    >(
+        `${storageKey}:widths`,
         () =>
             Object.fromEntries(
                 columnKeys.map((key) => [
@@ -493,10 +517,16 @@ export default function ComprasTable({
                     DEFAULT_COLUMN_WIDTHS[key] ?? DEFAULT_BODEGA_COLUMN_WIDTH,
                 ]),
             ),
+        { merge: mergeColumnWidths },
     );
-    const [columnOrder, setColumnOrder] = useState<ColumnKey[]>(columnKeys);
-    const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(
-        new Set(),
+    const [columnOrder, setColumnOrder] = usePersistedState<ColumnKey[]>(
+        `${storageKey}:order`,
+        columnKeys,
+        { merge: mergeColumnOrder },
+    );
+    const [hiddenColumns, setHiddenColumns] = usePersistedSet<ColumnKey>(
+        `${storageKey}:hidden`,
+        () => new Set(),
     );
 
     useEffect(() => {

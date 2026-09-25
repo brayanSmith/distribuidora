@@ -5,6 +5,12 @@ import type {
 } from 'react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { DateRangeValue } from '@/components/date-range-filter';
+import {
+    mergeColumnOrder,
+    mergeColumnWidths,
+    usePersistedSet,
+    usePersistedState,
+} from '@/hooks/use-persisted-state';
 
 export type DataTableFilterVariant = 'text' | 'select' | 'date' | 'none';
 
@@ -69,6 +75,12 @@ export type UseDataTableOptions<T> = {
     searchableText?: (row: T) => string;
     /** Goes back to the first page whenever this changes (e.g. an outside filter on `data`). */
     pageResetKey?: string;
+    /**
+     * Remembers the table's layout (widths, order, hidden columns) in the
+     * browser and its search, sort and filters for the tab's session, so
+     * leaving the page and coming back finds it as it was.
+     */
+    storageKey?: string;
 };
 
 function normalizeColumn<T>(
@@ -106,6 +118,7 @@ export function useDataTable<T>({
     paginate = true,
     searchableText,
     pageResetKey,
+    storageKey,
 }: UseDataTableOptions<T>) {
     const pageSize = paginate ? requestedPageSize : Number.MAX_SAFE_INTEGER;
     // The "acciones" column always leads, so a row's buttons are at its
@@ -134,22 +147,55 @@ export function useDataTable<T>({
         [normalizedColumns],
     );
 
-    const [search, setSearch] = useState('');
-    const [sort, setSort] = useState<DataTableSort | null>(null);
-    const [filters, setFilters] = useState<Record<string, string>>({});
-    const [dateRanges, setDateRanges] = useState<
+    const persistKey = (name: string) =>
+        storageKey ? `table:${storageKey}:${name}` : null;
+    // A saved filter of a column that is gone would hide every row unseen.
+    const onlyKnownKeys = <V>(stored: Record<string, V>) =>
+        Object.fromEntries(
+            Object.entries(stored).filter(([key]) => columnsMap.has(key)),
+        );
+
+    const [search, setSearch] = usePersistedState(persistKey('search'), '', {
+        scope: 'session',
+    });
+    const [sort, setSort] = usePersistedState<DataTableSort | null>(
+        persistKey('sort'),
+        null,
+        {
+            scope: 'session',
+            merge: (stored) =>
+                stored && columnsMap.has(stored.key) ? stored : null,
+        },
+    );
+    const [filters, setFilters] = usePersistedState<Record<string, string>>(
+        persistKey('filters'),
+        {},
+        { scope: 'session', merge: onlyKnownKeys },
+    );
+    const [dateRanges, setDateRanges] = usePersistedState<
         Record<string, DateRangeValue>
-    >({});
+    >(persistKey('dates'), {}, { scope: 'session', merge: onlyKnownKeys });
     const [page, setPage] = useState(1);
 
-    const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
+    const [columnWidths, setColumnWidths] = usePersistedState<
+        Record<string, number>
+    >(
+        persistKey('widths'),
         () =>
             Object.fromEntries(
                 normalizedColumns.map((column) => [column.key, column.width]),
             ),
+        { merge: mergeColumnWidths },
     );
-    const [columnOrder, setColumnOrder] = useState<string[]>(columnKeys);
-    const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+    const [columnOrder, setColumnOrder] = usePersistedState<string[]>(
+        persistKey('order'),
+        columnKeys,
+        { merge: mergeColumnOrder },
+    );
+    const [hiddenColumns, setHiddenColumns] = usePersistedSet<string>(
+        persistKey('hidden'),
+        () => new Set(),
+    );
 
     // Keeps widths/order in sync if the column set itself changes at
     // runtime (e.g. dynamic columns). Self-healing: `visibleColumnOrder`
