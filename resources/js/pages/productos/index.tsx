@@ -1,14 +1,5 @@
 import { Head } from '@inertiajs/react';
-import {
-    ArrowLeftRight,
-    ChevronDown,
-    ChevronRight,
-    PanelLeftClose,
-    PanelLeftOpen,
-    Pencil,
-    Plus,
-    Trash2,
-} from 'lucide-react';
+import { ArrowLeftRight, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
 import CreateProductoModal from '@/components/create-producto-modal';
@@ -22,22 +13,28 @@ import RestoreButton from '@/components/restore-button';
 import TrashToggle from '@/components/trash-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-    usePersistedSet,
-    usePersistedState,
-} from '@/hooks/use-persisted-state';
+import { usePersistedState } from '@/hooks/use-persisted-state';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import { cn } from '@/lib/utils';
 import { index, restore } from '@/routes/productos';
@@ -72,11 +69,24 @@ type Accessor = {
     width: number;
     align?: 'right';
     color?: string;
+    /** Long text wraps to the column's width instead of being cut. */
+    wrap?: boolean;
     get: (producto: Producto) => string | number;
 };
 
 const SIN_TIPO = 'Sin tipo';
 const SIN_RIN = 'Sin rin';
+
+const tipoDe = (producto: Producto): string =>
+    producto.tipo_vehiculo ?? SIN_TIPO;
+const rinDe = (producto: Producto): string => producto.rin ?? SIN_RIN;
+
+/** Each row renders many controls, so bigger pages make the table sluggish. */
+const PAGE_SIZE_OPTIONS = [25, 50];
+const PAGE_SIZE_MAX = 100;
+
+/** A tipo de vehículo / rin of the filters, with how many productos it has. */
+type VehiculoOption = { value: string; count: number };
 
 const DEFAULT_BODEGA_WIDTH = 110;
 /** Fits the edit / delete / traslado buttons on one line. */
@@ -97,6 +107,7 @@ const STATIC_ACCESSORS: Record<string, Accessor> = {
     producto: {
         label: 'Producto',
         width: 220,
+        wrap: true,
         get: (p) => p.concatenar_codigo_nombre ?? p.referencia_producto ?? '',
     },
     stock_total: {
@@ -176,7 +187,13 @@ function renderCellValue(key: string, accessor: Accessor, producto: Producto) {
 
     if (typeof value === 'string') {
         return (
-            <span className="block truncate" title={value}>
+            <span
+                className={cn(
+                    'block',
+                    accessor.wrap ? 'break-words' : 'truncate',
+                )}
+                title={value}
+            >
                 {value}
             </span>
         );
@@ -204,49 +221,33 @@ export default function ProductosIndex({
     const [trasladoProductoId, setTrasladoProductoId] = useState<number | null>(
         null,
     );
-    // The side filter and the tabs are remembered for the tab's session (the trash is its own list).
+    // The filters and the tabs are remembered for the tab's session (the trash is its own list).
     const storageKey = `productos${eliminados ? ':papelera' : ''}`;
-    const [activeGroup, setActiveGroup] = usePersistedState<{
-        tipoVehiculo: string;
-        rin?: string;
-    } | null>(`filtro:${storageKey}:grupo`, null, {
-        scope: 'session',
-        // A saved group whose productos are gone would show an empty table.
-        merge: (stored) =>
-            stored &&
-            productos.some(
-                (producto) =>
-                    (producto.tipo_vehiculo ?? SIN_TIPO) ===
-                        stored.tipoVehiculo &&
-                    (!stored.rin || (producto.rin ?? SIN_RIN) === stored.rin),
-            )
-                ? stored
-                : null,
-    });
-    // Tipos de vehículo whose rines are open in the side filter (all closed at first).
-    const [expandedGroups, setExpandedGroups] = usePersistedSet<string>(
-        `filtro:${storageKey}:abiertos`,
-        () => new Set(),
-        'session',
+    // A saved pick whose productos are gone would leave an empty table.
+    const [tipoSel, setTipoSel] = usePersistedState<string>(
+        `filtro:${storageKey}:tipo`,
+        '',
+        {
+            scope: 'session',
+            merge: (stored) =>
+                productos.some((producto) => tipoDe(producto) === stored)
+                    ? stored
+                    : '',
+        },
     );
-    const toggleGroup = (tipo: string) =>
-        setExpandedGroups((current) => {
-            const next = new Set(current);
-
-            if (!next.delete(tipo)) {
-                next.add(tipo);
-            }
-
-            return next;
-        });
-    // Phones only: whether the tipo de vehículo / rin filter is open (closed at first).
-    const [filtroAbierto, setFiltroAbierto] = useState(false);
-    // Larger screens: the filter shrinks to a slim strip to give the table the width.
-    const [filtroCompacto, setFiltroCompacto] = usePersistedState(
-        'filtro:productos:compacto',
-        false,
+    const [rinesSel, setRinesSel] = usePersistedState<string[]>(
+        `filtro:${storageKey}:rines`,
+        [],
+        {
+            scope: 'session',
+            merge: (stored) =>
+                Array.isArray(stored)
+                    ? stored.filter((rin) =>
+                          productos.some((producto) => rinDe(producto) === rin),
+                      )
+                    : [],
+        },
     );
-    const toggleFiltroCompacto = () => setFiltroCompacto((current) => !current);
     const [categoriaTab, setCategoriaTab] = usePersistedState<CategoriaTab>(
         `filtro:${storageKey}:categoria`,
         'TODOS',
@@ -421,6 +422,7 @@ export default function ProductosIndex({
                 label: accessor.label,
                 align: accessor.align,
                 width: accessor.width,
+                wrap: accessor.wrap,
                 getValue: accessor.get,
                 render: (producto) => (
                     <span className={accessor.color}>
@@ -462,61 +464,77 @@ export default function ProductosIndex({
 
     const handleCategoriaTabChange = (value: string) => {
         setCategoriaTab(value as CategoriaTab);
-        setActiveGroup(null);
+        setTipoSel('');
+        setRinesSel([]);
     };
 
-    const groupTree = useMemo(() => {
-        const tipos = new Map<string, Map<string, number>>();
+    // Tipos de vehículo of the tab, with how many productos each one has
+    // among the picked rines.
+    const tipoOptions = useMemo<VehiculoOption[]>(() => {
+        const counts = new Map<string, number>();
 
         categoryFilteredProductos.forEach((producto) => {
-            const tipo = producto.tipo_vehiculo ?? SIN_TIPO;
-            const rin = producto.rin ?? SIN_RIN;
+            const tipo = tipoDe(producto);
+            const cuenta =
+                rinesSel.length === 0 || rinesSel.includes(rinDe(producto));
 
-            if (!tipos.has(tipo)) {
-                tipos.set(tipo, new Map());
-            }
-
-            const rines = tipos.get(tipo)!;
-            rines.set(rin, (rines.get(rin) ?? 0) + 1);
+            counts.set(tipo, (counts.get(tipo) ?? 0) + (cuenta ? 1 : 0));
         });
 
-        return Array.from(tipos.entries())
-            .map(([tipo, rines]) => ({
-                tipo,
-                count: Array.from(rines.values()).reduce((a, b) => a + b, 0),
-                rines: Array.from(rines.entries())
-                    .map(([rin, count]) => ({ rin, count }))
-                    .sort((a, b) =>
-                        a.rin.localeCompare(b.rin, 'es', { numeric: true }),
-                    ),
-            }))
-            .sort((a, b) => a.tipo.localeCompare(b.tipo, 'es'));
-    }, [categoryFilteredProductos]);
+        return Array.from(counts.entries())
+            .sort(([a], [b]) => a.localeCompare(b, 'es'))
+            .map(([value, count]) => ({ value, count }));
+    }, [categoryFilteredProductos, rinesSel]);
 
-    const groupFilteredProductos = useMemo(() => {
-        if (!activeGroup) {
-            return categoryFilteredProductos;
-        }
+    // Rines only of the picked tipo de vehículo (all of them while none is picked).
+    const rinOptions = useMemo<VehiculoOption[]>(() => {
+        const counts = new Map<string, number>();
 
-        return categoryFilteredProductos.filter((producto) => {
-            if (
-                (producto.tipo_vehiculo ?? SIN_TIPO) !==
-                activeGroup.tipoVehiculo
-            ) {
-                return false;
-            }
+        categoryFilteredProductos
+            .filter((producto) => !tipoSel || tipoDe(producto) === tipoSel)
+            .forEach((producto) => {
+                const rin = rinDe(producto);
 
-            return (
-                !activeGroup.rin ||
-                (producto.rin ?? SIN_RIN) === activeGroup.rin
-            );
-        });
-    }, [categoryFilteredProductos, activeGroup]);
+                counts.set(rin, (counts.get(rin) ?? 0) + 1);
+            });
 
-    const activeGroupLabel = activeGroup
-        ? `${activeGroup.tipoVehiculo}${activeGroup.rin ? ` · ${activeGroup.rin}` : ''}`
-        : null;
+        return Array.from(counts.entries())
+            .sort(([a], [b]) => a.localeCompare(b, 'es', { numeric: true }))
+            .map(([value, count]) => ({ value, count }));
+    }, [categoryFilteredProductos, tipoSel]);
 
+    // Changing the tipo drops the picked rines that don't belong to it.
+    const handleTipoChange = (tipo: string) => {
+        const permitidos = new Set(
+            categoryFilteredProductos
+                .filter((producto) => !tipo || tipoDe(producto) === tipo)
+                .map(rinDe),
+        );
+
+        setTipoSel(tipo);
+        setRinesSel((actuales) =>
+            actuales.filter((rin) => permitidos.has(rin)),
+        );
+    };
+
+    const toggleRin = (rin: string) =>
+        setRinesSel((actuales) =>
+            actuales.includes(rin)
+                ? actuales.filter((item) => item !== rin)
+                : [...actuales, rin],
+        );
+
+    const filteredProductos = useMemo(
+        () =>
+            categoryFilteredProductos.filter(
+                (producto) =>
+                    (!tipoSel || tipoDe(producto) === tipoSel) &&
+                    (rinesSel.length === 0 ||
+                        rinesSel.includes(rinDe(producto))),
+            ),
+        [categoryFilteredProductos, tipoSel, rinesSel],
+    );
+    const hayFiltrosDeVehiculo = tipoSel !== '' || rinesSel.length > 0;
     return (
         <>
             <Head title="Productos" />
@@ -565,198 +583,119 @@ export default function ProductosIndex({
                     </TabsList>
                 </Tabs>
 
-                <div className="flex flex-col gap-1 md:flex-row">
-                    <aside
-                        className={cn(
-                            'w-full shrink-0 self-start rounded-lg border p-3 text-sm',
-                            filtroCompacto ? 'md:w-12 md:p-2' : 'md:w-56',
-                        )}
-                    >
-                        <div className="flex items-center justify-between gap-2">
-                            {/* On phones the filter is a collapsible bar above the table. */}
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setFiltroAbierto((current) => !current)
+                <div className="grid gap-3">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="grid w-full gap-1 sm:w-56">
+                            <Label className="text-muted-foreground text-xs">
+                                Tipo de vehículo
+                            </Label>
+                            <Select
+                                value={tipoSel === '' ? 'ALL' : tipoSel}
+                                onValueChange={(value) =>
+                                    handleTipoChange(
+                                        value === 'ALL' ? '' : value,
+                                    )
                                 }
-                                aria-expanded={filtroAbierto}
-                                data-test="productos-filtro-toggle"
-                                className={cn(
-                                    'flex flex-1 items-center justify-between gap-2 text-left font-semibold md:pointer-events-none',
-                                    filtroCompacto && 'md:hidden',
-                                )}
                             >
-                                <span>Tipo de vehículo / Rin</span>
-                                <span className="flex items-center gap-2 md:hidden">
-                                    {activeGroupLabel ? (
-                                        <span className="text-muted-foreground text-xs font-normal">
-                                            {activeGroupLabel}
-                                        </span>
-                                    ) : null}
-                                    <ChevronDown
-                                        className={cn(
-                                            'size-4 transition-transform',
-                                            !filtroAbierto && '-rotate-90',
-                                        )}
-                                    />
-                                </span>
-                            </button>
+                                <SelectTrigger
+                                    className="w-full"
+                                    data-test="productos-filtro-tipo"
+                                >
+                                    <SelectValue placeholder="Todos" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">Todos</SelectItem>
+                                    {tipoOptions.map((option) => (
+                                        <SelectItem
+                                            key={option.value}
+                                            value={option.value}
+                                        >
+                                            {option.value}
+                                            <span className="text-muted-foreground ml-2 text-xs">
+                                                {option.count}
+                                            </span>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
+                        {hayFiltrosDeVehiculo ? (
                             <Button
                                 type="button"
                                 variant="ghost"
-                                size="icon"
-                                onClick={toggleFiltroCompacto}
-                                aria-pressed={filtroCompacto}
-                                title={
-                                    filtroCompacto
-                                        ? `Expandir filtro${activeGroupLabel ? ` (${activeGroupLabel})` : ''}`
-                                        : 'Compactar filtro'
-                                }
-                                data-test="productos-filtro-compactar"
-                                className="relative hidden size-7 shrink-0 md:inline-flex"
+                                size="sm"
+                                onClick={() => {
+                                    setTipoSel('');
+                                    setRinesSel([]);
+                                }}
+                                data-test="productos-filtro-limpiar"
                             >
-                                {filtroCompacto ? (
-                                    <PanelLeftOpen className="size-4" />
-                                ) : (
-                                    <PanelLeftClose className="size-4" />
-                                )}
-                                {filtroCompacto && activeGroup ? (
-                                    <span className="bg-primary absolute top-0.5 right-0.5 size-2 rounded-full" />
-                                ) : null}
+                                <X className="size-4" />
+                                Limpiar
                             </Button>
-                        </div>
-                        <div
-                            className={cn(
-                                'mt-2 space-y-1',
-                                filtroCompacto ? 'md:hidden' : 'md:block',
-                                !filtroAbierto && 'hidden',
-                            )}
-                        >
-                            <button
-                                type="button"
-                                onClick={() => setActiveGroup(null)}
-                                data-test="productos-group-all"
-                                className={cn(
-                                    'hover:bg-accent flex w-full items-center justify-between rounded px-2 py-1 text-left',
-                                    !activeGroup &&
-                                        'bg-accent text-accent-foreground',
-                                )}
+                        ) : null}
+                    </div>
+
+                    <div className="grid gap-1">
+                        <Label className="text-muted-foreground text-xs">
+                            Rin
+                        </Label>
+                        {rinOptions.length === 0 ? (
+                            <p className="text-muted-foreground text-sm">
+                                No hay rines.
+                            </p>
+                        ) : (
+                            <div
+                                className="flex max-h-28 flex-wrap gap-2 overflow-y-auto"
+                                data-test="productos-filtro-rin"
                             >
-                                <span>Todos</span>
-                                <span className="text-muted-foreground text-xs">
-                                    {categoryFilteredProductos.length}
-                                </span>
-                            </button>
-
-                            <div className="max-h-[60vh] overflow-y-auto pr-1">
-                                {groupTree.map((group) => (
-                                    <div key={group.tipo} className="mt-1">
-                                        <div className="flex items-center">
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    toggleGroup(group.tipo)
-                                                }
-                                                aria-label={`${expandedGroups.has(group.tipo) ? 'Contraer' : 'Expandir'} ${group.tipo}`}
-                                                data-test={`productos-group-toggle-${group.tipo}`}
-                                                className="text-muted-foreground hover:bg-accent shrink-0 rounded p-1"
-                                            >
-                                                {expandedGroups.has(
-                                                    group.tipo,
-                                                ) ? (
-                                                    <ChevronDown className="size-4" />
-                                                ) : (
-                                                    <ChevronRight className="size-4" />
-                                                )}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setActiveGroup({
-                                                        tipoVehiculo:
-                                                            group.tipo,
-                                                    });
-                                                    setExpandedGroups(
-                                                        (current) =>
-                                                            new Set(
-                                                                current,
-                                                            ).add(group.tipo),
-                                                    );
-                                                }}
-                                                data-test={`productos-group-tipo-${group.tipo}`}
-                                                className={cn(
-                                                    'hover:bg-accent flex w-full items-center justify-between rounded px-2 py-1 text-left font-medium',
-                                                    activeGroup?.tipoVehiculo ===
-                                                        group.tipo &&
-                                                        !activeGroup?.rin &&
-                                                        'bg-accent text-accent-foreground',
-                                                )}
-                                            >
-                                                <span>{group.tipo}</span>
-                                                <span className="text-muted-foreground text-xs">
-                                                    {group.count}
-                                                </span>
-                                            </button>
-                                        </div>
-
-                                        {expandedGroups.has(group.tipo) ? (
-                                            <div className="ml-3 border-l pl-2">
-                                                {group.rines.map((rin) => (
-                                                    <button
-                                                        key={rin.rin}
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setActiveGroup({
-                                                                tipoVehiculo:
-                                                                    group.tipo,
-                                                                rin: rin.rin,
-                                                            })
-                                                        }
-                                                        data-test={`productos-group-rin-${group.tipo}-${rin.rin}`}
-                                                        className={cn(
-                                                            'text-muted-foreground hover:bg-accent flex w-full items-center justify-between rounded px-2 py-1 text-left',
-                                                            activeGroup?.tipoVehiculo ===
-                                                                group.tipo &&
-                                                                activeGroup?.rin ===
-                                                                    rin.rin &&
-                                                                'bg-accent text-accent-foreground',
-                                                        )}
-                                                    >
-                                                        <span>{rin.rin}</span>
-                                                        <span className="text-xs">
-                                                            {rin.count}
-                                                        </span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        ) : null}
-                                    </div>
+                                {rinOptions.map((option) => (
+                                    <label
+                                        key={option.value}
+                                        className={cn(
+                                            'hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1 text-sm',
+                                            rinesSel.includes(option.value) &&
+                                                'bg-accent',
+                                        )}
+                                    >
+                                        <Checkbox
+                                            checked={rinesSel.includes(
+                                                option.value,
+                                            )}
+                                            onCheckedChange={() =>
+                                                toggleRin(option.value)
+                                            }
+                                            data-test={`productos-filtro-rin-${option.value}`}
+                                        />
+                                        {option.value}
+                                    </label>
                                 ))}
                             </div>
-                        </div>
-                    </aside>
-
-                    <div className="min-w-0 flex-1">
-                        <DataTable
-                            data={groupFilteredProductos}
-                            columns={columns}
-                            getRowId={(producto) => producto.id}
-                            dataTestPrefix="productos"
-                            searchPlaceholder="Buscar productos..."
-                            emptyMessage={
-                                productos.length === 0
-                                    ? 'No hay productos registrados.'
-                                    : 'Ningún producto coincide con los filtros.'
-                            }
-                            noResultsMessage="Ningún producto coincide con los filtros."
-                            onRowClick={openViewDialog}
-                            pageResetKey={`${categoriaTab}|${activeGroup?.tipoVehiculo ?? ''}|${activeGroup?.rin ?? ''}`}
-                        />
+                        )}
                     </div>
                 </div>
+                <DataTable
+                    data={filteredProductos}
+                    columns={columns}
+                    getRowId={(producto) => producto.id}
+                    dataTestPrefix="productos"
+                    searchPlaceholder="Buscar productos..."
+                    emptyMessage={
+                        productos.length === 0
+                            ? 'No hay productos registrados.'
+                            : 'Ningún producto coincide con los filtros.'
+                    }
+                    noResultsMessage="Ningún producto coincide con los filtros."
+                    onRowClick={openViewDialog}
+                    pageSizeOptions={PAGE_SIZE_OPTIONS}
+                    // With rines picked, the table groups its rows by rin.
+                    groupBy={rinesSel.length > 0 ? rinDe : undefined}
+                    groupLabel={(rin) => (rin === SIN_RIN ? rin : `Rin ${rin}`)}
+                    pageSizeMax={PAGE_SIZE_MAX}
+                    pageResetKey={`${categoriaTab}|${tipoSel}|${rinesSel.join(',')}`}
+                />
             </div>
-
             <DeleteProductoModal
                 producto={productoToDelete}
                 open={deleteDialogOpen}

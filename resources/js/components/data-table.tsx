@@ -2,12 +2,18 @@ import {
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
+    ChevronDown,
+    ChevronRight,
+    ChevronsDownUp,
+    ChevronsUpDown,
     Columns3,
     GripVertical,
     Search,
     X,
 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import DateRangeFilter from '@/components/date-range-filter';
+import PageSizeSelect from '@/components/page-size-select';
 import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,6 +60,15 @@ type DataTableProps<T> = UseDataTableOptions<T> & {
     noResultsMessage?: string;
     /** Makes rows clickable. The "acciones" cell never triggers it. */
     onRowClick?: (row: T) => void;
+    /** Largest amount of rows the user can type in the page size field (with `pageSizeOptions`). */
+    pageSizeMax?: number;
+    /**
+     * Groups the rows by this key: each group gets a collapsible header row
+     * (with its row count) and the groups follow each other in natural order.
+     */
+    groupBy?: (row: T) => string;
+    /** What a group's header shows for its key. Defaults to the key. */
+    groupLabel?: (group: string) => ReactNode;
 };
 
 const ACCIONES_KEY = 'acciones';
@@ -238,6 +253,10 @@ export default function DataTable<T>({
     noResultsMessage = 'Ningún registro coincide con la búsqueda.',
     onRowClick,
     pageSize,
+    pageSizeOptions,
+    pageSizeMax,
+    groupBy,
+    groupLabel,
     paginate = true,
     searchableText,
     pageResetKey,
@@ -247,6 +266,8 @@ export default function DataTable<T>({
         data,
         columns,
         pageSize,
+        pageSizeOptions,
+        groupBy,
         paginate,
         searchableText,
         pageResetKey,
@@ -271,6 +292,25 @@ export default function DataTable<T>({
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {groupBy && table.groupCounts.size > 0 ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={table.toggleAllGroups}
+                                data-test={`${dataTestPrefix}-groups-toggle`}
+                            >
+                                {table.allGroupsCollapsed ? (
+                                    <ChevronsUpDown className="size-4" />
+                                ) : (
+                                    <ChevronsDownUp className="size-4" />
+                                )}
+                                {table.allGroupsCollapsed
+                                    ? 'Expandir grupos'
+                                    : 'Contraer grupos'}
+                            </Button>
+                        ) : null}
+
                         {table.activeFilterCount > 0 ? (
                             <Button
                                 type="button"
@@ -385,43 +425,94 @@ export default function DataTable<T>({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {table.rows.map((row) => (
-                            <TableRow
-                                key={getRowId(row)}
-                                data-test={`${dataTestPrefix}-row`}
-                                onClick={
-                                    onRowClick
-                                        ? () => onRowClick(row)
-                                        : undefined
-                                }
-                                className={
-                                    onRowClick ? 'cursor-pointer' : undefined
-                                }
-                            >
-                                {table.visibleColumnOrder.map((key) => {
-                                    const column = table.columnsMap.get(key)!;
-                                    const isAcciones = key === ACCIONES_KEY;
+                        {table.entries.map((entry) => {
+                            if (entry.kind === 'group') {
+                                const { group, collapsed } = entry;
 
-                                    return (
+                                return (
+                                    <TableRow
+                                        key={`group:${group}`}
+                                        className="bg-muted/50 hover:bg-muted/60"
+                                        data-test={`${dataTestPrefix}-group`}
+                                    >
                                         <TableCell
-                                            key={key}
-                                            className={cn(
-                                                column.align === 'right' &&
-                                                    'text-right',
-                                            )}
-                                            onClick={
-                                                isAcciones
-                                                    ? (event) =>
-                                                          event.stopPropagation()
-                                                    : undefined
+                                            colSpan={
+                                                table.visibleColumnOrder.length
                                             }
+                                            className="p-0"
                                         >
-                                            {column.render(row)}
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    table.toggleGroup(group)
+                                                }
+                                                aria-expanded={!collapsed}
+                                                className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm font-medium"
+                                            >
+                                                {collapsed ? (
+                                                    <ChevronRight className="size-4" />
+                                                ) : (
+                                                    <ChevronDown className="size-4" />
+                                                )}
+                                                {groupLabel?.(group) ?? group}
+                                                <span className="text-muted-foreground text-xs font-normal">
+                                                    {table.groupCounts.get(
+                                                        group,
+                                                    ) ?? 0}{' '}
+                                                    registros
+                                                </span>
+                                            </button>
                                         </TableCell>
-                                    );
-                                })}
-                            </TableRow>
-                        ))}
+                                    </TableRow>
+                                );
+                            }
+
+                            const { row } = entry;
+
+                            return (
+                                <TableRow
+                                    key={getRowId(row)}
+                                    data-test={`${dataTestPrefix}-row`}
+                                    onClick={
+                                        onRowClick
+                                            ? () => onRowClick(row)
+                                            : undefined
+                                    }
+                                    className={
+                                        onRowClick
+                                            ? 'cursor-pointer'
+                                            : undefined
+                                    }
+                                >
+                                    {table.visibleColumnOrder.map((key) => {
+                                        const column =
+                                            table.columnsMap.get(key)!;
+                                        const isAcciones = key === ACCIONES_KEY;
+
+                                        return (
+                                            <TableCell
+                                                key={key}
+                                                className={cn(
+                                                    column.align === 'right' &&
+                                                        'text-right',
+                                                    // Long text wraps to the column's width instead of being cut.
+                                                    column.wrap &&
+                                                        'break-words whitespace-normal',
+                                                )}
+                                                onClick={
+                                                    isAcciones
+                                                        ? (event) =>
+                                                              event.stopPropagation()
+                                                        : undefined
+                                                }
+                                            >
+                                                {column.render(row)}
+                                            </TableCell>
+                                        );
+                                    })}
+                                </TableRow>
+                            );
+                        })}
                     </TableBody>
                     {table.rows.length > 0 &&
                     table.visibleColumnOrder.some(
@@ -451,17 +542,30 @@ export default function DataTable<T>({
                 </table>
             </div>
 
-            {table.totalRows === 0 ? (
+            {table.matchedRows === 0 ? (
                 <p className="text-muted-foreground py-8 text-center">
                     {data.length === 0 ? emptyMessage : noResultsMessage}
                 </p>
-            ) : paginate ? (
-                <div className="flex items-center justify-between text-sm">
+            ) : paginate && table.totalRows > 0 ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                     <p className="text-muted-foreground">
                         Mostrando {(table.page - 1) * table.pageSize + 1}–
                         {Math.min(table.page * table.pageSize, table.totalRows)}{' '}
                         de {table.totalRows} registros
+                        {table.hiddenRows > 0
+                            ? ` (${table.hiddenRows} ocultos en grupos contraídos)`
+                            : ''}
                     </p>
+
+                    {pageSizeOptions ? (
+                        <PageSizeSelect
+                            value={table.pageSize}
+                            onChange={table.setPageSize}
+                            options={pageSizeOptions}
+                            max={pageSizeMax}
+                            dataTest={`${dataTestPrefix}-page-size`}
+                        />
+                    ) : null}
 
                     <Pagination
                         page={table.page}

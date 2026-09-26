@@ -30,6 +30,8 @@ export type DataTableColumn<T> = {
     filter?: DataTableFilterVariant;
     /** Required when `filter` is `'select'`. */
     selectOptions?: DataTableSelectOption[];
+    /** Wraps long text onto several lines, following the column's width, instead of cutting it. */
+    wrap?: boolean;
     /** Whether this column can be hidden via the "Columns" menu. Defaults to true, except when `filter` is `'none'`. */
     hideable?: boolean;
     /** Initial column width in pixels. */
@@ -40,6 +42,11 @@ export type DataTableColumn<T> = {
     /** Cell of the summary row, computed over the rows that pass the current filters. */
     footer?: (rows: T[]) => ReactNode;
 };
+
+/** One line of a page: a data row, or (when grouping) a group's header. */
+export type DataTableEntry<T> =
+    | { kind: 'row'; row: T }
+    | { kind: 'group'; group: string; collapsed: boolean };
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -59,6 +66,15 @@ export type HeaderCellHandlers = {
     cellRef: (element: HTMLTableCellElement | null) => void;
 };
 
+/** One collator for every comparison: `localeCompare` with options builds a new one each time. */
+const SORT_COLLATOR = new Intl.Collator('es', { sensitivity: 'base' });
+
+/** Groups in natural order ('R9' before 'R15'). */
+const GROUP_COLLATOR = new Intl.Collator('es', {
+    sensitivity: 'base',
+    numeric: true,
+});
+
 const MIN_COLUMN_WIDTH = 60;
 const DEFAULT_COLUMN_WIDTH = 160;
 /** Fits two icon buttons (edit / delete); a column with more passes its own `width`. */
@@ -69,10 +85,21 @@ export type UseDataTableOptions<T> = {
     data: T[];
     columns: DataTableColumn<T>[];
     pageSize?: number;
+    /**
+     * Lets the user change how many rows a page shows (offered by
+     * `DataTable`, and remembered in the browser). `pageSize` is the default.
+     */
+    pageSizeOptions?: number[];
     /** Set to false to show every row without paging. Defaults to true. */
     paginate?: boolean;
     /** Overrides the default (all columns with `getValue`, joined) search text builder. */
     searchableText?: (row: T) => string;
+    /**
+     * Groups the rows: they are kept together by this key (groups in
+     * natural order, the chosen sort inside each one) and `DataTable` shows
+     * a collapsible header per group.
+     */
+    groupBy?: (row: T) => string;
     /** Goes back to the first page whenever this changes (e.g. an outside filter on `data`). */
     pageResetKey?: string;
     /**
@@ -114,12 +141,24 @@ function normalizeColumn<T>(
 export function useDataTable<T>({
     data,
     columns,
-    pageSize: requestedPageSize = DEFAULT_PAGE_SIZE,
+    pageSize: defaultPageSize = DEFAULT_PAGE_SIZE,
+    pageSizeOptions,
     paginate = true,
     searchableText,
     pageResetKey,
     storageKey,
+    groupBy,
 }: UseDataTableOptions<T>) {
+    const persistKey = (name: string) =>
+        storageKey ? `table:${storageKey}:${name}` : null;
+    const [requestedPageSize, setPageSize] = usePersistedState<number>(
+        pageSizeOptions ? persistKey('page-size') : null,
+        defaultPageSize,
+        {
+            merge: (stored, initial) =>
+                Number.isInteger(stored) && stored >= 1 ? stored : initial,
+        },
+    );
     const pageSize = paginate ? requestedPageSize : Number.MAX_SAFE_INTEGER;
     // The "acciones" column always leads, so a row's buttons are at its
     // start instead of scrolled off at the end of a wide table.
@@ -147,8 +186,6 @@ export function useDataTable<T>({
         [normalizedColumns],
     );
 
-    const persistKey = (name: string) =>
-        storageKey ? `table:${storageKey}:${name}` : null;
     // A saved filter of a column that is gone would hide every row unseen.
     const onlyKnownKeys = <V>(stored: Record<string, V>) =>
         Object.fromEntries(
@@ -512,41 +549,185 @@ export function useDataTable<T>({
         });
 
         if (sort) {
-            list = [...list].sort((a, b) => {
-                const valueA = getSortValue(a, sort.key);
-                const valueB = getSortValue(b, sort.key);
+            // The sort value of each row is read once, not on every comparison.
+            list = list
+                .map((row) => ({ row, value: getSortValue(row, sort.key) }))
+                .sort((a, b) => {
+                    const comparison =
+                        typeof a.value === 'number' &&
+                        typeof b.value === 'number'
+                            ? a.value - b.value
+                            : SORT_COLLATOR.compare(
+                                  String(a.value),
+                                  String(b.value),
+                              );
 
-                const comparison =
-                    typeof valueA === 'number' && typeof valueB === 'number'
-                        ? valueA - valueB
-                        : String(valueA).localeCompare(String(valueB), 'es', {
-                              sensitivity: 'base',
-                          });
+                    return sort.direction === 'asc' ? comparison : -comparison;
+                })
+                .map(({ row }) => row);
+        }
 
-                return sort.direction === 'asc' ? comparison : -comparison;
-            });
+        if (groupBy) {
+            // Array.prototype.sort is stable: the sort above survives inside each group.
+            list = list
+                .map((row) => ({ row, group: groupBy(row) }))
+                .sort((a, b) => GROUP_COLLATOR.compare(a.group, b.group))
+                .map(({ row }) => row);
         }
 
         return list;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data, search, filters, dateRanges, sort, columnsMap]);
+    }, [data, search, filters, dateRanges, sort, columnsMap, groupBy]);
 
-    const totalPages = Math.max(Math.ceil(filteredSorted.length / pageSize), 1);
+    // How many of the filtered rows each group has (not only those of this page).
+    const groupCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+
+        if (groupBy) {
+            filteredSorted.forEach((row) => {
+                const group = groupBy(row);
+
+                counts.set(group, (counts.get(group) ?? 0) + 1);
+            });
+        }
+
+        return counts;
+    }, [filteredSorted, groupBy]);
+
+    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+        new Set(),
+    );
+
+    // The rows of a collapsed group are not paged: the page fills up with the
+    // rows that follow, so nobody has to flip pages to get past a group.
+    const pagedRows = useMemo(
+        () =>
+            groupBy
+                ? filteredSorted.filter(
+                      (row) => !collapsedGroups.has(groupBy(row)),
+                  )
+                : filteredSorted,
+        [filteredSorted, collapsedGroups, groupBy],
+    );
+
+    const totalPages = Math.max(Math.ceil(pagedRows.length / pageSize), 1);
     const currentPage = Math.min(page, totalPages);
 
     const paginatedRows = useMemo(
         () =>
-            filteredSorted.slice(
+            pagedRows.slice(
                 (currentPage - 1) * pageSize,
                 currentPage * pageSize,
             ),
-        [filteredSorted, currentPage, pageSize],
+        [pagedRows, currentPage, pageSize],
     );
 
+    /**
+     * What the page draws, in order: its rows and, when grouping, the group
+     * headers (also those of collapsed groups that sit between its rows, and
+     * the header of a group that continues from the previous page).
+     */
+    const entries = useMemo<DataTableEntry<T>[]>(() => {
+        if (!groupBy) {
+            return paginatedRows.map((row) => ({ kind: 'row', row }));
+        }
+
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        const isLastPage = currentPage === totalPages;
+        const result: DataTableEntry<T>[] = [];
+        const headed = new Set<string>();
+        // How many drawable rows come before the group being walked.
+        let before = 0;
+        let rowIndex = 0;
+
+        [...groupCounts.keys()].forEach((group) => {
+            const collapsed = collapsedGroups.has(group);
+            const onPage =
+                (before >= start && before < end) ||
+                (before >= pagedRows.length && isLastPage);
+
+            if (onPage) {
+                result.push({ kind: 'group', group, collapsed });
+                headed.add(group);
+            }
+
+            if (!collapsed) {
+                const count = groupCounts.get(group) ?? 0;
+
+                for (let i = 0; i < count; i++, rowIndex++) {
+                    if (rowIndex < start || rowIndex >= end) {
+                        continue;
+                    }
+
+                    // The group started on a previous page: head it again.
+                    if (!headed.has(group)) {
+                        result.push({ kind: 'group', group, collapsed });
+                        headed.add(group);
+                    }
+
+                    result.push({ kind: 'row', row: pagedRows[rowIndex] });
+                }
+
+                before += count;
+            }
+        });
+
+        return result;
+    }, [
+        groupBy,
+        paginatedRows,
+        currentPage,
+        pageSize,
+        totalPages,
+        groupCounts,
+        collapsedGroups,
+        pagedRows,
+    ]);
+
+    /** Puts the page where the group's header is, so it doesn't jump out of sight. */
+    const showGroup = (group: string, collapsed: Set<string>) => {
+        let before = 0;
+
+        for (const [key, count] of groupCounts) {
+            if (key === group) {
+                break;
+            }
+
+            if (!collapsed.has(key)) {
+                before += count;
+            }
+        }
+
+        setPage(Math.floor(before / pageSize) + 1);
+    };
+
+    const toggleGroup = (group: string) => {
+        const next = new Set(collapsedGroups);
+
+        if (!next.delete(group)) {
+            next.add(group);
+        }
+
+        setCollapsedGroups(next);
+        showGroup(group, next);
+    };
+
+    const allGroupsCollapsed =
+        groupCounts.size > 0 &&
+        [...groupCounts.keys()].every((group) => collapsedGroups.has(group));
+
+    /** Collapses every group, or opens them all when they already are collapsed. */
+    const toggleAllGroups = () => {
+        setCollapsedGroups(
+            allGroupsCollapsed ? new Set() : new Set(groupCounts.keys()),
+        );
+        setPage(1);
+    };
     useEffect(() => {
         setPage(1);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search, filters, dateRanges, sort, pageResetKey]);
+    }, [search, filters, dateRanges, sort, pageResetKey, requestedPageSize]);
 
     return {
         columns: normalizedColumns,
@@ -568,9 +749,20 @@ export function useDataTable<T>({
         clearFilters,
         activeFilterCount,
         rows: paginatedRows,
-        totalRows: filteredSorted.length,
+        entries,
+        totalRows: pagedRows.length,
+        /** Rows that pass the search and filters, collapsed groups included. */
+        matchedRows: filteredSorted.length,
+        /** Rows kept out of the pages by collapsed groups. */
+        hiddenRows: filteredSorted.length - pagedRows.length,
+        groupCounts,
+        collapsedGroups,
+        toggleGroup,
+        allGroupsCollapsed,
+        toggleAllGroups,
         page: currentPage,
         setPage,
+        setPageSize,
         totalPages,
         pageSize,
     };
