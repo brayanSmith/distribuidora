@@ -165,11 +165,14 @@ class PedidoService
 
     /**
      * Apply (sign -1) or revert (sign +1) a detalle's quantity on the
-     * pedido's warehouse stock. Servicios have no stock to move.
+     * pedido's warehouse stock. Servicios and productos without stock control
+     * have no stock to move.
      */
     public function adjustStock(DetallePedido $detalle, Pedido $pedido, int $sign): void
     {
-        if (Producto::whereKey($detalle->producto_id)->where('categoria', 'SERVICIO')->exists()) {
+        if (Producto::withTrashed()->whereKey($detalle->producto_id)
+            ->where(fn ($query) => $query->where('categoria', 'SERVICIO')->orWhere('inventariable', false))
+            ->exists()) {
             return;
         }
 

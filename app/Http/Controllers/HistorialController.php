@@ -43,7 +43,7 @@ class HistorialController extends Controller
         Traslado::class => ['modulo' => 'Traslados', 'etiqueta' => 'Traslado', 'nombre' => null],
         Marca::class => ['modulo' => 'Marcas', 'etiqueta' => 'Marca', 'nombre' => 'marca'],
         Bodega::class => ['modulo' => 'Bodegas', 'etiqueta' => 'Bodega', 'nombre' => 'nombre_bodega'],
-        Puc::class => ['modulo' => 'Puc', 'etiqueta' => 'Puc', 'nombre' => 'concatenar_subcuenta_concepto'],
+        Puc::class => ['modulo' => 'Medios de pago', 'etiqueta' => 'Medio de pago', 'nombre' => 'concatenar_subcuenta_concepto'],
         Empresa::class => ['modulo' => 'Empresas', 'etiqueta' => 'Empresa', 'nombre' => 'nombre_empresa'],
         User::class => ['modulo' => 'Usuarios', 'etiqueta' => 'Usuario', 'nombre' => 'name'],
         Role::class => ['modulo' => 'Roles', 'etiqueta' => 'Rol', 'nombre' => 'name'],

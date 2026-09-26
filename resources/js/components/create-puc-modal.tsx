@@ -64,10 +64,10 @@ export default function CreatePucModal({ children }: Props) {
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Nueva cuenta PUC</DialogTitle>
+                                <DialogTitle>Nuevo medio de pago</DialogTitle>
                                 <DialogDescription>
-                                    Crea una nueva cuenta del plan único de
-                                    cuentas.
+                                    Crea un nuevo medio de pago (una cuenta del
+                                    plan único de cuentas).
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -168,7 +168,7 @@ export default function CreatePucModal({ children }: Props) {
                                     data-test="create-puc-submit"
                                     disabled={processing}
                                 >
-                                    Crear cuenta
+                                    Crear medio de pago
                                 </Button>
                             </DialogFooter>
                         </>

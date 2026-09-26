@@ -64,7 +64,7 @@ class PedidoController extends Controller
                         ->with(['producto' => fn ($query) => $query
                             ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'tipo_vehiculo'])
                             ->withSum('stockBodegas as stock_total', 'stock')]),
-                    'abonos:id,pedido_id,puc_id',
+                    'abonos:id,pedido_id,puc_id,monto',
                     'abonos.puc:id,concatenar_subcuenta_concepto',
                 ])
                 ->when($eliminados, fn ($query) => $query->onlyTrashed())
@@ -169,7 +169,7 @@ class PedidoController extends Controller
                 'user',
                 'bodega',
             ]),
-            ...$this->formData($request),
+            ...$this->formData($request, $pedido),
             'permissions' => [
                 'canDelete' => $request->user()->can("{$module}.delete"),
                 'canCreateAbono' => $request->user()->can("{$module}.create-abono"),
@@ -254,17 +254,23 @@ class PedidoController extends Controller
     }
 
     /**
+     * Every producto can be put on a pedido (servicios and those without stock
+     * control too). Editing one also lists the productos of its lines even if
+     * they were deleted since, so their names always show.
+     *
      * @return array{clientes: Collection, productos: Collection, bodegas: Collection, vendedores: Collection, pucs: Collection}
      */
-    private function formData(Request $request): array
+    private function formData(Request $request, ?Pedido $pedido = null): array
     {
+        $productosDelPedido = $pedido?->detalles()->withTrashed()->pluck('producto_id') ?? collect();
 
         return [
             'clientes' => Cliente::orderBy('razon_social')->get([
                 'id', 'tipo_documento', 'numero_documento', 'razon_social', 'direccion', 'telefono', 'ciudad', 'email',
             ]),
-            'productos' => Producto::where('categoria', '!=', 'SERVICIO')
-                ->where('inventariable', true)
+            'productos' => Producto::withTrashed()
+                ->where(fn ($query) => $query->whereNull('deleted_at')
+                    ->when($productosDelPedido->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $productosDelPedido)))
                 ->orderBy('referencia_producto')
                 ->get(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'valor_detal', 'valor_mayorista', 'costo_producto'])
                 ->each(function (Producto $producto) use ($request): void {

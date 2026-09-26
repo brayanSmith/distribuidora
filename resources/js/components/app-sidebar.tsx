@@ -104,7 +104,7 @@ export function AppSidebar() {
                     gastosIndex,
                     Receipt,
                 ),
-                ...entry(page.props.canViewPucs, 'Puc', pucsIndex, Calculator),
+                ...entry(page.props.canViewPucs, 'Medios de pago', pucsIndex, Calculator),
             ],
         },
         {

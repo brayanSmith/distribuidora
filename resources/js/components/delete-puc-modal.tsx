@@ -38,7 +38,7 @@ export default function DeletePucModal({ puc, open, onOpenChange }: Props) {
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Eliminar cuenta PUC</DialogTitle>
+                    <DialogTitle>Eliminar medio de pago</DialogTitle>
                     <DialogDescription>
                         ¿Estás seguro de eliminar{' '}
                         <strong>"{puc?.concatenar_subcuenta_concepto}"</strong>?

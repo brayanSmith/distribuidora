@@ -12,6 +12,7 @@ import {
     X,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import ResizeHandle from '@/components/column-resize-handle';
 import DateRangeFilter from '@/components/date-range-filter';
 import PageSizeSelect from '@/components/page-size-select';
 import Pagination from '@/components/pagination';
@@ -72,19 +73,6 @@ type DataTableProps<T> = UseDataTableOptions<T> & {
 };
 
 const ACCIONES_KEY = 'acciones';
-
-function ResizeHandle({
-    onMouseDown,
-}: {
-    onMouseDown: (event: React.MouseEvent) => void;
-}) {
-    return (
-        <span
-            onMouseDown={onMouseDown}
-            className="hover:bg-primary/50 absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none"
-        />
-    );
-}
 
 function HeaderCell<T>({
     column,
@@ -153,7 +141,7 @@ function HeaderCell<T>({
                     </span>
                 )}
             </div>
-            <ResizeHandle onMouseDown={handlers.onResizeStart} />
+            <ResizeHandle onPointerDown={handlers.onResizeStart} />
         </TableHead>
     );
 }

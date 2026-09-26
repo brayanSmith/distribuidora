@@ -16,7 +16,7 @@ const RESOURCE_LABELS: Record<string, string> = {
     bodegas: 'Bodegas',
     proveedores: 'Proveedores',
     marcas: 'Marcas',
-    puc: 'PUC',
+    puc: 'Medios de pago',
     empresa: 'Empresa',
     productos: 'Productos',
     gastos: 'Gastos',

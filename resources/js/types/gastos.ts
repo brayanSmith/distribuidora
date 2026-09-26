@@ -8,6 +8,8 @@ export type Gasto = {
     monto: string;
     fecha_gasto: string;
     bodega?: Bodega | null;
+    /** Who registered the gasto. */
+    user?: { id: number; name: string } | null;
 };
 
 export type GastoPermissions = {

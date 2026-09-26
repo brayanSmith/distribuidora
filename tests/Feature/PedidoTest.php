@@ -2,6 +2,7 @@
 
 use App\Models\Bodega;
 use App\Models\Cliente;
+use App\Models\DetallePedido;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\Puc;
@@ -206,4 +207,61 @@ test('detalles are required to store a pedido', function () {
         'bodega_id' => $bodega->id,
         'tipo_precio' => 'DETAL',
     ])->assertSessionHasErrors('detalles');
+});
+
+test('the pedidos listing sends each abono with its monto and método de pago', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $pedido = Pedido::factory()->create(['tipo_precio' => 'DETAL']);
+    $puc = Puc::factory()->create();
+    $pedido->abonos()->create(['user_id' => $owner->id, 'puc_id' => $puc->id, 'monto' => 1500, 'con_cuanto_pago' => 2000, 'cambio' => 500, 'fecha' => now()]);
+
+    $this->actingAs($owner)->get(route('pedidos.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('pedidos.0.abonos.0.monto', '1500.00')
+            ->where('pedidos.0.abonos.0.puc.id', $puc->id)
+        );
+});
+
+test('every producto can be put on a pedido, and editing one lists those of its lines even when deleted', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $sinControl = Producto::factory()->create(['inventariable' => false, 'categoria' => 'LLANTA']);
+    $servicio = Producto::factory()->create(['inventariable' => false, 'categoria' => 'SERVICIO', 'tipo' => 'SERVICIO']);
+    $eliminado = Producto::factory()->create();
+    $pedido = Pedido::factory()->create(['tipo_precio' => 'DETAL']);
+    DetallePedido::factory()->create(['pedido_id' => $pedido->id, 'producto_id' => $eliminado->id]);
+    $eliminado->delete();
+
+    $this->actingAs($owner)->get(route('pedidos.create'))
+        ->assertInertia(fn ($page) => $page
+            ->where('productos', fn ($productos) => collect($productos)->pluck('id')->contains($sinControl->id)
+                && collect($productos)->pluck('id')->contains($servicio->id)
+                && ! collect($productos)->pluck('id')->contains($eliminado->id))
+        );
+
+    $this->actingAs($owner)->get(route('pedidos.edit', [$pedido]))
+        ->assertInertia(fn ($page) => $page
+            ->where('productos', fn ($productos) => collect($productos)->pluck('id')->contains($eliminado->id))
+        );
+});
+
+test('selling a producto without stock control does not move stock', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    $producto = Producto::factory()->create(['inventariable' => false, 'categoria' => 'LLANTA']);
+    $bodega = Bodega::factory()->create();
+
+    $this->actingAs($owner)->post(route('pedidos.store'), [
+        'cliente_id' => Cliente::factory()->create()->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'user_id' => User::factory()->create()->id,
+        'bodega_id' => $bodega->id,
+        'tipo_precio' => 'DETAL',
+        'detalles' => [['producto_id' => $producto->id, 'cantidad' => 2, 'precio_unitario' => 50]],
+    ])->assertSessionHasNoErrors();
+
+    expect(StockBodega::where('producto_id', $producto->id)->exists())->toBeFalse();
 });

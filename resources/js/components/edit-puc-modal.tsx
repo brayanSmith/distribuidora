@@ -66,9 +66,9 @@ export default function EditPucModal({ puc, open, onOpenChange }: Props) {
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Editar cuenta PUC</DialogTitle>
+                                <DialogTitle>Editar medio de pago</DialogTitle>
                                 <DialogDescription>
-                                    Actualiza los datos de esta cuenta.
+                                    Actualiza los datos de este medio de pago.
                                 </DialogDescription>
                             </DialogHeader>
 

@@ -19,6 +19,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import ResizeHandle from '@/components/column-resize-handle';
 import ActionsCell from '@/components/actions-cell';
 import { Badge } from '@/components/ui/badge';
 import Pagination from '@/components/pagination';
@@ -333,19 +334,6 @@ function CurrencyBadge({
     );
 }
 
-function ResizeHandle({
-    onMouseDown,
-}: {
-    onMouseDown: (event: React.MouseEvent) => void;
-}) {
-    return (
-        <span
-            onMouseDown={onMouseDown}
-            className="hover:bg-primary/50 absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none"
-        />
-    );
-}
-
 type FilterCellProps = {
     filterKey: ColumnKey;
     value: string;
@@ -450,7 +438,7 @@ function HeaderCell({
                     <span className="text-muted-foreground">{meta.label}</span>
                 )}
             </div>
-            <ResizeHandle onMouseDown={onResizeStart} />
+            <ResizeHandle onPointerDown={onResizeStart} />
         </TableHead>
     );
 }
@@ -777,12 +765,14 @@ export default function StockBodegasTable({
             resizingKeyRef.current = null;
         };
 
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
+        document.addEventListener('pointermove', handleMouseMove);
+        document.addEventListener('pointerup', handleMouseUp);
+        document.addEventListener('pointercancel', handleMouseUp);
 
         return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('pointermove', handleMouseMove);
+            document.removeEventListener('pointerup', handleMouseUp);
+            document.removeEventListener('pointercancel', handleMouseUp);
         };
     }, []);
 
@@ -1208,7 +1198,9 @@ export default function StockBodegasTable({
                                 <TableHead className="relative text-center">
                                     Acciones
                                     <ResizeHandle
-                                        onMouseDown={startResize(ACCIONES_KEY)}
+                                        onPointerDown={startResize(
+                                            ACCIONES_KEY,
+                                        )}
                                     />
                                 </TableHead>
                             ) : null}

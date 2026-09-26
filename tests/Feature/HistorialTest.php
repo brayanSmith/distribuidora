@@ -292,13 +292,13 @@ test('the history records the changes of usuarios, their roles and the permissio
                 && collect($a['cambios'])->contains(fn ($c) => $c['campo'] === 'Permisos' && $c['despues'] === 'pedidos.view, pos.view'))));
 });
 
-test('the puc and the empresa are in the history too', function () {
+test('the medios de pago (puc) and the empresa are in the history too', function () {
     $this->actingAs($this->owner);
     $puc = Puc::factory()->create(['concepto' => 'Caja']);
     $puc->update(['concepto' => 'Caja general']);
     $empresa = Empresa::factory()->create(['nombre_empresa' => 'Llantas SAS']);
     $empresa->update(['telefono_empresa' => '3001112233']);
 
-    expect(Activity::where('description', 'Puc editado')->firstOrFail()->properties['attributes']['concepto'])->toBe('Caja general');
+    expect(Activity::where('description', 'Medio de pago editado')->firstOrFail()->properties['attributes']['concepto'])->toBe('Caja general');
     expect(Activity::where('description', 'Empresa editada')->firstOrFail()->properties['attributes']['telefono_empresa'])->toBe('3001112233');
 });

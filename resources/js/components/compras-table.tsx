@@ -16,6 +16,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import DateRangeFilter, {
     type DateRangeValue,
 } from '@/components/date-range-filter';
+import ResizeHandle from '@/components/column-resize-handle';
 import ActionsCell from '@/components/actions-cell';
 import DeleteCompraModal from '@/components/delete-compra-modal';
 import VerCompraModal from '@/components/ver-compra-modal';
@@ -265,19 +266,6 @@ function ListCell({ items }: { items: string[] }) {
     );
 }
 
-function ResizeHandle({
-    onMouseDown,
-}: {
-    onMouseDown: (event: React.MouseEvent) => void;
-}) {
-    return (
-        <span
-            onMouseDown={onMouseDown}
-            className="hover:bg-primary/50 absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none"
-        />
-    );
-}
-
 const ESTADO_OPTIONS = [
     { value: 'PENDIENTE', label: 'Pendiente' },
     { value: 'RECIBIDA', label: 'Recibida' },
@@ -418,7 +406,7 @@ function HeaderCell({
                     <span className="text-muted-foreground">{meta.label}</span>
                 )}
             </div>
-            <ResizeHandle onMouseDown={onResizeStart} />
+            <ResizeHandle onPointerDown={onResizeStart} />
         </TableHead>
     );
 }
@@ -641,12 +629,14 @@ export default function ComprasTable({
             resizingKeyRef.current = null;
         };
 
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
+        document.addEventListener('pointermove', handleMouseMove);
+        document.addEventListener('pointerup', handleMouseUp);
+        document.addEventListener('pointercancel', handleMouseUp);
 
         return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('pointermove', handleMouseMove);
+            document.removeEventListener('pointerup', handleMouseUp);
+            document.removeEventListener('pointercancel', handleMouseUp);
         };
     }, []);
 

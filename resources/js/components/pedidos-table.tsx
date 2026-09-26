@@ -17,6 +17,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import DateRangeFilter, {
     type DateRangeValue,
 } from '@/components/date-range-filter';
+import ResizeHandle from '@/components/column-resize-handle';
 import ActionsCell from '@/components/actions-cell';
 import DeletePedidoModal from '@/components/delete-pedido-modal';
 import RegistrarPagoModal from '@/components/registrar-pago-modal';
@@ -62,6 +63,7 @@ import {
 } from '@/hooks/use-persisted-state';
 import { cn } from '@/lib/utils';
 import type {
+    PedidoDetalle,
     Pedido,
     PedidoPermissions,
     PedidoRoutes,
@@ -192,8 +194,8 @@ const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
     saldo: 110,
     vendedor: 140,
     turno: 90,
-    productos: 220,
-    medios: 200,
+    productos: 280,
+    medios: 290,
     observacion_pago: 180,
     observacion: 180,
     estado_pago: 120,
@@ -216,13 +218,16 @@ function ajusteTotal(pedido: Pedido): number {
     );
 }
 
-function productosList(pedido: Pedido): string[] {
-    return (pedido.detalles ?? []).map(
-        (detalle) =>
-            detalle.producto?.concatenar_codigo_nombre ??
-            detalle.producto?.referencia_producto ??
-            `Producto ${detalle.producto_id}`,
+function productoNombre(detalle: PedidoDetalle): string {
+    return (
+        detalle.producto?.concatenar_codigo_nombre ??
+        detalle.producto?.referencia_producto ??
+        `Producto ${detalle.producto_id}`
     );
+}
+
+function productosList(pedido: Pedido): string[] {
+    return (pedido.detalles ?? []).map(productoNombre);
 }
 
 function tiposVehiculo(pedido: Pedido): string {
@@ -239,6 +244,21 @@ function productosResumen(pedido: Pedido): string {
     const nombres = productosList(pedido);
 
     return nombres.length > 0 ? nombres.join(', ') : '—';
+}
+
+/** What was paid through each método de pago (the abonos of the same one added up). */
+function mediosDePagoList(pedido: Pedido): { nombre: string; monto: number }[] {
+    const montos = new Map<string, number>();
+
+    (pedido.abonos ?? []).forEach((abono) => {
+        const nombre = abono.puc?.concatenar_subcuenta_concepto;
+
+        if (nombre) {
+            montos.set(nombre, (montos.get(nombre) ?? 0) + Number(abono.monto));
+        }
+    });
+
+    return Array.from(montos, ([nombre, monto]) => ({ nombre, monto }));
 }
 
 function mediosDePagoResumen(pedido: Pedido): string {
@@ -321,32 +341,58 @@ function TruncatedCell({ value }: { value: string }) {
     );
 }
 
-function ListCell({ items }: { items: string[] }) {
-    if (items.length === 0) {
+/** The productos of a pedido as a list, each with the quantity bought. */
+function ProductosCell({ pedido }: { pedido: Pedido }) {
+    const detalles = pedido.detalles ?? [];
+
+    if (detalles.length === 0) {
         return <span className="text-muted-foreground">—</span>;
     }
 
     return (
         <ul className="list-disc space-y-0.5 py-1 pl-4">
-            {items.map((item, index) => (
-                <li key={index} className="truncate" title={item}>
-                    {item}
+            {detalles.map((detalle) => (
+                <li key={detalle.id}>
+                    <span className="flex items-baseline justify-between gap-2">
+                        <span
+                            className="truncate"
+                            title={productoNombre(detalle)}
+                        >
+                            {productoNombre(detalle)}
+                        </span>
+                        <span className="font-medium whitespace-nowrap">
+                            × {Number(detalle.cantidad)}
+                        </span>
+                    </span>
                 </li>
             ))}
         </ul>
     );
 }
 
-function ResizeHandle({
-    onMouseDown,
-}: {
-    onMouseDown: (event: React.MouseEvent) => void;
-}) {
+/** The métodos de pago of a pedido as a list, each with the amount paid through it. */
+function MediosCell({ pedido }: { pedido: Pedido }) {
+    const medios = mediosDePagoList(pedido);
+
+    if (medios.length === 0) {
+        return <span className="text-muted-foreground">—</span>;
+    }
+
     return (
-        <span
-            onMouseDown={onMouseDown}
-            className="hover:bg-primary/50 absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none"
-        />
+        <ul className="list-disc space-y-0.5 py-1 pl-4">
+            {medios.map((medio) => (
+                <li key={medio.nombre}>
+                    <span className="flex items-baseline justify-between gap-2">
+                        <span className="truncate" title={medio.nombre}>
+                            {medio.nombre}
+                        </span>
+                        <span className="font-medium whitespace-nowrap text-emerald-600 dark:text-emerald-400">
+                            {currencyFormatter.format(medio.monto)}
+                        </span>
+                    </span>
+                </li>
+            ))}
+        </ul>
     );
 }
 
@@ -499,7 +545,7 @@ function HeaderCell({
                     <span className="text-muted-foreground">{meta.label}</span>
                 )}
             </div>
-            <ResizeHandle onMouseDown={onResizeStart} />
+            <ResizeHandle onPointerDown={onResizeStart} />
         </TableHead>
     );
 }
@@ -640,12 +686,14 @@ export default function PedidosTable({
             resizingKeyRef.current = null;
         };
 
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
+        document.addEventListener('pointermove', handleMouseMove);
+        document.addEventListener('pointerup', handleMouseUp);
+        document.addEventListener('pointercancel', handleMouseUp);
 
         return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('pointermove', handleMouseMove);
+            document.removeEventListener('pointerup', handleMouseUp);
+            document.removeEventListener('pointercancel', handleMouseUp);
         };
     }, []);
 
@@ -954,9 +1002,9 @@ export default function PedidosTable({
             case 'turno':
                 return <TruncatedCell value={pedido.turno ?? '—'} />;
             case 'productos':
-                return <ListCell items={productosList(pedido)} />;
+                return <ProductosCell pedido={pedido} />;
             case 'medios':
-                return <TruncatedCell value={mediosDePagoResumen(pedido)} />;
+                return <MediosCell pedido={pedido} />;
             case 'observacion_pago':
                 return <TruncatedCell value={pedido.observacion_pago ?? '—'} />;
             case 'observacion':

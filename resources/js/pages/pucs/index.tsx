@@ -121,20 +121,20 @@ export default function PucsIndex({ pucs, permissions }: Props) {
 
     return (
         <>
-            <Head title="PUC" />
+            <Head title="Medios de pago" />
 
             <div className="flex flex-col space-y-6">
                 <div className="flex items-center justify-between">
                     <Heading
                         variant="small"
-                        title="Plan único de cuentas"
-                        description="Administra las cuentas contables (PUC)"
+                        title="Medios de pago"
+                        description="Administra los medios de pago (cuentas del plan único de cuentas, PUC)"
                     />
 
                     {permissions.canCreate ? (
                         <CreatePucModal>
                             <Button data-test="create-puc-button">
-                                <Plus /> Nueva cuenta
+                                <Plus /> Nuevo medio de pago
                             </Button>
                         </CreatePucModal>
                     ) : null}
@@ -168,7 +168,7 @@ export default function PucsIndex({ pucs, permissions }: Props) {
 PucsIndex.layout = () => ({
     breadcrumbs: [
         {
-            title: 'PUC',
+            title: 'Medios de pago',
             href: index(),
         },
     ],

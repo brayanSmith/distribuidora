@@ -46,6 +46,6 @@ class Puc extends Model
      */
     protected function logEtiqueta(): array
     {
-        return ['Puc', false];
+        return ['Medio de pago', false];
     }
 }

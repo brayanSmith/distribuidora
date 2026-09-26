@@ -14,6 +14,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import DateRangeFilter, {
     type DateRangeValue,
 } from '@/components/date-range-filter';
+import ResizeHandle from '@/components/column-resize-handle';
 import { Badge } from '@/components/ui/badge';
 import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
@@ -266,19 +267,6 @@ function TruncatedCell({ value }: { value: string }) {
     );
 }
 
-function ResizeHandle({
-    onMouseDown,
-}: {
-    onMouseDown: (event: React.MouseEvent) => void;
-}) {
-    return (
-        <span
-            onMouseDown={onMouseDown}
-            className="hover:bg-primary/50 absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none"
-        />
-    );
-}
-
 type FilterCellProps = {
     filterKey: ColumnKey;
     value: string;
@@ -420,7 +408,7 @@ function HeaderCell({
                     <Icon className="size-3.5" />
                 </button>
             </div>
-            <ResizeHandle onMouseDown={onResizeStart} />
+            <ResizeHandle onPointerDown={onResizeStart} />
         </TableHead>
     );
 }
@@ -547,12 +535,14 @@ export default function PedidoDetallesTable({
             resizingKeyRef.current = null;
         };
 
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
+        document.addEventListener('pointermove', handleMouseMove);
+        document.addEventListener('pointerup', handleMouseUp);
+        document.addEventListener('pointercancel', handleMouseUp);
 
         return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('pointermove', handleMouseMove);
+            document.removeEventListener('pointerup', handleMouseUp);
+            document.removeEventListener('pointercancel', handleMouseUp);
         };
     }, []);
 

@@ -68,6 +68,12 @@ export default function GastosIndex({
                 render: (gasto) => gasto.bodega?.nombre_bodega ?? '—',
             },
             {
+                key: 'usuario',
+                label: 'Usuario',
+                getValue: (gasto) => gasto.user?.name ?? '',
+                render: (gasto) => gasto.user?.name ?? '—',
+            },
+            {
                 key: 'fecha',
                 label: 'Fecha',
                 filter: 'date',

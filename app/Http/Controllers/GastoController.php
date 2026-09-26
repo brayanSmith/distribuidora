@@ -27,7 +27,7 @@ class GastoController extends Controller
         $eliminados = $this->verEliminados($request, 'gastos');
 
         return Inertia::render('gastos/index', [
-            'gastos' => Gasto::with('bodega')->orderByDesc('fecha_gasto')
+            'gastos' => Gasto::with(['bodega', 'user:id,name'])->orderByDesc('fecha_gasto')
                 ->when($eliminados, fn ($query) => $query->onlyTrashed())
                 ->get(),
             'eliminados' => $eliminados,

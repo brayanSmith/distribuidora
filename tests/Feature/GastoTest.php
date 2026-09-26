@@ -58,3 +58,12 @@ test('descripcion, monto and fecha_gasto are required', function () {
     $this->actingAs($owner)->post(route('gastos.store'), [])
         ->assertSessionHasErrors(['descripcion', 'monto', 'fecha_gasto']);
 });
+
+test('the gastos listing sends the user who registered each gasto', function () {
+    $owner = User::factory()->create(['name' => 'Carol']);
+    asignarRol($owner, 'Owner');
+    Gasto::factory()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)->get(route('gastos.index'))
+        ->assertInertia(fn ($page) => $page->where('gastos.0.user.name', 'Carol'));
+});
