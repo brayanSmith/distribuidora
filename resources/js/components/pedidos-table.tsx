@@ -17,6 +17,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import DateRangeFilter, {
     type DateRangeValue,
 } from '@/components/date-range-filter';
+import TableBottomBar from '@/components/table-bottom-bar';
 import ResizeHandle from '@/components/column-resize-handle';
 import ActionsCell from '@/components/actions-cell';
 import DeletePedidoModal from '@/components/delete-pedido-modal';
@@ -1143,6 +1144,8 @@ export default function PedidosTable({
         }
     };
 
+    const tableScrollRef = useRef<HTMLDivElement>(null);
+
     return (
         <div className="flex flex-col space-y-6">
             <div className="flex items-center justify-between gap-4">
@@ -1192,7 +1195,10 @@ export default function PedidosTable({
                 </DropdownMenu>
             </div>
 
-            <div className="relative max-h-[75vh] w-full overflow-auto rounded-md border">
+            <div
+                ref={tableScrollRef}
+                className="relative max-h-[75vh] w-full overflow-auto rounded-md border"
+            >
                 <table className="w-full table-fixed caption-bottom text-sm [&_tr]:divide-x">
                     <colgroup>
                         {visibleColumnOrder.map((key) => (
@@ -1267,8 +1273,11 @@ export default function PedidosTable({
                         : 'Ningún pedido coincide con la búsqueda.'}
                 </p>
             ) : (
-                <div className="flex items-center justify-between text-sm">
-                    <p className="text-muted-foreground">
+                <TableBottomBar
+                    scrollRef={tableScrollRef}
+                    className="flex items-center justify-between text-sm"
+                >
+                    <p className="text-muted-foreground hidden sm:block">
                         Mostrando {(currentPage - 1) * pageSize + 1}–
                         {Math.min(
                             currentPage * pageSize,
@@ -1283,7 +1292,7 @@ export default function PedidosTable({
                         onPageChange={setPage}
                         dataTest="pedidos-page"
                     />
-                </div>
+                </TableBottomBar>
             )}
 
             <VerPedidoModal

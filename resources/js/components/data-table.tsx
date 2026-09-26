@@ -11,7 +11,8 @@ import {
     Search,
     X,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
+import TableBottomBar from '@/components/table-bottom-bar';
 import ResizeHandle from '@/components/column-resize-handle';
 import DateRangeFilter from '@/components/date-range-filter';
 import PageSizeSelect from '@/components/page-size-select';
@@ -262,6 +263,8 @@ export default function DataTable<T>({
         storageKey: storageKey ?? dataTestPrefix,
     });
 
+    const tableScrollRef = useRef<HTMLDivElement>(null);
+
     return (
         <div className="flex flex-col space-y-6">
             {toolbar ? (
@@ -357,7 +360,10 @@ export default function DataTable<T>({
                 </div>
             ) : null}
 
-            <div className="relative max-h-[75vh] w-full overflow-auto rounded-md border">
+            <div
+                ref={tableScrollRef}
+                className="relative max-h-[75vh] w-full overflow-auto rounded-md border"
+            >
                 <table className="w-full table-fixed caption-bottom text-sm [&_tr]:divide-x">
                     <colgroup>
                         {table.visibleColumnOrder.map((key) => (
@@ -535,8 +541,11 @@ export default function DataTable<T>({
                     {data.length === 0 ? emptyMessage : noResultsMessage}
                 </p>
             ) : paginate && table.totalRows > 0 ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                    <p className="text-muted-foreground">
+                <TableBottomBar
+                    scrollRef={tableScrollRef}
+                    className="flex flex-wrap items-center justify-between gap-3 text-sm"
+                >
+                    <p className="text-muted-foreground hidden sm:block">
                         Mostrando {(table.page - 1) * table.pageSize + 1}–
                         {Math.min(table.page * table.pageSize, table.totalRows)}{' '}
                         de {table.totalRows} registros
@@ -561,7 +570,7 @@ export default function DataTable<T>({
                         onPageChange={table.setPage}
                         dataTest={`${dataTestPrefix}-page`}
                     />
-                </div>
+                </TableBottomBar>
             ) : null}
         </div>
     );
