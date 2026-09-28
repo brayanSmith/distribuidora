@@ -41,12 +41,19 @@ export default function PageSizeSelect({
         setDraft(String(value));
     }, [value]);
 
-    const commit = () => {
+    /** A typed amount applies immediately; an empty or invalid draft is only cleaned up on blur. */
+    const commitDraft = (next: string) => {
+        const amount = Math.floor(Number(next));
+
+        if (next.trim() !== '' && Number.isFinite(amount) && amount >= 1) {
+            onChange(Math.min(amount, max));
+        }
+    };
+
+    const resetIfInvalid = () => {
         const amount = Math.floor(Number(draft));
 
-        if (Number.isFinite(amount) && amount >= 1) {
-            onChange(Math.min(amount, max));
-        } else {
+        if (draft.trim() === '' || !Number.isFinite(amount) || amount < 1) {
             setDraft(String(value));
         }
     };
@@ -93,8 +100,11 @@ export default function PageSizeSelect({
                     min={1}
                     max={max}
                     value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onBlur={commit}
+                    onChange={(event) => {
+                        setDraft(event.target.value);
+                        commitDraft(event.target.value);
+                    }}
+                    onBlur={resetIfInvalid}
                     onKeyDown={(event) => {
                         if (event.key === 'Enter') {
                             event.currentTarget.blur();

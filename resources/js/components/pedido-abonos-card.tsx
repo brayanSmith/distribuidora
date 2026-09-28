@@ -4,6 +4,7 @@ import ActionsCell from '@/components/actions-cell';
 import DeleteAbonoModal from '@/components/delete-abono-modal';
 import EditAbonoModal from '@/components/edit-abono-modal';
 import RegistrarPagoModal from '@/components/registrar-pago-modal';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -52,6 +53,7 @@ export default function PedidoAbonosCard({
     const [deleteAbono, setDeleteAbono] = useState<PedidoAbono | null>(null);
 
     const abonos = pedido.abonos ?? [];
+    const saldado = Number(pedido.saldo_pendiente) <= 0;
 
     return (
         <div className="bg-card space-y-4 rounded-lg border p-4">
@@ -60,7 +62,7 @@ export default function PedidoAbonosCard({
                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     Abonos Registrados
                 </div>
-                {canCreate ? (
+                {canCreate && !saldado ? (
                     <Button
                         type="button"
                         variant="destructive"
@@ -70,6 +72,14 @@ export default function PedidoAbonosCard({
                     >
                         Registrar Pago
                     </Button>
+                ) : null}
+                {canCreate && saldado ? (
+                    <Badge
+                        className="border-transparent bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                        data-test="pedido-saldado-badge"
+                    >
+                        Pedido saldado
+                    </Badge>
                 ) : null}
             </div>
 

@@ -23,6 +23,7 @@ import DeleteCompraModal from '@/components/delete-compra-modal';
 import VerCompraModal from '@/components/ver-compra-modal';
 import RestoreButton from '@/components/restore-button';
 import { Badge } from '@/components/ui/badge';
+import PageSizeSelect from '@/components/page-size-select';
 import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
@@ -446,7 +447,14 @@ export default function ComprasTable({
         session,
     );
     const [page, setPage] = useState(1);
-    const pageSize = 25;
+    const [pageSize, setPageSize] = usePersistedState<number>(
+        `${storageKey}:page-size`,
+        25,
+        {
+            merge: (stored) =>
+                Number.isInteger(stored) && stored >= 1 ? stored : 25,
+        },
+    );
 
     const bodegas = useMemo(() => {
         const map = new Map<number, string>();
@@ -839,7 +847,7 @@ export default function ComprasTable({
 
     useEffect(() => {
         setPage(1);
-    }, [search, filters, dateRange, sortKey, sortDirection]);
+    }, [search, filters, dateRange, sortKey, sortDirection, pageSize]);
 
     const renderFilterHead = (meta: ColumnMeta): ReactNode => {
         switch (meta.filter) {
@@ -1157,7 +1165,7 @@ export default function ComprasTable({
             ) : (
                 <TableBottomBar
                     scrollRef={tableScrollRef}
-                    className="flex items-center justify-between text-sm"
+                    className="flex flex-wrap items-center justify-between gap-3 text-sm"
                 >
                     <p className="text-muted-foreground hidden sm:block">
                         Mostrando {(currentPage - 1) * pageSize + 1}–
@@ -1167,6 +1175,12 @@ export default function ComprasTable({
                         )}{' '}
                         de {visibleCompras.length} compras
                     </p>
+
+                    <PageSizeSelect
+                        value={pageSize}
+                        onChange={setPageSize}
+                        dataTest="compras-page-size"
+                    />
 
                     <Pagination
                         page={currentPage}

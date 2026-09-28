@@ -23,6 +23,7 @@ import TableBottomBar from '@/components/table-bottom-bar';
 import ResizeHandle from '@/components/column-resize-handle';
 import ActionsCell from '@/components/actions-cell';
 import { Badge } from '@/components/ui/badge';
+import PageSizeSelect from '@/components/page-size-select';
 import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
@@ -249,6 +250,51 @@ function valorUndInversion(row: ProductoStockRow): number {
 
 function valorTotalInversion(row: ProductoStockRow): number {
     return valorUndInversion(row) * totalStock(row);
+}
+
+function sumBy(
+    rows: ProductoStockRow[],
+    fn: (row: ProductoStockRow) => number,
+): number {
+    return rows.reduce((sum, row) => sum + fn(row), 0);
+}
+
+/**
+ * Only quantities and already-totaled amounts are summed; unit prices
+ * (valorVenta, costo, etc.) would not mean anything added together.
+ */
+function renderFooterCell(key: ColumnKey, rows: ProductoStockRow[]): ReactNode {
+    switch (key) {
+        case 'producto':
+            return 'Totales';
+        case 'stockTotal':
+            return (
+                <div className="flex justify-end">
+                    <ValueBadge value={sumBy(rows, totalStock)} />
+                </div>
+            );
+        case 'total':
+            return currencyFormatter.format(sumBy(rows, totalVenta));
+        case 'totalCosto':
+            return currencyFormatter.format(sumBy(rows, totalCosto));
+        case 'valorTotalInversion':
+            return currencyFormatter.format(sumBy(rows, valorTotalInversion));
+        default: {
+            const bodegaId = bodegaIdFromColumnKey(key);
+
+            if (bodegaId === null) {
+                return null;
+            }
+
+            return (
+                <div className="flex justify-end">
+                    <ValueBadge
+                        value={sumBy(rows, (row) => bodegaStock(row, bodegaId))}
+                    />
+                </div>
+            );
+        }
+    }
 }
 
 function getSortValue(row: ProductoStockRow, key: ColumnKey): string | number {
@@ -554,7 +600,14 @@ export default function StockBodegasTable({
         Partial<Record<ColumnKey, string>>
     >(`${storageKey}:filters`, {}, session);
     const [page, setPage] = useState(1);
-    const pageSize = 25;
+    const [pageSize, setPageSize] = usePersistedState<number>(
+        `${storageKey}:page-size`,
+        25,
+        {
+            merge: (stored) =>
+                Number.isInteger(stored) && stored >= 1 ? stored : 25,
+        },
+    );
     const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
     const bodegas = useMemo<BodegaOption[]>(
@@ -961,7 +1014,7 @@ export default function StockBodegasTable({
 
     useEffect(() => {
         setPage(1);
-    }, [search, filters, sortKey, sortDirection]);
+    }, [search, filters, sortKey, sortDirection, pageSize]);
 
     const renderFilterHead = (meta: ColumnMeta): ReactNode => (
         <FilterCell
@@ -1058,6 +1111,27 @@ export default function StockBodegasTable({
     };
 
     const tableScrollRef = useRef<HTMLDivElement>(null);
+    const totalsScrollRef = useRef<HTMLDivElement>(null);
+
+    // Keeps the totals bar's columns lined up with the table above it while
+    // the user scrolls the table horizontally.
+    useEffect(() => {
+        const target = tableScrollRef.current;
+        const totalsEl = totalsScrollRef.current;
+
+        if (!target || !totalsEl) {
+            return;
+        }
+
+        const sync = () => {
+            totalsEl.scrollLeft = target.scrollLeft;
+        };
+
+        sync();
+        target.addEventListener('scroll', sync, { passive: true });
+
+        return () => target.removeEventListener('scroll', sync);
+    }, [vista, visibleColumnOrder, showTraslado]);
 
     return (
         <div className="flex flex-col space-y-6">
@@ -1156,163 +1230,243 @@ export default function StockBodegasTable({
                 </div>
             </div>
 
-            <div
-                ref={tableScrollRef}
-                className="relative max-h-[75vh] w-full overflow-auto rounded-md border"
-            >
-                <table className="w-full table-fixed caption-bottom text-sm [&_tr]:divide-x">
-                    <colgroup>
-                        {visibleColumnOrder.map((key) => (
-                            <col
-                                key={key}
-                                style={{ width: columnWidths[key] }}
-                            />
-                        ))}
-                        {showTraslado ? (
-                            <col
-                                style={{ width: columnWidths[ACCIONES_KEY] }}
-                            />
-                        ) : null}
-                    </colgroup>
-                    <TableHeader className="bg-muted sticky top-0 z-20 shadow-sm">
-                        <TableRow>
-                            {visibleColumnOrder.map((key) => {
-                                const meta = columnDefsMap.get(key)!;
+            <div className="flex flex-col">
+                <div
+                    ref={tableScrollRef}
+                    className="relative max-h-[75vh] w-full overflow-auto rounded-md border"
+                >
+                    <table className="w-full table-fixed caption-bottom text-sm [&_tr]:divide-x">
+                        <colgroup>
+                            {visibleColumnOrder.map((key) => (
+                                <col
+                                    key={key}
+                                    style={{ width: columnWidths[key] }}
+                                />
+                            ))}
+                            {showTraslado ? (
+                                <col
+                                    style={{
+                                        width: columnWidths[ACCIONES_KEY],
+                                    }}
+                                />
+                            ) : null}
+                        </colgroup>
+                        <TableHeader className="bg-muted sticky top-0 z-20 shadow-sm">
+                            <TableRow>
+                                {visibleColumnOrder.map((key) => {
+                                    const meta = columnDefsMap.get(key)!;
+
+                                    return (
+                                        <HeaderCell
+                                            key={key}
+                                            meta={meta}
+                                            activeSortKey={sortKey}
+                                            sortDirection={sortDirection}
+                                            onSort={handleSort}
+                                            onResizeStart={startResize(key)}
+                                            onDragStart={handleColumnDragStart(
+                                                key,
+                                            )}
+                                            onDragOver={handleColumnDragOver(
+                                                key,
+                                            )}
+                                            onDrop={handleColumnDrop(key)}
+                                            onDragEnd={handleColumnDragEnd}
+                                            isDragging={draggedKey === key}
+                                            isDragOver={
+                                                dragOverKey === key &&
+                                                draggedKey !== key
+                                            }
+                                            cellRef={registerHeaderRef(key)}
+                                        />
+                                    );
+                                })}
+                                {showTraslado ? (
+                                    <TableHead className="relative text-center">
+                                        Acciones
+                                        <ResizeHandle
+                                            onPointerDown={startResize(
+                                                ACCIONES_KEY,
+                                            )}
+                                        />
+                                    </TableHead>
+                                ) : null}
+                            </TableRow>
+                            <TableRow>
+                                {visibleColumnOrder.map((key) =>
+                                    renderFilterHead(columnDefsMap.get(key)!),
+                                )}
+                                {showTraslado ? <TableHead /> : null}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {paginatedRows.map((row) => {
+                                const expanded =
+                                    vista === 'stock' &&
+                                    expandedRows.has(row.productoId);
 
                                 return (
-                                    <HeaderCell
-                                        key={key}
-                                        meta={meta}
-                                        activeSortKey={sortKey}
-                                        sortDirection={sortDirection}
-                                        onSort={handleSort}
-                                        onResizeStart={startResize(key)}
-                                        onDragStart={handleColumnDragStart(key)}
-                                        onDragOver={handleColumnDragOver(key)}
-                                        onDrop={handleColumnDrop(key)}
-                                        onDragEnd={handleColumnDragEnd}
-                                        isDragging={draggedKey === key}
-                                        isDragOver={
-                                            dragOverKey === key &&
-                                            draggedKey !== key
-                                        }
-                                        cellRef={registerHeaderRef(key)}
-                                    />
-                                );
-                            })}
-                            {showTraslado ? (
-                                <TableHead className="relative text-center">
-                                    Acciones
-                                    <ResizeHandle
-                                        onPointerDown={startResize(
-                                            ACCIONES_KEY,
-                                        )}
-                                    />
-                                </TableHead>
-                            ) : null}
-                        </TableRow>
-                        <TableRow>
-                            {visibleColumnOrder.map((key) =>
-                                renderFilterHead(columnDefsMap.get(key)!),
-                            )}
-                            {showTraslado ? <TableHead /> : null}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {paginatedRows.map((row) => {
-                            const expanded =
-                                vista === 'stock' &&
-                                expandedRows.has(row.productoId);
+                                    <Fragment key={row.productoId}>
+                                        <TableRow data-test="stock-bodega-row">
+                                            {visibleColumnOrder.map((key) => {
+                                                const meta =
+                                                    columnDefsMap.get(key)!;
 
-                            return (
-                                <Fragment key={row.productoId}>
-                                    <TableRow data-test="stock-bodega-row">
-                                        {visibleColumnOrder.map((key) => {
-                                            const meta =
-                                                columnDefsMap.get(key)!;
-
-                                            return (
-                                                <TableCell
-                                                    key={key}
-                                                    className={
-                                                        meta.align === 'right'
-                                                            ? 'text-right'
-                                                            : undefined
-                                                    }
-                                                >
-                                                    {renderBodyCell(key, row)}
-                                                </TableCell>
-                                            );
-                                        })}
-                                        {showTraslado ? (
-                                            <TableCell>
-                                                <ActionsCell className="justify-center">
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        data-test="stock-bodega-traslado"
-                                                        onClick={() =>
-                                                            onTraslado?.(
-                                                                row.productoId,
-                                                            )
+                                                return (
+                                                    <TableCell
+                                                        key={key}
+                                                        className={
+                                                            meta.align ===
+                                                            'right'
+                                                                ? 'text-right'
+                                                                : undefined
                                                         }
                                                     >
-                                                        <Truck className="size-4" />
-                                                        Traslado
-                                                    </Button>
-                                                </ActionsCell>
-                                            </TableCell>
-                                        ) : null}
-                                    </TableRow>
-                                    {expanded ? (
-                                        <TableRow data-test="stock-bodega-detail">
-                                            <TableCell
-                                                colSpan={
-                                                    visibleColumnOrder.length +
-                                                    (showTraslado ? 1 : 0)
-                                                }
-                                                className="bg-muted/10 p-3"
-                                            >
-                                                <ExpandedDetail
-                                                    row={row}
-                                                    bodegas={bodegas}
-                                                />
-                                            </TableCell>
+                                                        {renderBodyCell(
+                                                            key,
+                                                            row,
+                                                        )}
+                                                    </TableCell>
+                                                );
+                                            })}
+                                            {showTraslado ? (
+                                                <TableCell>
+                                                    <ActionsCell className="justify-center">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            data-test="stock-bodega-traslado"
+                                                            onClick={() =>
+                                                                onTraslado?.(
+                                                                    row.productoId,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Truck className="size-4" />
+                                                            Traslado
+                                                        </Button>
+                                                    </ActionsCell>
+                                                </TableCell>
+                                            ) : null}
                                         </TableRow>
-                                    ) : null}
-                                </Fragment>
-                            );
-                        })}
-                    </TableBody>
-                </table>
-            </div>
+                                        {expanded ? (
+                                            <TableRow data-test="stock-bodega-detail">
+                                                <TableCell
+                                                    colSpan={
+                                                        visibleColumnOrder.length +
+                                                        (showTraslado ? 1 : 0)
+                                                    }
+                                                    className="bg-muted/10 p-3"
+                                                >
+                                                    <ExpandedDetail
+                                                        row={row}
+                                                        bodegas={bodegas}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : null}
+                                    </Fragment>
+                                );
+                            })}
+                        </TableBody>
+                    </table>
+                </div>
 
-            {visibleRows.length === 0 ? (
-                <p className="text-muted-foreground py-8 text-center">
-                    {rows.length === 0
-                        ? 'No hay stock registrado.'
-                        : 'Ningún producto coincide con la búsqueda.'}
-                </p>
-            ) : (
-                <TableBottomBar
-                    scrollRef={tableScrollRef}
-                    className="flex items-center justify-between text-sm"
-                >
-                    <p className="text-muted-foreground hidden sm:block">
-                        Mostrando {(currentPage - 1) * pageSize + 1}–
-                        {Math.min(currentPage * pageSize, visibleRows.length)}{' '}
-                        de {visibleRows.length} productos
+                {visibleRows.length === 0 ? (
+                    <p className="text-muted-foreground py-8 text-center">
+                        {rows.length === 0
+                            ? 'No hay stock registrado.'
+                            : 'Ningún producto coincide con la búsqueda.'}
                     </p>
+                ) : (
+                    <TableBottomBar
+                        scrollRef={tableScrollRef}
+                        className="flex flex-col gap-2"
+                    >
+                        {vista === 'inversion' ? (
+                            <div
+                                ref={totalsScrollRef}
+                                className="bg-muted overflow-x-hidden rounded-md border"
+                            >
+                                <table className="w-full table-fixed text-sm [&_tr]:divide-x">
+                                    <colgroup>
+                                        {visibleColumnOrder.map((key) => (
+                                            <col
+                                                key={key}
+                                                style={{
+                                                    width: columnWidths[key],
+                                                }}
+                                            />
+                                        ))}
+                                        {showTraslado ? (
+                                            <col
+                                                style={{
+                                                    width: columnWidths[
+                                                        ACCIONES_KEY
+                                                    ],
+                                                }}
+                                            />
+                                        ) : null}
+                                    </colgroup>
+                                    <tbody>
+                                        <tr data-test="stock-bodegas-totals-row">
+                                            {visibleColumnOrder.map((key) => {
+                                                const meta =
+                                                    columnDefsMap.get(key)!;
 
-                    <Pagination
-                        page={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={setPage}
-                        dataTest="stock-bodegas-page"
-                    />
-                </TableBottomBar>
-            )}
+                                                return (
+                                                    <TableCell
+                                                        key={key}
+                                                        className={cn(
+                                                            'text-foreground py-2.5 font-medium',
+                                                            meta.align ===
+                                                                'right' &&
+                                                                'text-right',
+                                                        )}
+                                                    >
+                                                        {renderFooterCell(
+                                                            key,
+                                                            visibleRows,
+                                                        )}
+                                                    </TableCell>
+                                                );
+                                            })}
+                                            {showTraslado ? (
+                                                <TableCell className="py-2.5" />
+                                            ) : null}
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : null}
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                            <p className="text-muted-foreground hidden sm:block">
+                                Mostrando {(currentPage - 1) * pageSize + 1}–
+                                {Math.min(
+                                    currentPage * pageSize,
+                                    visibleRows.length,
+                                )}{' '}
+                                de {visibleRows.length} productos
+                            </p>
+
+                            <PageSizeSelect
+                                value={pageSize}
+                                onChange={setPageSize}
+                                dataTest="stock-bodegas-page-size"
+                            />
+
+                            <Pagination
+                                page={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setPage}
+                                dataTest="stock-bodegas-page"
+                            />
+                        </div>
+                    </TableBottomBar>
+                )}
+            </div>
         </div>
     );
 }

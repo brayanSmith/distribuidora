@@ -242,7 +242,7 @@ export default function DataTable<T>({
     noResultsMessage = 'Ningún registro coincide con la búsqueda.',
     onRowClick,
     pageSize,
-    pageSizeOptions,
+    pageSizeOptions = [25, 50, 100],
     pageSizeMax,
     groupBy,
     groupLabel,

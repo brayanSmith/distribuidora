@@ -1,5 +1,5 @@
 import { Form } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Combobox from '@/components/combobox';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,19 @@ export default function RegistrarPagoModal({
     const [monto, setMonto] = useState<string>(defaultMonto);
     const [conCuantoPago, setConCuantoPago] = useState<string>('');
 
+    // Reset on open (not on close): closing right after a successful submit
+    // would otherwise capture the saldo from before that payment, since the
+    // `onSuccess` callback closes over the props from when the form was
+    // submitted, not the fresh ones Inertia reloads afterwards.
+    useEffect(() => {
+        if (open) {
+            setPucId('');
+            setVendedorId(pedido.user_id ? String(pedido.user_id) : '');
+            setMonto(pedido.saldo_pendiente ?? '');
+            setConCuantoPago('');
+        }
+    }, [open, pedido.saldo_pendiente, pedido.user_id]);
+
     const cambio = useMemo(() => {
         const montoNum = Number(monto) || 0;
         const conCuantoNum = Number(conCuantoPago) || montoNum;
@@ -80,33 +93,14 @@ export default function RegistrarPagoModal({
             ? Number(conCuantoPago)
             : null;
 
-    const resetForm = () => {
-        setPucId('');
-        setVendedorId(pedido.user_id ? String(pedido.user_id) : '');
-        setMonto(defaultMonto);
-        setConCuantoPago('');
-    };
-
     return (
-        <Dialog
-            open={open}
-            onOpenChange={(nextOpen) => {
-                onOpenChange(nextOpen);
-
-                if (!nextOpen) {
-                    resetForm();
-                }
-            }}
-        >
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <Form
                     key={String(open)}
                     {...routes.abonos.store.form([pedido.id])}
                     className="space-y-6"
-                    onSuccess={() => {
-                        onOpenChange(false);
-                        resetForm();
-                    }}
+                    onSuccess={() => onOpenChange(false)}
                 >
                     {({ errors, processing }) => (
                         <>

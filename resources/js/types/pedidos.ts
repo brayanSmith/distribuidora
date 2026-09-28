@@ -62,6 +62,7 @@ export type ProductoPedidoOption = {
 export type PedidoDetalle = {
     id: number;
     producto_id: number;
+    bodega_id: number | null;
     cantidad: string;
     precio_unitario: string;
     costo_unitario: string | null;
@@ -69,6 +70,7 @@ export type PedidoDetalle = {
     ganancia_total: string | null;
     subtotal: string;
     producto?: ProductoPedidoOption | null;
+    bodega?: { id: number; nombre_bodega: string } | null;
 };
 
 export type PedidoAbono = {

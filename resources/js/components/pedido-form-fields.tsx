@@ -3,6 +3,7 @@ import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import type { ReactNode } from 'react';
 
 import Combobox from '@/components/combobox';
+import CopyButton from '@/components/copy-button';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,7 @@ type Props = {
 
 type DetalleRow = {
     producto_id: number;
+    bodega_id: number;
     cantidad: number;
     precio_unitario: number;
 };
@@ -108,6 +110,10 @@ export default function PedidoFormFields({
     const productoMap = useMemo(
         () => new Map(productos.map((producto) => [producto.id, producto])),
         [productos],
+    );
+    const bodegaMap = useMemo(
+        () => new Map(bodegas.map((bodega) => [bodega.id, bodega])),
+        [bodegas],
     );
 
     const clienteOptions = useMemo(
@@ -178,17 +184,22 @@ export default function PedidoFormFields({
     const [rows, setRows] = useState<DetalleRow[]>(
         (pedido?.detalles ?? []).map((detalle) => ({
             producto_id: detalle.producto_id,
+            bodega_id: detalle.bodega_id ?? (Number(pedido?.bodega_id) || 0),
             cantidad: Number(detalle.cantidad),
             precio_unitario: Number(detalle.precio_unitario),
         })),
     );
 
     const [selectedProductoId, setSelectedProductoId] = useState<string>('');
+    // Empty means "same bodega as the pedido"; picking one overrides it just
+    // for this line, in case that product needs to come from elsewhere.
+    const [detalleBodegaId, setDetalleBodegaId] = useState<string>('');
     const [cantidad, setCantidad] = useState<string>('');
     const [precioUnitario, setPrecioUnitario] = useState<string>('');
 
     const resetAddRow = () => {
         setSelectedProductoId('');
+        setDetalleBodegaId('');
         setCantidad('');
         setPrecioUnitario('');
     };
@@ -217,6 +228,7 @@ export default function PedidoFormFields({
     // the pedido already had (that is how a line is edited).
     const canAgregar =
         Boolean(selectedProductoId) &&
+        Boolean(detalleBodegaId || bodegaId) &&
         Number(cantidad) > 0 &&
         (puedeAgregarProductos ||
             productosOriginales.has(Number(selectedProductoId)));
@@ -232,6 +244,7 @@ export default function PedidoFormFields({
             ...prev.filter((row) => row.producto_id !== productoId),
             {
                 producto_id: productoId,
+                bodega_id: Number(detalleBodegaId || bodegaId),
                 cantidad: Number(cantidad),
                 precio_unitario: Number(precioUnitario) || 0,
             },
@@ -241,6 +254,7 @@ export default function PedidoFormFields({
 
     const handleEditarFila = (row: DetalleRow) => {
         setSelectedProductoId(String(row.producto_id));
+        setDetalleBodegaId(String(row.bodega_id));
         setCantidad(String(row.cantidad));
         setPrecioUnitario(String(row.precio_unitario));
         setRows((prev) =>
@@ -280,8 +294,16 @@ export default function PedidoFormFields({
         <div className="space-y-6">
             <div className="bg-card space-y-4 rounded-lg border p-4">
                 <div className="flex items-center justify-between">
-                    <div className="font-semibold">
+                    <div className="flex items-center gap-2 font-semibold">
                         Datos Generales del Pedido
+                        {pedido ? (
+                            <span
+                                className="text-muted-foreground font-normal"
+                                data-test="pedido-id"
+                            >
+                                #{pedido.id}
+                            </span>
+                        ) : null}
                     </div>
                     <Badge
                         className={cn(
@@ -364,36 +386,68 @@ export default function PedidoFormFields({
                                 DATOS DEL CLIENTE
                             </div>
                             <div className="grid gap-2 sm:grid-cols-4">
-                                <div>
-                                    <span className="text-muted-foreground">
-                                        Documento:{' '}
+                                <div className="flex items-center justify-between gap-1">
+                                    <span>
+                                        <span className="text-muted-foreground">
+                                            Documento:{' '}
+                                        </span>
+                                        {clienteSeleccionado.numero_documento ??
+                                            '—'}
                                     </span>
-                                    {clienteSeleccionado.numero_documento ??
-                                        '—'}
+                                    <CopyButton
+                                        value={
+                                            clienteSeleccionado.numero_documento
+                                        }
+                                        label="documento"
+                                    />
                                 </div>
-                                <div>
-                                    <span className="text-muted-foreground">
-                                        Teléfono:{' '}
+                                <div className="flex items-center justify-between gap-1">
+                                    <span>
+                                        <span className="text-muted-foreground">
+                                            Teléfono:{' '}
+                                        </span>
+                                        {clienteSeleccionado.telefono ?? '—'}
                                     </span>
-                                    {clienteSeleccionado.telefono ?? '—'}
+                                    <CopyButton
+                                        value={clienteSeleccionado.telefono}
+                                        label="teléfono"
+                                    />
                                 </div>
-                                <div>
-                                    <span className="text-muted-foreground">
-                                        Ciudad:{' '}
+                                <div className="flex items-center justify-between gap-1">
+                                    <span>
+                                        <span className="text-muted-foreground">
+                                            Ciudad:{' '}
+                                        </span>
+                                        {clienteSeleccionado.ciudad ?? '—'}
                                     </span>
-                                    {clienteSeleccionado.ciudad ?? '—'}
+                                    <CopyButton
+                                        value={clienteSeleccionado.ciudad}
+                                        label="ciudad"
+                                    />
                                 </div>
-                                <div>
-                                    <span className="text-muted-foreground">
-                                        Email:{' '}
+                                <div className="flex items-center justify-between gap-1">
+                                    <span>
+                                        <span className="text-muted-foreground">
+                                            Email:{' '}
+                                        </span>
+                                        {clienteSeleccionado.email ?? '—'}
                                     </span>
-                                    {clienteSeleccionado.email ?? '—'}
+                                    <CopyButton
+                                        value={clienteSeleccionado.email}
+                                        label="email"
+                                    />
                                 </div>
-                                <div className="sm:col-span-4">
-                                    <span className="text-muted-foreground">
-                                        Dirección:{' '}
+                                <div className="flex items-center justify-between gap-1 sm:col-span-4">
+                                    <span>
+                                        <span className="text-muted-foreground">
+                                            Dirección:{' '}
+                                        </span>
+                                        {clienteSeleccionado.direccion ?? '—'}
                                     </span>
-                                    {clienteSeleccionado.direccion ?? '—'}
+                                    <CopyButton
+                                        value={clienteSeleccionado.direccion}
+                                        label="dirección"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -531,6 +585,9 @@ export default function PedidoFormFields({
                                 </span>
                             </TableHead>
                             <TableHead className="text-center">
+                                Bodega
+                            </TableHead>
+                            <TableHead className="text-center">
                                 Cantidad
                                 <span
                                     aria-hidden="true"
@@ -568,6 +625,16 @@ export default function PedidoFormFields({
                                         searchPlaceholder="Buscar producto..."
                                         emptyText="No se encontraron productos."
                                         dataTest="pedido-producto-select"
+                                    />
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    <Combobox
+                                        options={bodegaOptions}
+                                        value={detalleBodegaId || bodegaId}
+                                        onValueChange={setDetalleBodegaId}
+                                        searchPlaceholder="Buscar bodega..."
+                                        emptyText="No se encontraron bodegas."
+                                        dataTest="pedido-detalle-bodega"
                                     />
                                 </TableCell>
                                 <TableCell className="text-center">
@@ -628,6 +695,9 @@ export default function PedidoFormFields({
                             <TableRow>
                                 <TableHead>Producto</TableHead>
                                 <TableHead className="text-center">
+                                    Bodega
+                                </TableHead>
+                                <TableHead className="text-center">
                                     Cantidad
                                 </TableHead>
                                 <TableHead className="text-center">
@@ -656,6 +726,10 @@ export default function PedidoFormFields({
                                             {producto
                                                 ? productoLabel(producto)
                                                 : `Producto ${row.producto_id}`}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            {bodegaMap.get(row.bodega_id)
+                                                ?.nombre_bodega ?? '—'}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             {row.cantidad}
@@ -730,6 +804,11 @@ export default function PedidoFormFields({
                         type="hidden"
                         name={`detalles[${index}][producto_id]`}
                         value={row.producto_id}
+                    />
+                    <input
+                        type="hidden"
+                        name={`detalles[${index}][bodega_id]`}
+                        value={row.bodega_id}
                     />
                     <input
                         type="hidden"

@@ -87,6 +87,14 @@ export default function PosPagoModal({
 
     const { total } = calcularTotales(totalBruto, header);
     const saldo = Math.max(total - totalAbonado, 0);
+    // What the customer actually handed over across every abono, before
+    // splitting it into what got applied (pagado) and what came back
+    // (cambio) — shown separately so cash and applied amounts aren't confused.
+    const totalPagoCon = useMemo(
+        () => abonos.reduce((sum, abono) => sum + abono.conCuantoPago, 0),
+        [abonos],
+    );
+    const cambioTotal = totalPagoCon - totalAbonado;
     const errorMessages = useMemo(
         () => Object.values(errors).filter(Boolean),
         [errors],
@@ -112,6 +120,13 @@ export default function PosPagoModal({
     const cambioPreview = Math.max(conCuantoNum - montoNum, 0);
     const sobrepagado = totalAbonado > total;
     const canAddAbono = Boolean(puc) && montoNum > 0;
+
+    // The totals include the abono being filled in (not yet added) so they
+    // update live as the person types, the same way "Cambio" already does.
+    const pendienteMonto = pagaConNum > 0 ? montoNum : 0;
+    const displayPagoCon = totalPagoCon + (pagaConNum > 0 ? conCuantoNum : 0);
+    const displayCambio = cambioTotal + (pagaConNum > 0 ? cambioPreview : 0);
+    const displaySaldo = Math.max(saldo - pendienteMonto, 0);
 
     const handleAddAbono = () => {
         if (!puc || !canAddAbono) {
@@ -216,7 +231,7 @@ export default function PosPagoModal({
                     <p className="text-sm font-semibold">Abonos</p>
 
                     <div className="grid gap-3 md:grid-cols-2">
-                        <div className="grid min-w-0 gap-2 md:col-span-2">
+                        <div className="grid min-w-0 gap-2">
                             <Label>Método de pago</Label>
                             <Combobox
                                 // A long name wraps onto more lines instead of widening the modal.
@@ -228,16 +243,6 @@ export default function PosPagoModal({
                                 emptyText="No se encontraron métodos de pago."
                                 dataTest="pos-abono-puc"
                             />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label>Monto</Label>
-                            <div
-                                className="bg-muted/40 flex h-9 items-center rounded-md border px-3 text-sm font-semibold"
-                                data-test="pos-abono-monto"
-                            >
-                                {currencyFormatter.format(montoNum)}
-                            </div>
                         </div>
 
                         <div className="grid gap-2">
@@ -273,10 +278,7 @@ export default function PosPagoModal({
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-muted-foreground text-sm">
-                            Cambio: {currencyFormatter.format(cambioPreview)}
-                        </span>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                         <Button
                             type="button"
                             variant="outline"
@@ -339,27 +341,49 @@ export default function PosPagoModal({
                         </p>
                     )}
 
-                    <div className="grid gap-1 border-t pt-3 text-sm sm:grid-cols-3">
-                        <span>
-                            Total a pagar:{' '}
-                            <strong>{currencyFormatter.format(total)}</strong>
-                        </span>
-                        <span>
-                            Abonado:{' '}
-                            <strong>
-                                {currencyFormatter.format(totalAbonado)}
-                            </strong>
-                        </span>
-                        <span className={cn(sobrepagado && 'text-destructive')}>
-                            Saldo pendiente:{' '}
-                            <strong>{currencyFormatter.format(saldo)}</strong>
-                        </span>
+                    <div className="border-t pt-3 text-sm">
+                        <div className="divide-y sm:grid sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+                            <span className="block py-1.5 first:pt-0 sm:px-3 sm:py-0 sm:first:pl-0">
+                                Total a pagar:{' '}
+                                <strong>
+                                    {currencyFormatter.format(total)}
+                                </strong>
+                            </span>
+                            <span className="block py-1.5 sm:px-3 sm:py-0">
+                                Pagó con:{' '}
+                                <strong>
+                                    {currencyFormatter.format(displayPagoCon)}
+                                </strong>
+                            </span>
+                            <span
+                                className={cn(
+                                    'block py-1.5 sm:px-3 sm:py-0',
+                                    displayCambio > 0 && 'text-emerald-600',
+                                )}
+                            >
+                                Cambio a entregar:{' '}
+                                <strong>
+                                    {currencyFormatter.format(displayCambio)}
+                                </strong>
+                            </span>
+                            <span
+                                className={cn(
+                                    'block py-1.5 last:pb-0 sm:px-3 sm:py-0',
+                                    displaySaldo > 0 && 'text-destructive',
+                                )}
+                            >
+                                Saldo pendiente:{' '}
+                                <strong>
+                                    {currencyFormatter.format(displaySaldo)}
+                                </strong>
+                            </span>
+                        </div>
                         {sobrepagado ? (
-                            <span className="text-destructive sm:col-span-3">
+                            <p className="text-destructive mt-2">
                                 Los abonos superan el total a pagar por{' '}
                                 {currencyFormatter.format(totalAbonado - total)}
                                 ; elimina o reduce un abono.
-                            </span>
+                            </p>
                         ) : null}
                     </div>
                 </div>

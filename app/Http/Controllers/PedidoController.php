@@ -164,6 +164,7 @@ class PedidoController extends Controller
             'pedido' => $pedido->load([
                 'cliente',
                 'detalles.producto',
+                'detalles.bodega:id,nombre_bodega',
                 'abonos.puc',
                 'abonos.vendedor',
                 'user',

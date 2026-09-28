@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import type {
     Pedido,
     PedidoAbono,
@@ -85,18 +86,39 @@ export default function EditAbonoModal({
         }
     }, [abono]);
 
-    const cambio = useMemo(() => {
-        const montoNum = Number(monto) || 0;
-        const conCuantoNum = Number(conCuantoPago) || montoNum;
-
-        return Math.max(conCuantoNum - montoNum, 0);
-    }, [monto, conCuantoPago]);
+    const montoNum = Number(monto) || 0;
+    const conCuantoNum = Number(conCuantoPago) || montoNum;
 
     // Paying less than the monto registers a partial abono of what was paid.
     const abonoParcial =
         Number(conCuantoPago) > 0 && Number(conCuantoPago) < Number(monto)
             ? Number(conCuantoPago)
             : null;
+
+    // The other abonos of the pedido, so the totals below reflect the whole
+    // pedido and update live as this abono's monto / con cuánto pagó change.
+    const { otrosMonto, otrosConCuanto } = useMemo(() => {
+        const otros = (pedido.abonos ?? []).filter(
+            (item) => item.id !== abono?.id,
+        );
+
+        return {
+            otrosMonto: otros.reduce(
+                (sum, item) => sum + Number(item.monto),
+                0,
+            ),
+            otrosConCuanto: otros.reduce(
+                (sum, item) => sum + Number(item.con_cuanto_pago ?? item.monto),
+                0,
+            ),
+        };
+    }, [pedido.abonos, abono?.id]);
+
+    const totalPedido = Number(pedido.total_a_pagar);
+    const totalPagado = otrosMonto + montoNum;
+    const totalPagoCon = otrosConCuanto + conCuantoNum;
+    const cambioTotal = totalPagoCon - totalPagado;
+    const saldoPendiente = Math.max(totalPedido - totalPagado, 0);
 
     if (!abono) {
         return null;
@@ -184,13 +206,53 @@ export default function EditAbonoModal({
                                     </div>
                                 </div>
 
-                                <div className="bg-muted flex items-center justify-between rounded-md px-3 py-2 text-sm">
-                                    <span className="text-muted-foreground">
-                                        Cambio
-                                    </span>
-                                    <span className="font-medium">
-                                        {currencyFormatter.format(cambio)}
-                                    </span>
+                                <div className="bg-muted rounded-md px-3 py-2 text-sm">
+                                    <div className="divide-y sm:grid sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                                        <span className="block py-1.5 first:pt-0 sm:px-3 sm:py-0 sm:first:pl-0">
+                                            Total a pagar:{' '}
+                                            <strong>
+                                                {currencyFormatter.format(
+                                                    totalPedido,
+                                                )}
+                                            </strong>
+                                        </span>
+                                        <span className="block py-1.5 sm:px-3 sm:py-0">
+                                            Pagó con:{' '}
+                                            <strong>
+                                                {currencyFormatter.format(
+                                                    totalPagoCon,
+                                                )}
+                                            </strong>
+                                        </span>
+                                        <span
+                                            className={cn(
+                                                'block py-1.5 sm:px-3 sm:py-0',
+                                                cambioTotal > 0 &&
+                                                    'text-emerald-600',
+                                            )}
+                                        >
+                                            Cambio a entregar:{' '}
+                                            <strong>
+                                                {currencyFormatter.format(
+                                                    cambioTotal,
+                                                )}
+                                            </strong>
+                                        </span>
+                                        <span
+                                            className={cn(
+                                                'block py-1.5 last:pb-0 sm:px-3 sm:py-0',
+                                                saldoPendiente > 0 &&
+                                                    'text-destructive',
+                                            )}
+                                        >
+                                            Saldo pendiente:{' '}
+                                            <strong>
+                                                {currencyFormatter.format(
+                                                    saldoPendiente,
+                                                )}
+                                            </strong>
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {abonoParcial !== null ? (

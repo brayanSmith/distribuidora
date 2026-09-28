@@ -688,6 +688,7 @@ export default function ProductosIndex({
                     }
                     noResultsMessage="Ningún producto coincide con los filtros."
                     onRowClick={openViewDialog}
+                    pageSize={50}
                     pageSizeOptions={PAGE_SIZE_OPTIONS}
                     // With rines picked, the table groups its rows by rin.
                     groupBy={rinesSel.length > 0 ? rinDe : undefined}

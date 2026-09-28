@@ -26,6 +26,7 @@ import VerPedidoModal from '@/components/ver-pedido-modal';
 import VoucherButton from '@/components/voucher-button';
 import RestoreButton from '@/components/restore-button';
 import { Badge } from '@/components/ui/badge';
+import PageSizeSelect from '@/components/page-size-select';
 import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
@@ -589,7 +590,14 @@ export default function PedidosTable({
         session,
     );
     const [page, setPage] = useState(1);
-    const pageSize = 25;
+    const [pageSize, setPageSize] = usePersistedState<number>(
+        `${storageKey}:page-size`,
+        25,
+        {
+            merge: (stored) =>
+                Number.isInteger(stored) && stored >= 1 ? stored : 25,
+        },
+    );
     const [columnWidths, setColumnWidths] = usePersistedState<
         Record<ColumnKey, number>
     >(`${storageKey}:widths`, DEFAULT_COLUMN_WIDTHS, {
@@ -897,7 +905,7 @@ export default function PedidosTable({
 
     useEffect(() => {
         setPage(1);
-    }, [search, filters, dateRange, sortKey, sortDirection]);
+    }, [search, filters, dateRange, sortKey, sortDirection, pageSize]);
 
     const renderFilterHead = (meta: ColumnMeta): ReactNode => {
         switch (meta.filter) {
@@ -1275,7 +1283,7 @@ export default function PedidosTable({
             ) : (
                 <TableBottomBar
                     scrollRef={tableScrollRef}
-                    className="flex items-center justify-between text-sm"
+                    className="flex flex-wrap items-center justify-between gap-3 text-sm"
                 >
                     <p className="text-muted-foreground hidden sm:block">
                         Mostrando {(currentPage - 1) * pageSize + 1}–
@@ -1285,6 +1293,12 @@ export default function PedidosTable({
                         )}{' '}
                         de {visiblePedidos.length} pedidos
                     </p>
+
+                    <PageSizeSelect
+                        value={pageSize}
+                        onChange={setPageSize}
+                        dataTest="pedidos-page-size"
+                    />
 
                     <Pagination
                         page={currentPage}

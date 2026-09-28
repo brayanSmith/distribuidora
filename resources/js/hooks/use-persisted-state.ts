@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PREFIX = 'ui:';
 
@@ -25,37 +25,55 @@ function storageFor(scope: Scope): Storage | null {
  * so it survives leaving the page and coming back (a table's filters, column
  * widths…). With a `null` key it is a plain `useState`. Anything missing,
  * malformed or blocked falls back to the initial value.
+ *
+ * The stored value is only read after mount (in an effect), never during
+ * render: storage isn't available during SSR, so reading it synchronously
+ * would make the very first client render disagree with the server-rendered
+ * HTML and trigger a hydration mismatch (React then discards and
+ * regenerates the subtree, which is where the UI can get stuck looking
+ * unresponsive until something else forces a clean re-render).
  */
 export function usePersistedState<T>(
     key: string | null,
     initial: T | (() => T),
     { scope = 'local', merge }: Options<T> = {},
 ): [T, Dispatch<SetStateAction<T>>] {
-    const [value, setValue] = useState<T>(() => {
-        const start =
-            typeof initial === 'function' ? (initial as () => T)() : initial;
+    const [value, setValue] = useState<T>(() =>
+        typeof initial === 'function' ? (initial as () => T)() : initial,
+    );
+    // The write effect below mustn't persist this initial value before the
+    // read effect has had a chance to replace it with what's stored.
+    const skipNextWrite = useRef(true);
 
+    useEffect(() => {
         if (key === null) {
-            return start;
+            return;
         }
 
         try {
             const raw = storageFor(scope)?.getItem(PREFIX + key);
 
             if (raw === null || raw === undefined) {
-                return start;
+                return;
             }
 
             const stored = JSON.parse(raw) as T;
 
-            return merge ? merge(stored, start) : stored;
+            setValue((current) => (merge ? merge(stored, current) : stored));
         } catch {
-            return start;
+            // Anything missing, malformed or blocked falls back to the initial value.
         }
-    });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key, scope]);
 
     useEffect(() => {
         if (key === null) {
+            return;
+        }
+
+        if (skipNextWrite.current) {
+            skipNextWrite.current = false;
+
             return;
         }
 
