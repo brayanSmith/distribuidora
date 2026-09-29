@@ -71,6 +71,8 @@ type DataTableProps<T> = UseDataTableOptions<T> & {
     groupBy?: (row: T) => string;
     /** What a group's header shows for its key. Defaults to the key. */
     groupLabel?: (group: string) => ReactNode;
+    /** Same as `groupLabel`, for a `groupBySecondary` sub-group's header. */
+    groupSecondaryLabel?: (group: string) => ReactNode;
 };
 
 const ACCIONES_KEY = 'acciones';
@@ -245,7 +247,9 @@ export default function DataTable<T>({
     pageSizeOptions = [25, 50, 100],
     pageSizeMax,
     groupBy,
+    groupBySecondary,
     groupLabel,
+    groupSecondaryLabel,
     paginate = true,
     searchableText,
     pageResetKey,
@@ -257,6 +261,7 @@ export default function DataTable<T>({
         pageSize,
         pageSizeOptions,
         groupBy,
+        groupBySecondary,
         paginate,
         searchableText,
         pageResetKey,
@@ -453,6 +458,53 @@ export default function DataTable<T>({
                                                     {table.groupCounts.get(
                                                         group,
                                                     ) ?? 0}{' '}
+                                                    registros
+                                                </span>
+                                            </button>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            }
+
+                            if (entry.kind === 'subgroup') {
+                                const { group, parentGroup, collapsed } =
+                                    entry;
+
+                                return (
+                                    <TableRow
+                                        key={`subgroup:${parentGroup}:${group}`}
+                                        className="bg-muted/25 hover:bg-muted/40"
+                                        data-test={`${dataTestPrefix}-subgroup`}
+                                    >
+                                        <TableCell
+                                            colSpan={
+                                                table.visibleColumnOrder.length
+                                            }
+                                            className="p-0"
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    table.toggleSubgroup(
+                                                        parentGroup,
+                                                        group,
+                                                    )
+                                                }
+                                                aria-expanded={!collapsed}
+                                                className="flex w-full items-center gap-2 py-1 pr-2 pl-7 text-left text-xs font-medium"
+                                            >
+                                                {collapsed ? (
+                                                    <ChevronRight className="size-3.5" />
+                                                ) : (
+                                                    <ChevronDown className="size-3.5" />
+                                                )}
+                                                {groupSecondaryLabel?.(
+                                                    group,
+                                                ) ?? group}
+                                                <span className="text-muted-foreground text-xs font-normal">
+                                                    {table.subgroupCounts
+                                                        .get(parentGroup)
+                                                        ?.get(group) ?? 0}{' '}
                                                     registros
                                                 </span>
                                             </button>

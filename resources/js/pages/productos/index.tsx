@@ -690,9 +690,16 @@ export default function ProductosIndex({
                     onRowClick={openViewDialog}
                     pageSize={50}
                     pageSizeOptions={PAGE_SIZE_OPTIONS}
-                    // With rines picked, the table groups its rows by rin.
-                    groupBy={rinesSel.length > 0 ? rinDe : undefined}
-                    groupLabel={(rin) => (rin === SIN_RIN ? rin : `Rin ${rin}`)}
+                    // Always grouped by tipo de vehículo; with rines picked,
+                    // each group gets rin as a nested sub-grouping.
+                    groupBy={tipoDe}
+                    groupLabel={(tipo) => tipo}
+                    groupBySecondary={
+                        rinesSel.length > 0 ? rinDe : undefined
+                    }
+                    groupSecondaryLabel={(rin) =>
+                        rin === SIN_RIN ? rin : `Rin ${rin}`
+                    }
                     pageSizeMax={PAGE_SIZE_MAX}
                     pageResetKey={`${categoriaTab}|${tipoSel}|${rinesSel.join(',')}`}
                 />
