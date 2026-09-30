@@ -89,3 +89,20 @@ test('the destination bodega must be different from the donor bodega', function 
         'cantidad' => 5,
     ])->assertSessionHasErrors(['bodega_destino_id']);
 });
+
+test('a servicio cannot be traslado-ed: it never carries stock', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    $servicio = Producto::factory()->servicio()->create();
+    $bodegaDonante = Bodega::factory()->create();
+    $bodegaDestino = Bodega::factory()->create();
+
+    $this->actingAs($owner)->post(route('traslados.store'), [
+        'producto_id' => $servicio->id,
+        'bodega_donante_id' => $bodegaDonante->id,
+        'bodega_destino_id' => $bodegaDestino->id,
+        'cantidad' => 5,
+    ])->assertSessionHasErrors(['producto_id']);
+
+    expect(Traslado::count())->toBe(0);
+});

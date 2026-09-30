@@ -50,11 +50,17 @@ import {
     usePersistedState,
 } from '@/hooks/use-persisted-state';
 import { cn } from '@/lib/utils';
-import type { Pedido, PedidoDetalle, PedidoRoutes } from '@/types';
+import type {
+    Pedido,
+    PedidoDetalle,
+    PedidoPermissions,
+    PedidoRoutes,
+} from '@/types';
 
 type Props = {
     pedidos: Pedido[];
     routes: PedidoRoutes;
+    permissions: PedidoPermissions;
     /** Showing the deleted pedidos: their edit page is not available. */
     eliminados?: boolean;
 };
@@ -64,6 +70,8 @@ type ColumnKey =
     | 'bodega'
     | 'codigoPedido'
     | 'stockTotal'
+    | 'pendiente'
+    | 'almacenP'
     | 'tipoVehiculo'
     | 'producto'
     | 'fecha'
@@ -93,6 +101,8 @@ const COLUMN_DEFS: ColumnMeta[] = [
     { key: 'bodega', label: 'Bodega', filter: 'text' },
     { key: 'codigoPedido', label: 'Código Pedido', filter: 'text' },
     { key: 'stockTotal', label: 'Stock total', filter: 'text', align: 'right' },
+    { key: 'pendiente', label: 'Pendiente', filter: 'text', align: 'right' },
+    { key: 'almacenP', label: 'Almacen_P', filter: 'text' },
     { key: 'tipoVehiculo', label: 'Tipo Vehículo', filter: 'tipoVehiculo' },
     { key: 'producto', label: 'Producto', filter: 'text' },
     { key: 'fecha', label: 'Fecha', filter: 'date' },
@@ -134,6 +144,10 @@ const COSTO_COLUMNS: ColumnKey[] = [
     'gananciaTotal',
 ];
 
+/** Same producto-level permissions the Productos listing gates these on. */
+const PENDIENTE_COLUMNS: ColumnKey[] = ['pendiente'];
+const ALMACEN_P_COLUMNS: ColumnKey[] = ['almacenP'];
+
 const COLUMN_DEFS_MAP = new Map(COLUMN_DEFS.map((meta) => [meta.key, meta]));
 const COLUMN_KEYS: ColumnKey[] = COLUMN_DEFS.map((meta) => meta.key);
 
@@ -142,6 +156,8 @@ const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
     bodega: 130,
     codigoPedido: 130,
     stockTotal: 110,
+    pendiente: 100,
+    almacenP: 150,
     tipoVehiculo: 130,
     producto: 220,
     fecha: 150,
@@ -179,6 +195,8 @@ type DetalleRow = {
     pedidoId: number;
     bodega: string;
     stockTotal: number;
+    pendiente: number;
+    almacenP: string;
     tipoVehiculo: string;
     producto: string;
     fecha: string | null;
@@ -206,6 +224,11 @@ function stockTotalFor(detalle: PedidoDetalle): number {
     return Number(detalle.producto?.stock_total ?? 0);
 }
 
+/** Units of the detalle's producto still to arrive from a pending compra. */
+function pendienteFor(detalle: PedidoDetalle): number {
+    return Number(detalle.producto?.pendiente ?? 0);
+}
+
 function getSortValue(row: DetalleRow, key: ColumnKey): string | number {
     switch (key) {
         case 'id':
@@ -216,6 +239,10 @@ function getSortValue(row: DetalleRow, key: ColumnKey): string | number {
             return row.pedidoId;
         case 'stockTotal':
             return row.stockTotal;
+        case 'pendiente':
+            return row.pendiente;
+        case 'almacenP':
+            return row.almacenP;
         case 'tipoVehiculo':
             return row.tipoVehiculo;
         case 'producto':
@@ -253,6 +280,7 @@ function searchableText(row: DetalleRow): string {
         row.tipoVehiculo,
         row.estado,
         row.producto,
+        row.almacenP,
         row.cliente,
         row.usuario,
     ]
@@ -418,6 +446,7 @@ function HeaderCell({
 export default function PedidoDetallesTable({
     pedidos,
     routes,
+    permissions,
     eliminados = false,
 }: Props) {
     const { puedeCosto } = useTiposPrecio();
@@ -644,9 +673,19 @@ export default function PedidoDetallesTable({
             columnOrder.filter(
                 (key) =>
                     !hiddenColumns.has(key) &&
-                    (puedeCosto || !COSTO_COLUMNS.includes(key)),
+                    (puedeCosto || !COSTO_COLUMNS.includes(key)) &&
+                    (permissions.canViewPendiente ||
+                        !PENDIENTE_COLUMNS.includes(key)) &&
+                    (permissions.canViewAlmacenP ||
+                        !ALMACEN_P_COLUMNS.includes(key)),
             ),
-        [columnOrder, hiddenColumns, puedeCosto],
+        [
+            columnOrder,
+            hiddenColumns,
+            puedeCosto,
+            permissions.canViewPendiente,
+            permissions.canViewAlmacenP,
+        ],
     );
 
     const handleSort = (key: ColumnKey) => {
@@ -679,6 +718,8 @@ export default function PedidoDetallesTable({
                     pedidoId: pedido.id,
                     bodega: pedido.bodega?.nombre_bodega ?? '—',
                     stockTotal: stockTotalFor(detalle),
+                    pendiente: pendienteFor(detalle),
+                    almacenP: detalle.producto?.proveedor_pendiente ?? '',
                     tipoVehiculo: detalle.producto?.tipo_vehiculo ?? '—',
                     producto: productoLabelFor(detalle),
                     fecha: pedido.fecha,
@@ -850,6 +891,18 @@ export default function PedidoDetallesTable({
                         {row.stockTotal}
                     </Badge>
                 );
+            case 'pendiente':
+                return row.pendiente ? (
+                    <Badge variant="secondary">{row.pendiente}</Badge>
+                ) : (
+                    0
+                );
+            case 'almacenP':
+                return row.almacenP ? (
+                    <TruncatedCell value={row.almacenP} />
+                ) : (
+                    '—'
+                );
             case 'tipoVehiculo':
                 return <TruncatedCell value={row.tipoVehiculo} />;
             case 'producto':
@@ -928,7 +981,12 @@ export default function PedidoDetallesTable({
                         <DropdownMenuSeparator />
                         {COLUMN_DEFS.filter(
                             (meta) =>
-                                puedeCosto || !COSTO_COLUMNS.includes(meta.key),
+                                (puedeCosto ||
+                                    !COSTO_COLUMNS.includes(meta.key)) &&
+                                (permissions.canViewPendiente ||
+                                    !PENDIENTE_COLUMNS.includes(meta.key)) &&
+                                (permissions.canViewAlmacenP ||
+                                    !ALMACEN_P_COLUMNS.includes(meta.key)),
                         ).map((meta) => (
                             <DropdownMenuCheckboxItem
                                 key={meta.key}

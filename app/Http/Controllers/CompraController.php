@@ -220,6 +220,13 @@ class CompraController extends Controller
             return;
         }
 
+        // Servicios (and any producto marked as not inventariable) never carry stock.
+        if (Producto::withTrashed()->whereKey($detalle->producto_id)
+            ->where(fn ($query) => $query->where('categoria', 'SERVICIO')->orWhere('inventariable', false))
+            ->exists()) {
+            return;
+        }
+
         $stockBodega = StockBodega::firstOrNew([
             'bodega_id' => $detalle->bodega_id,
             'producto_id' => $detalle->producto_id,
@@ -240,6 +247,7 @@ class CompraController extends Controller
         return [
             'proveedores' => Proveedor::orderBy('nombre_proveedor')->get(['id', 'nombre_proveedor']),
             'productos' => Producto::whereIn('categoria', ['LLANTA', 'RIN', 'OTRO'])
+                ->where('inventariable', true)
                 ->orderBy('referencia_producto')
                 ->get(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'costo_producto']),
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),

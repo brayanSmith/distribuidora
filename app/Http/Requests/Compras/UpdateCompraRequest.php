@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Compras;
 
+use App\Rules\ProductoInventariable;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -21,7 +22,7 @@ class UpdateCompraRequest extends FormRequest
             'observaciones' => ['nullable', 'string'],
             'descuento' => ['nullable', 'numeric', 'min:0'],
             'detalles' => ['required', 'array', 'min:1'],
-            'detalles.*.producto_id' => ['required', 'integer', 'exists:productos,id'],
+            'detalles.*.producto_id' => ['required', 'integer', 'exists:productos,id', new ProductoInventariable],
             'detalles.*.bodega_id' => ['required', 'integer', 'exists:bodegas,id'],
             'detalles.*.cantidad' => ['required', 'numeric', 'min:0.01'],
             'detalles.*.precio_unitario' => ['required', 'numeric', 'min:0'],

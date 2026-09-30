@@ -415,6 +415,8 @@ export default function ProductoDetalleModal({
     }
 
     const nombre = producto.concatenar_codigo_nombre || 'Producto';
+    // Servicios (and any producto marked as not inventariable) never carry stock.
+    const esSinStock = producto.categoria === 'SERVICIO' || !producto.inventariable;
     const detallePedidos = data?.detallePedidos;
     const detalleCompras = data?.detalleCompras;
 
@@ -533,9 +535,12 @@ export default function ProductoDetalleModal({
                             </div>
                         </SectionCard>
 
-                        <SectionCard icon={Warehouse} title="Stock por bodega">
+                        <SectionCard
+                            icon={Warehouse}
+                            title={esSinStock ? 'Ventas' : 'Stock por bodega'}
+                        >
                             <div className="flex flex-wrap gap-4">
-                                {producto.stock_total != null ? (
+                                {!esSinStock && producto.stock_total != null ? (
                                     <div className="grid gap-1">
                                         <span className="text-muted-foreground text-xs">
                                             Stock Total
@@ -545,15 +550,17 @@ export default function ProductoDetalleModal({
                                         />
                                     </div>
                                 ) : null}
-                                <div className="grid gap-1">
-                                    <span className="text-muted-foreground text-xs">
-                                        Cantidad Comprada
-                                    </span>
-                                    <InfoBadge
-                                        value={data?.totalComprado ?? 0}
-                                        colorClassName="bg-blue-100 text-blue-700 hover:bg-blue-100"
-                                    />
-                                </div>
+                                {!esSinStock ? (
+                                    <div className="grid gap-1">
+                                        <span className="text-muted-foreground text-xs">
+                                            Cantidad Comprada
+                                        </span>
+                                        <InfoBadge
+                                            value={data?.totalComprado ?? 0}
+                                            colorClassName="bg-blue-100 text-blue-700 hover:bg-blue-100"
+                                        />
+                                    </div>
+                                ) : null}
                                 <div className="grid gap-1">
                                     <span className="text-muted-foreground text-xs">
                                         Cantidad Vendida
@@ -565,7 +572,7 @@ export default function ProductoDetalleModal({
                                 </div>
                             </div>
 
-                            {producto.stock_por_bodega != null ? (
+                            {!esSinStock && producto.stock_por_bodega != null ? (
                                 <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
                                     {bodegas.map((bodega) => (
                                         <div

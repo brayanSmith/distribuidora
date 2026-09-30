@@ -54,4 +54,22 @@ class ProductoFactory extends Factory
     {
         return $this->state(fn () => ['marca_id' => Marca::factory()]);
     }
+
+    /**
+     * A servicio: sold like a producto, but never carries stock.
+     */
+    public function servicio(): static
+    {
+        return $this->state(fn () => [
+            'categoria' => 'SERVICIO',
+            'tipo' => 'SERVICIO',
+            'inventariable' => false,
+            'ancho' => null,
+            'perfil' => null,
+            'construccion' => null,
+            'rin' => null,
+            'tipo_vehiculo' => null,
+            'diametro' => null,
+        ]);
+    }
 }

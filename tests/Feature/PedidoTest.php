@@ -2,10 +2,14 @@
 
 use App\Models\Bodega;
 use App\Models\Cliente;
+use App\Models\Compra;
+use App\Models\DetalleCompra;
 use App\Models\DetallePedido;
 use App\Models\Pedido;
 use App\Models\Producto;
+use App\Models\Proveedor;
 use App\Models\Puc;
+use App\Models\Role;
 use App\Models\StockBodega;
 use App\Models\User;
 use Spatie\Permission\Models\Permission;
@@ -245,6 +249,65 @@ test('every producto can be put on a pedido, and editing one lists those of its 
     $this->actingAs($owner)->get(route('pedidos.edit', [$pedido]))
         ->assertInertia(fn ($page) => $page
             ->where('productos', fn ($productos) => collect($productos)->pluck('id')->contains($eliminado->id))
+        );
+});
+
+test('the pedidos listing shows each detalle producto pending purchases when permitted', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $cliente = Cliente::factory()->create();
+    $vendedor = User::factory()->create();
+    $producto = Producto::factory()->create();
+    $bodega = Bodega::factory()->create();
+    $proveedor = Proveedor::factory()->create(['nombre_proveedor' => 'Proveedor Pendiente']);
+
+    DetalleCompra::factory()->create([
+        'producto_id' => $producto->id,
+        'estado_entrega' => 'PENDIENTE',
+        'cantidad' => 7,
+        'compra_id' => Compra::factory()->create(['proveedor_id' => $proveedor->id])->id,
+    ]);
+
+    $this->actingAs($owner)->post(route('pedidos.store'), [
+        'cliente_id' => $cliente->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'user_id' => $vendedor->id,
+        'bodega_id' => $bodega->id,
+        'tipo_precio' => 'DETAL',
+        'detalles' => [
+            ['producto_id' => $producto->id, 'cantidad' => 1, 'precio_unitario' => 50],
+        ],
+    ]);
+
+    $this->actingAs($owner)->get(route('pedidos.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('pedidos.0.detalles.0.producto.pendiente', 7)
+            ->where('pedidos.0.detalles.0.producto.proveedor_pendiente', 'Proveedor Pendiente')
+        );
+});
+
+test('a user without productos.view-pendiente does not see pending purchases on the pedidos listing', function () {
+    $rol = Role::create(['name' => 'SinPendiente']);
+    $rol->givePermissionTo(['pedidos.view']);
+
+    $usuario = User::factory()->create();
+    $usuario->assignRole($rol);
+
+    $producto = Producto::factory()->create();
+    DetalleCompra::factory()->create([
+        'producto_id' => $producto->id,
+        'estado_entrega' => 'PENDIENTE',
+        'cantidad' => 5,
+    ]);
+
+    $pedido = Pedido::factory()->create(['tipo_precio' => 'DETAL']);
+    DetallePedido::factory()->create(['pedido_id' => $pedido->id, 'producto_id' => $producto->id]);
+
+    $this->actingAs($usuario)->get(route('pedidos.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('pedidos.0.detalles.0.producto.pendiente', null)
+            ->where('pedidos.0.detalles.0.producto.proveedor_pendiente', null)
         );
 });
 

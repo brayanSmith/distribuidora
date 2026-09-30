@@ -95,3 +95,18 @@ test('producto_id, bodega_id and cantidad are required', function () {
     $this->actingAs($owner)->post(route('stock-iniciales.store'), [])
         ->assertSessionHasErrors(['producto_id', 'bodega_id', 'cantidad']);
 });
+
+test('a servicio cannot get a stock inicial: it never carries stock', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    $servicio = Producto::factory()->servicio()->create();
+    $bodega = Bodega::factory()->create();
+
+    $this->actingAs($owner)->post(route('stock-iniciales.store'), [
+        'producto_id' => $servicio->id,
+        'bodega_id' => $bodega->id,
+        'cantidad' => 10,
+    ])->assertSessionHasErrors(['producto_id']);
+
+    expect(StockInicial::count())->toBe(0);
+});

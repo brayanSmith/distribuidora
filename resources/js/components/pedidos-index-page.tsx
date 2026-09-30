@@ -104,6 +104,7 @@ export default function PedidosIndexPage({
                     <PedidoDetallesTable
                         pedidos={pedidos}
                         routes={routes}
+                        permissions={permissions}
                         eliminados={eliminados}
                     />
                 )}

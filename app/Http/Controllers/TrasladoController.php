@@ -116,6 +116,13 @@ class TrasladoController extends Controller
      */
     private function adjustStockBodega(int $bodegaId, int $productoId, float $entradasDelta, float $salidasDelta): void
     {
+        // Servicios (and any producto marked as not inventariable) never carry stock.
+        if (Producto::withTrashed()->whereKey($productoId)
+            ->where(fn ($query) => $query->where('categoria', 'SERVICIO')->orWhere('inventariable', false))
+            ->exists()) {
+            return;
+        }
+
         $stockBodega = StockBodega::firstOrNew([
             'bodega_id' => $bodegaId,
             'producto_id' => $productoId,

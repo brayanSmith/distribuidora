@@ -170,3 +170,29 @@ test('detalles are required to store a compra', function () {
         'fecha' => '2026-01-10 10:00:00',
     ])->assertSessionHasErrors('detalles');
 });
+
+test('a servicio cannot be bought: it never carries stock', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $proveedor = Proveedor::factory()->create();
+    $servicio = Producto::factory()->servicio()->create();
+    $bodega = Bodega::factory()->create();
+
+    $this->actingAs($owner)->post(route('compras.store'), [
+        'factura' => 'FA05',
+        'proveedor_id' => $proveedor->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'detalles' => [
+            [
+                'producto_id' => $servicio->id,
+                'bodega_id' => $bodega->id,
+                'cantidad' => 1,
+                'precio_unitario' => 100,
+                'recibido' => true,
+            ],
+        ],
+    ])->assertSessionHasErrors(['detalles.0.producto_id']);
+
+    expect(Compra::count())->toBe(0);
+});

@@ -27,8 +27,11 @@ class StockBodegaController extends Controller
         $puedeVerInversion = $request->user()->can('stock-bodegas.view-inversion');
         $puedeTrasladar = $request->user()->can('stock-bodegas.create-traslado');
 
-        // Stock rows whose product no longer exists are orphans: not listed.
-        $productosVigentes = Producto::select('id');
+        // Stock rows whose product no longer exists (or is a servicio, which
+        // never carries stock) are orphans: not listed.
+        $productosVigentes = Producto::where('categoria', '!=', 'SERVICIO')
+            ->where('inventariable', true)
+            ->select('id');
 
         $conStock = StockBodega::query()
             ->whereIn('producto_id', $productosVigentes)

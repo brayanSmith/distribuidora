@@ -57,6 +57,10 @@ export type ProductoPedidoOption = {
     stock_bodegas?: StockBodegaOption[];
     /** Sum of the product's stock over every bodega (the pedidos listing). */
     stock_total?: number | string | null;
+    /** Units still to arrive from a pending compra (the "Por detalle" listing). */
+    pendiente?: number | null;
+    /** The proveedores of those pending compras. */
+    proveedor_pendiente?: string | null;
 };
 
 export type PedidoDetalle = {
@@ -137,4 +141,7 @@ export type PedidoPermissions = {
     canViewDetalle: boolean;
     /** Registering an abono from the listing (needs `update` too). */
     canCreateAbono: boolean;
+    /** Same producto-level permissions the Productos listing uses. */
+    canViewPendiente: boolean;
+    canViewAlmacenP: boolean;
 };

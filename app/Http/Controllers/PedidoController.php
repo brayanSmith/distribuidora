@@ -10,6 +10,7 @@ use App\Models\Cliente;
 use App\Models\DetallePedido;
 use App\Models\Pedido;
 use App\Models\Producto;
+use App\Models\Proveedor;
 use App\Models\Puc;
 use App\Models\User;
 use App\Services\PedidoEdicion;
@@ -47,43 +48,109 @@ class PedidoController extends Controller
         $eliminados = $this->verEliminados($request, $module);
         $permissions = $this->permissions($request, $module);
 
-        return Inertia::render("{$module}/index", [
-            // Only the fields the listing shows: every pedido brings its lines,
-            // products and payments, so whole models add up to megabytes.
-            'pedidos' => Pedido::select([
-                'id', 'fecha', 'estado', 'estado_pago', 'tipo_precio', 'turno', 'observacion', 'observacion_pago',
-                'total_a_pagar', 'saldo_pendiente', 'descuento', 'reteica', 'retefuente', 'deleted_at',
-                'cliente_id', 'bodega_id', 'user_id',
+        // Only the fields the listing shows: every pedido brings its lines,
+        // products and payments, so whole models add up to megabytes.
+        $pedidos = Pedido::select([
+            'id', 'fecha', 'estado', 'estado_pago', 'tipo_precio', 'turno', 'observacion', 'observacion_pago',
+            'total_a_pagar', 'saldo_pendiente', 'descuento', 'reteica', 'retefuente', 'deleted_at',
+            'cliente_id', 'bodega_id', 'user_id',
+        ])
+            ->with([
+                'cliente:id,razon_social,numero_documento',
+                'bodega:id,nombre_bodega',
+                'user:id,name',
+                'detalles' => fn ($query) => $query->withTrashed()
+                    ->select(['id', 'pedido_id', 'producto_id', 'cantidad', 'precio_unitario', 'subtotal', 'costo_unitario', 'costo_total', 'ganancia_total'])
+                    ->with(['producto' => fn ($query) => $query
+                        ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'tipo_vehiculo'])
+                        ->withSum('stockBodegas as stock_total', 'stock')]),
+                'abonos:id,pedido_id,puc_id,monto',
+                'abonos.puc:id,concatenar_subcuenta_concepto',
             ])
-                ->with([
-                    'cliente:id,razon_social,numero_documento',
-                    'bodega:id,nombre_bodega',
-                    'user:id,name',
-                    'detalles' => fn ($query) => $query->withTrashed()
-                        ->select(['id', 'pedido_id', 'producto_id', 'cantidad', 'precio_unitario', 'subtotal', 'costo_unitario', 'costo_total', 'ganancia_total'])
-                        ->with(['producto' => fn ($query) => $query
-                            ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'tipo_vehiculo'])
-                            ->withSum('stockBodegas as stock_total', 'stock')]),
-                    'abonos:id,pedido_id,puc_id,monto',
-                    'abonos.puc:id,concatenar_subcuenta_concepto',
-                ])
-                ->when($eliminados, fn ($query) => $query->onlyTrashed())
-                ->where('tipo_precio', $this->tipoPrecio($module))
-                ->when(
-                    $module === 'pedidos' ? $request->user()->idsBodegasPermitidas() : null,
-                    fn ($query, array $bodegaIds) => $query->whereIn('bodega_id', $bodegaIds),
-                )
-                ->orderByDesc('fecha')
-                ->get()
-                ->each(fn (Pedido $pedido) => $request->user()->puedeVerPrecio('costo')
-                    ? null
-                    : $pedido->detalles->each->makeHidden(['costo_unitario', 'costo_total', 'ganancia_total'])),
+            ->when($eliminados, fn ($query) => $query->onlyTrashed())
+            ->where('tipo_precio', $this->tipoPrecio($module))
+            ->when(
+                $module === 'pedidos' ? $request->user()->idsBodegasPermitidas() : null,
+                fn ($query, array $bodegaIds) => $query->whereIn('bodega_id', $bodegaIds),
+            )
+            ->orderByDesc('fecha')
+            ->get();
+
+        $this->agregarPendientes($pedidos, $permissions);
+
+        $pedidos->each(fn (Pedido $pedido) => $request->user()->puedeVerPrecio('costo')
+            ? null
+            : $pedido->detalles->each->makeHidden(['costo_unitario', 'costo_total', 'ganancia_total']));
+
+        return Inertia::render("{$module}/index", [
+            'pedidos' => $pedidos,
             'eliminados' => $eliminados,
             'permissions' => $permissions,
             // For registering a payment right from the listing.
             'pucs' => $permissions['canCreateAbono'] ? Puc::orderBy('concatenar_subcuenta_concepto')->get(['id', 'concatenar_subcuenta_concepto']) : [],
             'vendedores' => $permissions['canCreateAbono'] ? User::orderBy('name')->get(['id', 'name']) : [],
         ]);
+    }
+
+    /**
+     * Sets each detalle's producto `pendiente` (units still to arrive from a
+     * purchase) and `proveedor_pendiente` (their proveedores), the same
+     * numbers `ProductoController::listado()` shows — so the "Por detalle"
+     * view doesn't send anyone to the Productos page just to check this.
+     *
+     * @param  Collection<int, Pedido>  $pedidos
+     * @param  array{canViewPendiente: bool, canViewAlmacenP: bool}  $permissions
+     */
+    private function agregarPendientes(Collection $pedidos, array $permissions): void
+    {
+        $detalles = $pedidos->pluck('detalles')->flatten();
+
+        // Always set both keys (null when not permitted, or when nothing is
+        // pending), matching what ProductoController::listado() sends: the
+        // Producto model has no such columns, so an unset attribute would
+        // leave the key out of the JSON entirely instead of null.
+        if (! $permissions['canViewPendiente'] && ! $permissions['canViewAlmacenP']) {
+            $detalles->each(function (DetallePedido $detalle): void {
+                $detalle->producto?->setAttribute('pendiente', null);
+                $detalle->producto?->setAttribute('proveedor_pendiente', null);
+            });
+
+            return;
+        }
+
+        $productoIds = $detalles->pluck('producto_id')->unique();
+        $proveedores = (new Proveedor)->getTable();
+
+        $pendientes = DB::table('detalle_compras')
+            ->join('compras', 'compras.id', '=', 'detalle_compras.compra_id')
+            ->leftJoin($proveedores, "{$proveedores}.id", '=', 'compras.proveedor_id')
+            ->whereIn('detalle_compras.producto_id', $productoIds)
+            ->where('detalle_compras.estado_entrega', 'PENDIENTE')
+            ->whereNull('detalle_compras.deleted_at')
+            ->whereNull('compras.deleted_at')
+            ->get(['detalle_compras.producto_id', 'detalle_compras.cantidad', "{$proveedores}.nombre_proveedor"])
+            ->groupBy('producto_id');
+
+        $detalles->each(function (DetallePedido $detalle) use ($pendientes, $permissions): void {
+            if (! $detalle->producto) {
+                return;
+            }
+
+            $filas = $pendientes->get($detalle->producto->id, collect());
+
+            $detalle->producto->setAttribute(
+                'pendiente',
+                $permissions['canViewPendiente'] ? (float) $filas->sum('cantidad') : null,
+            );
+
+            $proveedoresPendientes = $filas->pluck('nombre_proveedor')->filter()->unique()->values();
+            $detalle->producto->setAttribute(
+                'proveedor_pendiente',
+                $permissions['canViewAlmacenP'] && $proveedoresPendientes->isNotEmpty()
+                    ? $proveedoresPendientes->implode(', ')
+                    : null,
+            );
+        });
     }
 
     /**
@@ -305,6 +372,9 @@ class PedidoController extends Controller
             'canViewDetalle' => $request->user()->can("{$module}.view-detalle"),
             // Registering an abono also needs `update`, as AbonoController::store checks.
             'canCreateAbono' => $request->user()->can("{$module}.update") && $request->user()->can("{$module}.create-abono"),
+            // Same producto-level permissions the Productos listing already uses.
+            'canViewPendiente' => $request->user()->can('productos.view-pendiente'),
+            'canViewAlmacenP' => $request->user()->can('productos.view-almacen-p'),
         ];
     }
 

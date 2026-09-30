@@ -157,8 +157,19 @@ const STATIC_ACCESSORS: Record<string, Accessor> = {
     },
 };
 
+/** Servicios (and any producto marked as not inventariable) never carry stock. */
+function esSinStock(producto: Producto): boolean {
+    return producto.categoria === 'SERVICIO' || !producto.inventariable;
+}
+
 function renderCellValue(key: string, accessor: Accessor, producto: Producto) {
     const value = accessor.get(producto);
+    const esColumnaDeStock =
+        key === 'pendiente' || key === 'stock_total' || key.startsWith('bodega_');
+
+    if (esColumnaDeStock && esSinStock(producto)) {
+        return '—';
+    }
 
     if (key === 'pendiente') {
         return value ? <Badge variant="secondary">{value}</Badge> : 0;
@@ -363,7 +374,8 @@ export default function ProductosIndex({
                                 </Tooltip>
                             ) : null}
 
-                            {permissions.canCreateTraslado ? (
+                            {permissions.canCreateTraslado &&
+                            !esSinStock(producto) ? (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button
@@ -535,6 +547,11 @@ export default function ProductosIndex({
         [categoryFilteredProductos, tipoSel, rinesSel],
     );
     const hayFiltrosDeVehiculo = tipoSel !== '' || rinesSel.length > 0;
+    // Servicios never carry stock, so they can't be picked for a traslado.
+    const productosTrasladables = useMemo(
+        () => productos.filter((producto) => !esSinStock(producto)),
+        [productos],
+    );
     return (
         <>
             <Head title="Productos" />
@@ -719,7 +736,7 @@ export default function ProductosIndex({
 
             {permissions.canCreateTraslado && !eliminados ? (
                 <CreateTrasladoModal
-                    productos={productos}
+                    productos={productosTrasladables}
                     bodegas={bodegas}
                     productoInicialId={trasladoProductoId ?? undefined}
                     open={trasladoProductoId !== null}

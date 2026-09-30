@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Traslados;
 
+use App\Rules\ProductoInventariable;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,7 +18,7 @@ class UpdateTrasladoRequest extends FormRequest
         return [
             'bodega_donante_id' => ['required', 'integer', 'exists:bodegas,id'],
             'bodega_destino_id' => ['required', 'integer', 'exists:bodegas,id', 'different:bodega_donante_id'],
-            'producto_id' => ['required', 'integer', 'exists:productos,id'],
+            'producto_id' => ['required', 'integer', 'exists:productos,id', new ProductoInventariable],
             'cantidad' => ['required', 'integer', 'min:1'],
             'observaciones' => ['nullable', 'string'],
         ];

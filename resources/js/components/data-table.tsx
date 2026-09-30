@@ -302,8 +302,8 @@ export default function DataTable<T>({
                                     <ChevronsDownUp className="size-4" />
                                 )}
                                 {table.allGroupsCollapsed
-                                    ? 'Expandir grupos'
-                                    : 'Contraer grupos'}
+                                    ? 'Ampliar'
+                                    : 'Colapsar todos'}
                             </Button>
                         ) : null}
 

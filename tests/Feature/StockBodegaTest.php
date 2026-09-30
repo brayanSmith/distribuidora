@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Producto;
 use App\Models\StockBodega;
 use App\Models\User;
 use Spatie\Permission\Models\Permission;
@@ -42,5 +43,19 @@ test('pairs with nothing in them are not sent, but their product still is', func
             ->has('stockBodegas', 0)
             ->has('productos', 1)
             ->where('productos.0.id', $vacio->producto_id)
+        );
+});
+
+test('a servicio never appears in stock por bodega, even with stock rows of its own', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    StockBodega::factory()
+        ->for(Producto::factory()->servicio(), 'producto')
+        ->create(['stock' => 10]);
+
+    $this->actingAs($owner)->get(route('stock-bodegas.index'))
+        ->assertInertia(fn ($page) => $page
+            ->has('stockBodegas', 0)
+            ->has('productos', 0)
         );
 });

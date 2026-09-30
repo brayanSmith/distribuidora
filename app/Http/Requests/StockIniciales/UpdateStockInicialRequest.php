@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\StockIniciales;
 
+use App\Rules\ProductoInventariable;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -15,7 +16,7 @@ class UpdateStockInicialRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'producto_id' => ['required', 'integer', 'exists:productos,id'],
+            'producto_id' => ['required', 'integer', 'exists:productos,id', new ProductoInventariable],
             'bodega_id' => ['required', 'integer', 'exists:bodegas,id'],
             'cantidad' => ['required', 'integer', 'min:0'],
         ];
