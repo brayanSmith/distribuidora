@@ -106,7 +106,14 @@ function NavItems({ group }: { group: NavGroup }) {
  * collapse and expand (and are remembered); a group without a label renders
  * its items as standalone links.
  */
-export function NavMain({ groups }: { groups: NavGroup[] }) {
+export function NavMain({
+    groups,
+    forceOpen = false,
+}: {
+    groups: NavGroup[];
+    /** Keeps every group open, e.g. while a nav search is filtering items. */
+    forceOpen?: boolean;
+}) {
     const { state } = useSidebar();
     const { cerrados, toggle } = useGruposCerrados();
     // In icon-only mode the labels are hidden, so nothing may stay collapsed.
@@ -118,7 +125,11 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
                 group.label ? (
                     <Collapsible
                         key={group.label}
-                        open={iconMode || !cerrados.includes(group.label)}
+                        open={
+                            iconMode ||
+                            forceOpen ||
+                            !cerrados.includes(group.label)
+                        }
                         onOpenChange={() => toggle(group.label as string)}
                         className="group/collapsible"
                     >

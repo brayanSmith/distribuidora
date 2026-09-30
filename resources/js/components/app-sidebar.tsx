@@ -13,6 +13,7 @@ import {
     Package,
     Quote,
     Receipt,
+    Search,
     Shield,
     ShoppingCart,
     Tags,
@@ -21,6 +22,7 @@ import {
     Users,
     Warehouse,
 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -29,6 +31,7 @@ import {
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
+    SidebarInput,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
@@ -231,6 +234,24 @@ export function AppSidebar() {
         },
     ].filter((group) => group.items.length > 0);
 
+    const [search, setSearch] = useState('');
+    const query = search.trim().toLowerCase();
+    const filteredGroups = useMemo(() => {
+        if (!query) {
+            return groups;
+        }
+
+        return groups
+            .map((group) => ({
+                ...group,
+                items: group.items.filter((item) =>
+                    item.title.toLowerCase().includes(query),
+                ),
+            }))
+            .filter((group) => group.items.length > 0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [groups, query]);
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -243,10 +264,26 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+
+                <div className="relative px-1 group-data-[collapsible=icon]:hidden">
+                    <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+                    <SidebarInput
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Buscar módulo..."
+                        className="pl-8"
+                        data-test="nav-search-input"
+                    />
+                </div>
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain groups={groups} />
+                <NavMain groups={filteredGroups} forceOpen={query !== ''} />
+                {query !== '' && filteredGroups.length === 0 ? (
+                    <p className="text-muted-foreground px-4 py-2 text-sm">
+                        Ningún módulo coincide con la búsqueda.
+                    </p>
+                ) : null}
             </SidebarContent>
 
             <SidebarFooter>

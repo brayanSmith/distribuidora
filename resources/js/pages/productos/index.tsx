@@ -93,6 +93,7 @@ const DEFAULT_BODEGA_WIDTH = 110;
 const ACCIONES_WIDTH = 140;
 
 const STATIC_COLUMN_ORDER = [
+    'id',
     'producto',
     'stock_total',
     'pendiente',
@@ -104,6 +105,11 @@ const STATIC_COLUMN_ORDER = [
 ] as const;
 
 const STATIC_ACCESSORS: Record<string, Accessor> = {
+    id: {
+        label: 'ID',
+        width: 70,
+        get: (p) => p.id,
+    },
     producto: {
         label: 'Producto',
         width: 220,
