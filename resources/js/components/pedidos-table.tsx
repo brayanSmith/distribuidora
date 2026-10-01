@@ -248,19 +248,13 @@ function productosResumen(pedido: Pedido): string {
     return nombres.length > 0 ? nombres.join(', ') : '—';
 }
 
-/** What was paid through each método de pago (the abonos of the same one added up). */
-function mediosDePagoList(pedido: Pedido): { nombre: string; monto: number }[] {
-    const montos = new Map<string, number>();
-
-    (pedido.abonos ?? []).forEach((abono) => {
+/** Every abono listed on its own, even when the método de pago repeats. */
+function mediosDePagoList(pedido: Pedido): { id: number; nombre: string; monto: number }[] {
+    return (pedido.abonos ?? []).flatMap((abono) => {
         const nombre = abono.puc?.concatenar_subcuenta_concepto;
 
-        if (nombre) {
-            montos.set(nombre, (montos.get(nombre) ?? 0) + Number(abono.monto));
-        }
+        return nombre ? [{ id: abono.id, nombre, monto: Number(abono.monto) }] : [];
     });
-
-    return Array.from(montos, ([nombre, monto]) => ({ nombre, monto }));
 }
 
 function mediosDePagoResumen(pedido: Pedido): string {
@@ -383,7 +377,7 @@ function MediosCell({ pedido }: { pedido: Pedido }) {
     return (
         <ul className="list-disc space-y-0.5 py-1 pl-4">
             {medios.map((medio) => (
-                <li key={medio.nombre}>
+                <li key={medio.id}>
                     <span className="flex items-baseline justify-between gap-2">
                         <span className="truncate" title={medio.nombre}>
                             {medio.nombre}
