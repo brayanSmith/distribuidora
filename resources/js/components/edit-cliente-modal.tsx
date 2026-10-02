@@ -25,7 +25,7 @@ import {
 import { update } from '@/routes/clientes';
 import type { Cliente, RetenedorFuente, TipoDocumento } from '@/types';
 
-const TIPOS_DOCUMENTO: TipoDocumento[] = ['CC', 'NIT', 'CE', 'TI', 'PASAPORTE'];
+const TIPOS_DOCUMENTO: TipoDocumento[] = ['CC', 'NIT', 'CE', 'TI', 'PASAPORTE', 'PPT', 'DNI', 'RUT', 'NIT DE VENEZUELA', 'OTRO'];
 
 type Props = {
     cliente: Cliente | null;

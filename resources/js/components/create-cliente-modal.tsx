@@ -27,7 +27,7 @@ import {
 import { store } from '@/routes/clientes';
 import type { RetenedorFuente, TipoDocumento } from '@/types';
 
-const TIPOS_DOCUMENTO: TipoDocumento[] = ['CC', 'NIT', 'CE', 'TI', 'PASAPORTE'];
+const TIPOS_DOCUMENTO: TipoDocumento[] = ['CC', 'NIT', 'CE', 'TI', 'PASAPORTE', 'PPT', 'DNI', 'RUT', 'NIT DE VENEZUELA', 'OTRO'];
 
 type Props = PropsWithChildren<{
     /** Called after the cliente was created and the modal closed. */

@@ -1,4 +1,4 @@
-export type TipoDocumento = 'CC' | 'NIT' | 'CE' | 'TI' | 'PASAPORTE';
+export type TipoDocumento = 'CC' | 'NIT' | 'CE' | 'TI' | 'PASAPORTE' | 'PPT' | 'DNI' | 'RUT' | 'NIT DE VENEZUELA' | 'OTRO';
 
 export type RetenedorFuente = 'SI' | 'NO';
 
