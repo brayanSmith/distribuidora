@@ -171,6 +171,134 @@ test('detalles are required to store a compra', function () {
     ])->assertSessionHasErrors('detalles');
 });
 
+test('storing a compra updates the producto costo_producto to the new unit price', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $proveedor = Proveedor::factory()->create();
+    $producto = Producto::factory()->create(['costo_producto' => 10]);
+    $bodega = Bodega::factory()->create();
+
+    $this->actingAs($owner)->post(route('compras.store'), [
+        'factura' => 'FA06',
+        'proveedor_id' => $proveedor->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'detalles' => [
+            [
+                'producto_id' => $producto->id,
+                'bodega_id' => $bodega->id,
+                'cantidad' => 1,
+                'precio_unitario' => 80,
+                'recibido' => true,
+            ],
+        ],
+    ])->assertRedirect();
+
+    expect((float) $producto->refresh()->costo_producto)->toBe(80.0);
+});
+
+test('editing an older compra does not overwrite the cost set by a newer one', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $proveedor = Proveedor::factory()->create();
+    $producto = Producto::factory()->create(['costo_producto' => 10]);
+    $bodega = Bodega::factory()->create();
+
+    $this->actingAs($owner)->post(route('compras.store'), [
+        'factura' => 'FA07-OLD',
+        'proveedor_id' => $proveedor->id,
+        'fecha' => '2026-01-01 10:00:00',
+        'detalles' => [
+            [
+                'producto_id' => $producto->id,
+                'bodega_id' => $bodega->id,
+                'cantidad' => 1,
+                'precio_unitario' => 30,
+                'recibido' => true,
+            ],
+        ],
+    ]);
+    $compraVieja = Compra::where('factura', 'FA07-OLD')->firstOrFail();
+
+    $this->actingAs($owner)->post(route('compras.store'), [
+        'factura' => 'FA07-NEW',
+        'proveedor_id' => $proveedor->id,
+        'fecha' => '2026-02-01 10:00:00',
+        'detalles' => [
+            [
+                'producto_id' => $producto->id,
+                'bodega_id' => $bodega->id,
+                'cantidad' => 1,
+                'precio_unitario' => 50,
+                'recibido' => true,
+            ],
+        ],
+    ]);
+
+    expect((float) $producto->refresh()->costo_producto)->toBe(50.0);
+
+    // Editing the older compra's price must not touch the cost set by the newer compra.
+    $this->actingAs($owner)->patch(route('compras.update', [$compraVieja]), [
+        'factura' => 'FA07-OLD',
+        'proveedor_id' => $proveedor->id,
+        'fecha' => '2026-01-01 10:00:00',
+        'detalles' => [
+            [
+                'producto_id' => $producto->id,
+                'bodega_id' => $bodega->id,
+                'cantidad' => 1,
+                'precio_unitario' => 999,
+                'recibido' => true,
+            ],
+        ],
+    ])->assertRedirect();
+
+    expect((float) $producto->refresh()->costo_producto)->toBe(50.0);
+});
+
+test('editing the most recent compra for a producto updates its cost', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $proveedor = Proveedor::factory()->create();
+    $producto = Producto::factory()->create(['costo_producto' => 10]);
+    $bodega = Bodega::factory()->create();
+
+    $this->actingAs($owner)->post(route('compras.store'), [
+        'factura' => 'FA08',
+        'proveedor_id' => $proveedor->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'detalles' => [
+            [
+                'producto_id' => $producto->id,
+                'bodega_id' => $bodega->id,
+                'cantidad' => 1,
+                'precio_unitario' => 40,
+                'recibido' => true,
+            ],
+        ],
+    ]);
+    $compra = Compra::where('factura', 'FA08')->firstOrFail();
+
+    $this->actingAs($owner)->patch(route('compras.update', [$compra]), [
+        'factura' => 'FA08',
+        'proveedor_id' => $proveedor->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'detalles' => [
+            [
+                'producto_id' => $producto->id,
+                'bodega_id' => $bodega->id,
+                'cantidad' => 1,
+                'precio_unitario' => 65,
+                'recibido' => true,
+            ],
+        ],
+    ])->assertRedirect();
+
+    expect((float) $producto->refresh()->costo_producto)->toBe(65.0);
+});
+
 test('a servicio cannot be bought: it never carries stock', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');

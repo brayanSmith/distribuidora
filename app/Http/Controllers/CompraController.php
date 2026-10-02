@@ -200,6 +200,7 @@ class CompraController extends Controller
             ]);
 
             $this->adjustStock($detalle, 1);
+            $this->actualizarCostoProducto($compra, $item['producto_id'], $precioUnitario);
         }
 
         $descuento = (float) $compra->descuento;
@@ -209,6 +210,28 @@ class CompraController extends Controller
             'total_a_pagar' => max($subtotal - $descuento, 0),
             'estado' => $compra->detallesCompra()->where('estado_entrega', 'PENDIENTE')->doesntExist() ? 'RECIBIDA' : 'PENDIENTE',
         ]);
+    }
+
+    /**
+     * Update the producto's costo_producto to this compra's unit price, but
+     * only when this compra is the most recent purchase of that producto.
+     * Editing an older compra must never overwrite a cost set by a newer one.
+     */
+    private function actualizarCostoProducto(Compra $compra, int $productoId, float $precioUnitario): void
+    {
+        $hayCompraMasReciente = DetalleCompra::query()
+            ->where('producto_id', $productoId)
+            ->where('compra_id', '!=', $compra->id)
+            ->whereHas('compra', fn ($query) => $query
+                ->where('fecha', '>', $compra->fecha)
+                ->orWhere(fn ($query) => $query->where('fecha', $compra->fecha)->where('id', '>', $compra->id)))
+            ->exists();
+
+        if ($hayCompraMasReciente) {
+            return;
+        }
+
+        Producto::find($productoId)?->update(['costo_producto' => $precioUnitario]);
     }
 
     /**
