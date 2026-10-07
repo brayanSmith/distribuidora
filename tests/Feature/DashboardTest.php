@@ -342,3 +342,31 @@ test('the hasta date keeps the orders of that whole day, also when desde is the 
             ->where('resumen.gastos', 30)
         );
 });
+
+test('the out of stock alert leaves services out even when they are flagged inventariable', function () {
+    $user = User::factory()->create();
+    asignarRol($user);
+    $bodega = Bodega::factory()->create();
+
+    $llanta = Producto::factory()->create(['categoria' => 'LLANTA', 'tipo' => 'NUEVO', 'inventariable' => true]);
+    $servicio = Producto::factory()->create(['categoria' => 'SERVICIO', 'tipo' => 'SERVICIO', 'inventariable' => true]);
+
+    $pedido = Pedido::factory()->create(['bodega_id' => $bodega->id, 'tipo_precio' => 'DETAL']);
+
+    foreach ([$llanta, $servicio] as $producto) {
+        DetallePedido::factory()->create([
+            'pedido_id' => $pedido->id,
+            'producto_id' => $producto->id,
+            'bodega_id' => $bodega->id,
+            'cantidad' => 2,
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('sinStock', 1)
+            ->where('sinStock.0.id', $llanta->id)
+        );
+});

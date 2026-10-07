@@ -298,6 +298,7 @@ class DashboardController extends Controller
     {
         return $this->detalles($filtros)
             ->where('productos.inventariable', true)
+            ->where(fn (Builder $query) => $query->where('productos.categoria', '!=', 'SERVICIO')->orWhereNull('productos.categoria'))
             ->whereRaw('(select coalesce(sum(stock), 0) from stock_bodegas where stock_bodegas.producto_id = detalle_pedidos.producto_id) <= 0')
             ->selectRaw('detalle_pedidos.producto_id, MAX(productos.concatenar_codigo_nombre) as producto, SUM(detalle_pedidos.cantidad) as vendidas, (select coalesce(sum(stock), 0) from stock_bodegas where stock_bodegas.producto_id = detalle_pedidos.producto_id) as stock')
             ->groupBy('detalle_pedidos.producto_id')
