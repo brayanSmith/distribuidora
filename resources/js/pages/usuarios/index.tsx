@@ -2,12 +2,12 @@ import { Head } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
-import CreateUsuarioModal from '@/components/create-usuario-modal';
+import CreateUsuarioModal from '@/components/usuarios/create-usuario-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
-import DeleteUsuarioModal from '@/components/delete-usuario-modal';
-import EditUsuarioModal from '@/components/edit-usuario-modal';
+import DeleteUsuarioModal from '@/components/usuarios/delete-usuario-modal';
+import EditUsuarioModal from '@/components/usuarios/edit-usuario-modal';
 import Heading from '@/components/heading';
-import TiposPrecioBadges from '@/components/tipos-precio-badges';
+import TiposPrecioBadges from '@/components/productos/tipos-precio-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {

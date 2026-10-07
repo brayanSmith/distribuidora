@@ -1,8 +1,9 @@
 import { Form } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import type { PropsWithChildren } from 'react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
-import TiposPrecioFields from '@/components/tipos-precio-fields';
+import TiposPrecioFields from '@/components/productos/tipos-precio-fields';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -13,36 +14,36 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { update } from '@/routes/usuarios';
-import type { Usuario, UsuarioRoleOption } from '@/types';
+import { TIPOS_PRECIO } from '@/lib/tipos-precio';
+import { store } from '@/routes/usuarios';
+import type { UsuarioRoleOption } from '@/types';
 
-type Props = {
+type Props = PropsWithChildren<{
     availableRoles: UsuarioRoleOption[];
-    usuario: Usuario | null;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-};
+}>;
 
-export default function EditUsuarioModal({
+export default function CreateUsuarioModal({
     availableRoles,
-    usuario,
-    open,
-    onOpenChange,
+    children,
 }: Props) {
+    const [open, setOpen] = useState(false);
     const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
-    const [selectedTipos, setSelectedTipos] = useState<string[]>([]);
+    const [selectedTipos, setSelectedTipos] = useState<string[]>(
+        TIPOS_PRECIO.map((tipo) => tipo.value),
+    );
 
-    useEffect(() => {
-        if (!usuario) {
-            return;
+    const handleOpenChange = (nextOpen: boolean) => {
+        setOpen(nextOpen);
+
+        if (!nextOpen) {
+            setSelectedRoles([]);
+            setSelectedTipos(TIPOS_PRECIO.map((tipo) => tipo.value));
         }
-
-        setSelectedRoles(usuario.roles);
-        setSelectedTipos(usuario.tipos_precio_permitidos);
-    }, [usuario]);
+    };
 
     const toggleRole = (roleId: number, checked: boolean) => {
         setSelectedRoles((current) =>
@@ -52,82 +53,78 @@ export default function EditUsuarioModal({
         );
     };
 
-    if (!usuario) {
-        return null;
-    }
-
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent className="sm:max-w-lg">
                 <Form
                     key={String(open)}
-                    {...update.form([usuario.id])}
+                    {...store.form()}
                     className="space-y-6"
-                    onSuccess={() => onOpenChange(false)}
+                    onSuccess={() => handleOpenChange(false)}
                 >
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Editar usuario</DialogTitle>
+                                <DialogTitle>Nuevo usuario</DialogTitle>
                                 <DialogDescription>
-                                    Actualiza la información y los permisos de
-                                    este usuario.
+                                    Crea una cuenta de acceso para un empleado.
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label required htmlFor="edit_usuario_name">
+                                    <Label required htmlFor="usuario_name">
                                         Nombre
                                     </Label>
                                     <Input
-                                        id="edit_usuario_name"
+                                        id="usuario_name"
                                         name="name"
-                                        data-test="edit-usuario-name"
-                                        defaultValue={usuario.name}
+                                        data-test="create-usuario-name"
                                         required
                                     />
                                     <InputError message={errors.name} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label
-                                        required
-                                        htmlFor="edit_usuario_email"
-                                    >
+                                    <Label required htmlFor="usuario_email">
                                         Email
                                     </Label>
                                     <Input
-                                        id="edit_usuario_email"
+                                        id="usuario_email"
                                         name="email"
                                         type="email"
-                                        data-test="edit-usuario-email"
-                                        defaultValue={usuario.email}
+                                        data-test="create-usuario-email"
                                         required
                                     />
                                     <InputError message={errors.email} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_usuario_password">
-                                        Nueva contraseña
+                                    <Label required htmlFor="usuario_password">
+                                        Contraseña
                                     </Label>
                                     <PasswordInput
-                                        id="edit_usuario_password"
+                                        id="usuario_password"
                                         name="password"
-                                        data-test="edit-usuario-password"
-                                        placeholder="Dejar en blanco para no cambiarla"
+                                        data-test="create-usuario-password"
+                                        required
                                     />
                                     <InputError message={errors.password} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="edit_usuario_password_confirmation">
+                                    <Label
+                                        required
+                                        htmlFor="usuario_password_confirmation"
+                                    >
                                         Confirmar contraseña
                                     </Label>
                                     <PasswordInput
-                                        id="edit_usuario_password_confirmation"
+                                        id="usuario_password_confirmation"
                                         name="password_confirmation"
+                                        data-test="create-usuario-password-confirmation"
+                                        required
                                     />
                                 </div>
 
@@ -185,10 +182,10 @@ export default function EditUsuarioModal({
 
                                 <Button
                                     type="submit"
-                                    data-test="edit-usuario-submit"
+                                    data-test="create-usuario-submit"
                                     disabled={processing}
                                 >
-                                    Guardar cambios
+                                    Crear usuario
                                 </Button>
                             </DialogFooter>
                         </>

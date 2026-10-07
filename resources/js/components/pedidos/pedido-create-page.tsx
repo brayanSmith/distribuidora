@@ -1,5 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import PedidoFormFields from '@/components/pedido-form-fields';
+import PedidoFormFields from '@/components/pedidos/pedido-form-fields';
 import { Button } from '@/components/ui/button';
 import type {
     BodegaOption,

@@ -2,13 +2,13 @@ import { Head } from '@inertiajs/react';
 import { ArrowLeftRight, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
-import CreateProductoModal from '@/components/create-producto-modal';
-import CreateTrasladoModal from '@/components/create-traslado-modal';
+import CreateProductoModal from '@/components/productos/create-producto-modal';
+import CreateTrasladoModal from '@/components/traslados/create-traslado-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
-import DeleteProductoModal from '@/components/delete-producto-modal';
-import EditProductoModal from '@/components/edit-producto-modal';
+import DeleteProductoModal from '@/components/productos/delete-producto-modal';
+import EditProductoModal from '@/components/productos/edit-producto-modal';
 import Heading from '@/components/heading';
-import ProductoDetalleModal from '@/components/producto-detalle-modal';
+import ProductoDetalleModal from '@/components/productos/producto-detalle-modal';
 import RestoreButton from '@/components/restore-button';
 import TrashToggle from '@/components/trash-toggle';
 import { Badge } from '@/components/ui/badge';
@@ -82,7 +82,7 @@ const tipoDe = (producto: Producto): string =>
 const rinDe = (producto: Producto): string => producto.rin ?? SIN_RIN;
 
 /** Each row renders many controls, so bigger pages make the table sluggish. */
-const PAGE_SIZE_OPTIONS = [25, 50];
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
 const PAGE_SIZE_MAX = 100;
 
 /** A tipo de vehículo / rin of the filters, with how many productos it has. */

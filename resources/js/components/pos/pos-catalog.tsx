@@ -1,7 +1,7 @@
 import { Plus, RefreshCw, Search } from 'lucide-react';
 import type { Ref } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import CreateProductoModal from '@/components/create-producto-modal';
+import CreateProductoModal from '@/components/productos/create-producto-modal';
 import Pagination from '@/components/pagination';
 import PosProductCard from '@/components/pos/pos-product-card';
 import { Button } from '@/components/ui/button';

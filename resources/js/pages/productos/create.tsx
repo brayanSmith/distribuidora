@@ -1,6 +1,6 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { useRef } from 'react';
-import ProductoFormFields from '@/components/producto-form-fields';
+import ProductoFormFields from '@/components/productos/producto-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, store } from '@/routes/productos';
 import type { MarcaOption } from '@/types';

@@ -2,12 +2,12 @@ import { Head, router } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
-import CreateRoleModal from '@/components/create-role-modal';
+import CreateRoleModal from '@/components/roles/create-role-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
-import DeleteRoleModal from '@/components/delete-role-modal';
-import EditRoleModal from '@/components/edit-role-modal';
+import DeleteRoleModal from '@/components/roles/delete-role-modal';
+import EditRoleModal from '@/components/roles/edit-role-modal';
 import Heading from '@/components/heading';
-import TiposPrecioBadges from '@/components/tipos-precio-badges';
+import TiposPrecioBadges from '@/components/productos/tipos-precio-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {

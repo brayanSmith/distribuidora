@@ -1,6 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
-import ComprasTable from '@/components/compras-table';
+import ComprasTable from '@/components/compras/compras-table';
 import Heading from '@/components/heading';
 import TrashToggle from '@/components/trash-toggle';
 import { Button } from '@/components/ui/button';

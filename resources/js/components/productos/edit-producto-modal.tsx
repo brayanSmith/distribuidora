@@ -1,7 +1,6 @@
 import { Form } from '@inertiajs/react';
-import type { PropsWithChildren } from 'react';
 import { useRef, useState } from 'react';
-import ProductoFormFields from '@/components/producto-form-fields';
+import ProductoFormFields from '@/components/productos/producto-form-fields';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -11,26 +10,29 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
-import { store } from '@/routes/productos';
-import type { MarcaOption } from '@/types';
+import { update } from '@/routes/productos';
+import type { MarcaOption, Producto } from '@/types';
 
-type Props = PropsWithChildren<{
+type Props = {
     marcas: MarcaOption[];
-    /** Keep the user on the current screen after saving (e.g. the POS). */
-    stayOnPage?: boolean;
-}>;
+    producto: Producto | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+};
 
-export default function CreateProductoModal({
+export default function EditProductoModal({
     marcas,
-    stayOnPage = false,
-    children,
+    producto,
+    open,
+    onOpenChange,
 }: Props) {
-    const [open, setOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [removeImage, setRemoveImage] = useState(false);
 
-    const handleImageChange = (file: File | null) => {
+    const handleImageChange = (file: File | null, removed: boolean) => {
+        setRemoveImage(removed);
+
         if (!fileInputRef.current) {
             return;
         }
@@ -44,34 +46,30 @@ export default function CreateProductoModal({
         fileInputRef.current.files = dataTransfer.files;
     };
 
+    if (!producto) {
+        return null;
+    }
+
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>{children}</DialogTrigger>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-3xl lg:max-w-5xl">
                 <Form
-                    key={String(open)}
-                    {...store.form()}
+                    key={`${producto.id}-${String(open)}`}
+                    {...update.form([producto.id])}
                     className="space-y-6"
-                    onSuccess={() => setOpen(false)}
+                    onSuccess={() => onOpenChange(false)}
                 >
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Nuevo producto</DialogTitle>
+                                <DialogTitle>Editar producto</DialogTitle>
                                 <DialogDescription>
-                                    Registra un nuevo producto en el catálogo.
+                                    Actualiza los datos del producto.
                                 </DialogDescription>
                             </DialogHeader>
 
-                            {stayOnPage ? (
-                                <input
-                                    type="hidden"
-                                    name="stay_on_page"
-                                    value="1"
-                                />
-                            ) : null}
-
                             <ProductoFormFields
+                                producto={producto}
                                 marcas={marcas}
                                 errors={errors}
                                 onImageChange={handleImageChange}
@@ -81,6 +79,11 @@ export default function CreateProductoModal({
                                 type="file"
                                 name="imagen_producto"
                                 className="hidden"
+                            />
+                            <input
+                                type="hidden"
+                                name="remove_imagen_producto"
+                                value={removeImage ? '1' : '0'}
                             />
 
                             <DialogFooter className="gap-2">

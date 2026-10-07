@@ -2,10 +2,10 @@ import { Head, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
-import CreateMarcaModal from '@/components/create-marca-modal';
+import CreateMarcaModal from '@/components/marcas/create-marca-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
-import DeleteMarcaModal from '@/components/delete-marca-modal';
-import EditMarcaModal from '@/components/edit-marca-modal';
+import DeleteMarcaModal from '@/components/marcas/delete-marca-modal';
+import EditMarcaModal from '@/components/marcas/edit-marca-modal';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {

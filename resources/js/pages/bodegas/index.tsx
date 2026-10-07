@@ -2,10 +2,10 @@ import { Head, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
-import CreateBodegaModal from '@/components/create-bodega-modal';
+import CreateBodegaModal from '@/components/bodegas/create-bodega-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
-import DeleteBodegaModal from '@/components/delete-bodega-modal';
-import EditBodegaModal from '@/components/edit-bodega-modal';
+import DeleteBodegaModal from '@/components/bodegas/delete-bodega-modal';
+import EditBodegaModal from '@/components/bodegas/edit-bodega-modal';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {

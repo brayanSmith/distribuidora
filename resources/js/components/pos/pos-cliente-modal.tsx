@@ -1,6 +1,6 @@
 import { Check, Plus, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import CreateClienteModal from '@/components/create-cliente-modal';
+import CreateClienteModal from '@/components/clientes/create-cliente-modal';
 import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {

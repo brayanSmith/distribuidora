@@ -2,10 +2,10 @@ import { Head, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
-import CreateStockInicialModal from '@/components/create-stock-inicial-modal';
+import CreateStockInicialModal from '@/components/stock-iniciales/create-stock-inicial-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
-import DeleteStockInicialModal from '@/components/delete-stock-inicial-modal';
-import EditStockInicialModal from '@/components/edit-stock-inicial-modal';
+import DeleteStockInicialModal from '@/components/stock-iniciales/delete-stock-inicial-modal';
+import EditStockInicialModal from '@/components/stock-iniciales/edit-stock-inicial-modal';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {

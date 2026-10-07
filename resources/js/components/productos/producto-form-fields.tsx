@@ -2,7 +2,7 @@ import { usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import Combobox from '@/components/combobox';
 import InputError from '@/components/input-error';
-import ProductoImageUpload from '@/components/producto-image-upload';
+import ProductoImageUpload from '@/components/productos/producto-image-upload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';

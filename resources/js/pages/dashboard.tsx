@@ -1,9 +1,9 @@
 import { Head } from '@inertiajs/react';
-import DashboardCharts from '@/components/dashboard-charts';
-import DashboardFilters from '@/components/dashboard-filters';
-import DashboardStockAlert from '@/components/dashboard-stock-alert';
-import DashboardWidgets from '@/components/dashboard-widgets';
-import CantidadPorBodegaTable from '@/components/cantidad-por-bodega-table';
+import DashboardCharts from '@/components/dashboard/dashboard-charts';
+import DashboardFilters from '@/components/dashboard/dashboard-filters';
+import DashboardStockAlert from '@/components/dashboard/dashboard-stock-alert';
+import DashboardWidgets from '@/components/dashboard/dashboard-widgets';
+import CantidadPorBodegaTable from '@/components/productos/cantidad-por-bodega-table';
 import { dashboard } from '@/routes';
 import type {
     CantidadPorBodega,

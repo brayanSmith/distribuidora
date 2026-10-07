@@ -15,7 +15,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import VoucherButton from '@/components/voucher-button';
+import VoucherButton from '@/components/pedidos/voucher-button';
 import { useFetchedRecord } from '@/hooks/use-fetched-record';
 import {
     currencyFormatter,

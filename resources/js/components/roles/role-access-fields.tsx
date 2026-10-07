@@ -1,4 +1,4 @@
-import PermissionsFieldset from '@/components/permissions-fieldset';
+import PermissionsFieldset from '@/components/roles/permissions-fieldset';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

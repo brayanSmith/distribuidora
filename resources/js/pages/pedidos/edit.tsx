@@ -1,4 +1,4 @@
-import PedidoEditPage from '@/components/pedido-edit-page';
+import PedidoEditPage from '@/components/pedidos/pedido-edit-page';
 import * as pedidosAbonosRoutes from '@/routes/pedidos/abonos';
 import * as pedidosRoutes from '@/routes/pedidos';
 import { index } from '@/routes/pedidos';

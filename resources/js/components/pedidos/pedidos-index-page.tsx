@@ -2,8 +2,8 @@ import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import TrashToggle from '@/components/trash-toggle';
-import PedidoDetallesTable from '@/components/pedido-detalles-table';
-import PedidosTable from '@/components/pedidos-table';
+import PedidoDetallesTable from '@/components/pedidos/pedido-detalles-table';
+import PedidosTable from '@/components/pedidos/pedidos-table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type {
     Pedido,

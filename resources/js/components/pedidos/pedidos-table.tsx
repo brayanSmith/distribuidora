@@ -3,6 +3,7 @@ import {
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
+    Banknote,
     Columns3,
     GripVertical,
     Eye,
@@ -19,8 +20,10 @@ import DateRangeFilter, {
 import TableBottomBar from '@/components/table-bottom-bar';
 import ResizeHandle from '@/components/column-resize-handle';
 import ActionsCell from '@/components/actions-cell';
-import DeleteCompraModal from '@/components/delete-compra-modal';
-import VerCompraModal from '@/components/ver-compra-modal';
+import DeletePedidoModal from '@/components/pedidos/delete-pedido-modal';
+import RegistrarPagoModal from '@/components/pedidos/registrar-pago-modal';
+import VerPedidoModal from '@/components/pedidos/ver-pedido-modal';
+import VoucherButton from '@/components/pedidos/voucher-button';
 import RestoreButton from '@/components/restore-button';
 import { Badge } from '@/components/ui/badge';
 import PageSizeSelect from '@/components/page-size-select';
@@ -61,31 +64,49 @@ import {
     usePersistedState,
 } from '@/hooks/use-persisted-state';
 import { cn } from '@/lib/utils';
-import { edit, restore } from '@/routes/compras';
-import type { Compra, CompraPermissions } from '@/types';
+import type {
+    PedidoDetalle,
+    Pedido,
+    PedidoPermissions,
+    PedidoRoutes,
+    PucOption,
+    VendedorOption,
+} from '@/types';
 
 type Props = {
-    compras: Compra[];
-    permissions: CompraPermissions;
-    /** Showing the deleted compras: rows offer "restaurar" instead of edit/delete. */
+    pedidos: Pedido[];
+    permissions: PedidoPermissions;
+    routes: PedidoRoutes;
+    /** Showing the deleted pedidos: rows offer "restaurar" instead of edit/delete. */
     eliminados?: boolean;
+    /** Options of the "Registrar pago" modal, sent only with `canCreateAbono`. */
+    pucs?: PucOption[];
+    vendedores?: VendedorOption[];
 };
 
-type StaticColumnKey =
+type SortKey =
     | 'id'
-    | 'factura'
+    | 'bodega'
+    | 'cliente'
+    | 'nit'
     | 'fecha'
-    | 'proveedor'
     | 'estado'
-    | 'subtotal'
-    | 'descuento'
-    | 'total';
+    | 'ajuste'
+    | 'total'
+    | 'saldo'
+    | 'vendedor'
+    | 'turno'
+    | 'productos'
+    | 'medios'
+    | 'observacion_pago'
+    | 'observacion'
+    | 'estado_pago';
 
-// Bodega columns are dynamic (one per warehouse seen in the data), so their
-// keys are built as `bodega:<id>` and are not part of this static union.
-type ColumnKey = StaticColumnKey | 'acciones' | string;
+type SortDirection = 'asc' | 'desc';
 
-type FilterVariant = 'text' | 'estado' | 'date' | 'none';
+type ColumnKey = SortKey | 'acciones';
+
+type FilterVariant = 'text' | 'estado' | 'estado_pago' | 'date' | 'none';
 
 type ColumnMeta = {
     key: ColumnKey;
@@ -95,38 +116,23 @@ type ColumnMeta = {
     filter: FilterVariant;
 };
 
-const BODEGA_PREFIX = 'bodega:';
-
-function bodegaColumnKey(bodegaId: number): string {
-    return `${BODEGA_PREFIX}${bodegaId}`;
-}
-
-function bodegaIdFromColumnKey(key: string): number | null {
-    if (!key.startsWith(BODEGA_PREFIX)) {
-        return null;
-    }
-
-    const id = Number(key.slice(BODEGA_PREFIX.length));
-
-    return Number.isNaN(id) ? null : id;
-}
-
-const STATIC_COLUMN_DEFS: ColumnMeta[] = [
-    { key: 'id', label: 'ID', sortable: true, filter: 'text' },
-    { key: 'factura', label: 'Factura', sortable: true, filter: 'text' },
-    { key: 'fecha', label: 'Fecha', sortable: true, filter: 'date' },
-    { key: 'proveedor', label: 'Proveedor', sortable: true, filter: 'text' },
-    { key: 'estado', label: 'Estado', sortable: true, filter: 'estado' },
+const COLUMN_DEFS: ColumnMeta[] = [
     {
-        key: 'subtotal',
-        label: 'Subtotal',
-        sortable: true,
-        filter: 'text',
+        key: 'acciones',
+        label: 'Acciones',
+        sortable: false,
+        filter: 'none',
         align: 'right',
     },
+    { key: 'id', label: 'ID', sortable: true, filter: 'text' },
+    { key: 'bodega', label: 'Bodega', sortable: true, filter: 'text' },
+    { key: 'cliente', label: 'Cliente', sortable: true, filter: 'text' },
+    { key: 'nit', label: 'NIT', sortable: true, filter: 'text' },
+    { key: 'fecha', label: 'Fecha', sortable: true, filter: 'date' },
+    { key: 'estado', label: 'Estado', sortable: true, filter: 'estado' },
     {
-        key: 'descuento',
-        label: 'Descuento',
+        key: 'ajuste',
+        label: 'Ajuste',
         sortable: true,
         filter: 'text',
         align: 'right',
@@ -138,29 +144,66 @@ const STATIC_COLUMN_DEFS: ColumnMeta[] = [
         filter: 'text',
         align: 'right',
     },
+    {
+        key: 'saldo',
+        label: 'Saldo',
+        sortable: true,
+        filter: 'text',
+        align: 'right',
+    },
+    { key: 'vendedor', label: 'Vendedor', sortable: true, filter: 'text' },
+    { key: 'turno', label: 'Turno', sortable: true, filter: 'text' },
+    { key: 'productos', label: 'Productos', sortable: true, filter: 'text' },
+    {
+        key: 'medios',
+        label: 'Medios de pago',
+        sortable: true,
+        filter: 'text',
+    },
+    {
+        key: 'observacion_pago',
+        label: 'Observación pago',
+        sortable: true,
+        filter: 'text',
+    },
+    {
+        key: 'observacion',
+        label: 'Observación',
+        sortable: true,
+        filter: 'text',
+    },
+    {
+        key: 'estado_pago',
+        label: 'Estado pago',
+        sortable: true,
+        filter: 'estado_pago',
+    },
 ];
 
-const ACCIONES_COLUMN: ColumnMeta = {
-    key: 'acciones',
-    label: 'Acciones',
-    sortable: false,
-    filter: 'none',
-    align: 'right',
-};
+const COLUMN_DEFS_MAP = new Map(COLUMN_DEFS.map((meta) => [meta.key, meta]));
+const COLUMN_KEYS: ColumnKey[] = COLUMN_DEFS.map((meta) => meta.key);
+const HIDEABLE_COLUMNS = COLUMN_DEFS.filter((meta) => meta.key !== 'acciones');
 
-const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
     id: 70,
-    factura: 130,
+    bodega: 130,
+    cliente: 170,
+    nit: 110,
     fecha: 150,
-    proveedor: 180,
     estado: 120,
-    subtotal: 130,
-    descuento: 120,
-    total: 140,
-    acciones: 160,
+    ajuste: 100,
+    total: 130,
+    saldo: 110,
+    vendedor: 140,
+    turno: 90,
+    productos: 280,
+    medios: 290,
+    observacion_pago: 180,
+    observacion: 180,
+    estado_pago: 120,
+    acciones: 240,
 };
 
-const DEFAULT_BODEGA_COLUMN_WIDTH = 220;
 const MIN_COLUMN_WIDTH = 60;
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
@@ -169,75 +212,117 @@ const currencyFormatter = new Intl.NumberFormat('es-CO', {
     maximumFractionDigits: 0,
 });
 
-function productosPorBodega(compra: Compra, bodegaId: number): string[] {
-    return (compra.detalles_compra ?? [])
-        .filter((detalle) => detalle.bodega_id === bodegaId)
-        .map(
-            (detalle) =>
-                detalle.producto?.concatenar_codigo_nombre ??
-                detalle.producto?.referencia_producto ??
-                `Producto ${detalle.producto_id}`,
-        );
-}
-
-function todosLosProductos(compra: Compra): string[] {
-    return (compra.detalles_compra ?? []).map(
-        (detalle) =>
-            detalle.producto?.concatenar_codigo_nombre ??
-            detalle.producto?.referencia_producto ??
-            `Producto ${detalle.producto_id}`,
+function ajusteTotal(pedido: Pedido): number {
+    return (
+        Number(pedido.descuento ?? 0) +
+        Number(pedido.reteica ?? 0) +
+        Number(pedido.retefuente ?? 0)
     );
 }
 
-function getSortValue(compra: Compra, key: ColumnKey): string | number {
-    switch (key) {
-        case 'id':
-            return compra.id;
-        case 'factura':
-            return compra.factura ?? '';
-        case 'fecha':
-            return compra.fecha ? new Date(compra.fecha).getTime() : 0;
-        case 'proveedor':
-            return compra.proveedor?.nombre_proveedor ?? '';
-        case 'estado':
-            return compra.estado;
-        case 'subtotal':
-            return Number(compra.subtotal);
-        case 'descuento':
-            return Number(compra.descuento);
-        case 'total':
-            return Number(compra.total_a_pagar);
-        default: {
-            const bodegaId = bodegaIdFromColumnKey(key);
-
-            return bodegaId !== null
-                ? productosPorBodega(compra, bodegaId).join(', ')
-                : '';
-        }
-    }
+function productoNombre(detalle: PedidoDetalle): string {
+    return (
+        detalle.producto?.concatenar_codigo_nombre ??
+        detalle.producto?.referencia_producto ??
+        `Producto ${detalle.producto_id}`
+    );
 }
 
-function tiposVehiculo(compra: Compra): string {
+function productosList(pedido: Pedido): string[] {
+    return (pedido.detalles ?? []).map(productoNombre);
+}
+
+function tiposVehiculo(pedido: Pedido): string {
     return Array.from(
         new Set(
-            (compra.detalles_compra ?? [])
+            (pedido.detalles ?? [])
                 .map((detalle) => detalle.producto?.tipo_vehiculo)
                 .filter((tipo): tipo is string => Boolean(tipo)),
         ),
     ).join(' ');
 }
 
-function searchableText(compra: Compra): string {
+function productosResumen(pedido: Pedido): string {
+    const nombres = productosList(pedido);
+
+    return nombres.length > 0 ? nombres.join(', ') : '—';
+}
+
+/** Every abono listed on its own, even when the método de pago repeats. */
+function mediosDePagoList(pedido: Pedido): { id: number; nombre: string; monto: number }[] {
+    return (pedido.abonos ?? []).flatMap((abono) => {
+        const nombre = abono.puc?.concatenar_subcuenta_concepto;
+
+        return nombre ? [{ id: abono.id, nombre, monto: Number(abono.monto) }] : [];
+    });
+}
+
+function mediosDePagoResumen(pedido: Pedido): string {
+    const nombres = Array.from(
+        new Set(
+            (pedido.abonos ?? [])
+                .map((abono) => abono.puc?.concatenar_subcuenta_concepto)
+                .filter((nombre): nombre is string => Boolean(nombre)),
+        ),
+    );
+
+    return nombres.length > 0 ? nombres.join(', ') : '—';
+}
+
+function getSortValue(pedido: Pedido, key: SortKey): string | number {
+    switch (key) {
+        case 'id':
+            return pedido.id;
+        case 'bodega':
+            return pedido.bodega?.nombre_bodega ?? '';
+        case 'cliente':
+            return pedido.cliente?.razon_social ?? '';
+        case 'nit':
+            return pedido.cliente?.numero_documento ?? '';
+        case 'fecha':
+            return pedido.fecha ? new Date(pedido.fecha).getTime() : 0;
+        case 'estado':
+            return pedido.estado;
+        case 'ajuste':
+            return ajusteTotal(pedido);
+        case 'total':
+            return Number(pedido.total_a_pagar);
+        case 'saldo':
+            return Number(pedido.saldo_pendiente);
+        case 'vendedor':
+            return pedido.user?.name ?? '';
+        case 'turno':
+            return pedido.turno ?? '';
+        case 'productos':
+            return productosResumen(pedido);
+        case 'medios':
+            return mediosDePagoResumen(pedido);
+        case 'observacion_pago':
+            return pedido.observacion_pago ?? '';
+        case 'observacion':
+            return pedido.observacion ?? '';
+        case 'estado_pago':
+            return pedido.estado_pago;
+        default:
+            return '';
+    }
+}
+
+function searchableText(pedido: Pedido): string {
     return [
-        compra.id,
-        compra.factura,
-        compra.proveedor?.nombre_proveedor,
-        compra.estado,
-        compra.subtotal,
-        compra.descuento,
-        compra.total_a_pagar,
-        todosLosProductos(compra).join(' '),
-        tiposVehiculo(compra),
+        pedido.id,
+        pedido.bodega?.nombre_bodega,
+        pedido.cliente?.razon_social,
+        pedido.cliente?.numero_documento,
+        pedido.estado,
+        pedido.estado_pago,
+        pedido.user?.name,
+        pedido.turno,
+        productosResumen(pedido),
+        tiposVehiculo(pedido),
+        mediosDePagoResumen(pedido),
+        pedido.observacion_pago,
+        pedido.observacion,
     ]
         .filter(Boolean)
         .join(' ')
@@ -252,16 +337,55 @@ function TruncatedCell({ value }: { value: string }) {
     );
 }
 
-function ListCell({ items }: { items: string[] }) {
-    if (items.length === 0) {
+/** The productos of a pedido as a list, each with the quantity bought. */
+function ProductosCell({ pedido }: { pedido: Pedido }) {
+    const detalles = pedido.detalles ?? [];
+
+    if (detalles.length === 0) {
         return <span className="text-muted-foreground">—</span>;
     }
 
     return (
         <ul className="list-disc space-y-0.5 py-1 pl-4">
-            {items.map((item, index) => (
-                <li key={index} className="truncate" title={item}>
-                    {item}
+            {detalles.map((detalle) => (
+                <li key={detalle.id}>
+                    <span className="flex items-baseline justify-between gap-2">
+                        <span
+                            className="truncate"
+                            title={productoNombre(detalle)}
+                        >
+                            {productoNombre(detalle)}
+                        </span>
+                        <span className="font-medium whitespace-nowrap">
+                            × {Number(detalle.cantidad)}
+                        </span>
+                    </span>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+/** The métodos de pago of a pedido as a list, each with the amount paid through it. */
+function MediosCell({ pedido }: { pedido: Pedido }) {
+    const medios = mediosDePagoList(pedido);
+
+    if (medios.length === 0) {
+        return <span className="text-muted-foreground">—</span>;
+    }
+
+    return (
+        <ul className="list-disc space-y-0.5 py-1 pl-4">
+            {medios.map((medio) => (
+                <li key={medio.id}>
+                    <span className="flex items-baseline justify-between gap-2">
+                        <span className="truncate" title={medio.nombre}>
+                            {medio.nombre}
+                        </span>
+                        <span className="font-medium whitespace-nowrap text-emerald-600 dark:text-emerald-400">
+                            {currencyFormatter.format(medio.monto)}
+                        </span>
+                    </span>
                 </li>
             ))}
         </ul>
@@ -270,14 +394,20 @@ function ListCell({ items }: { items: string[] }) {
 
 const ESTADO_OPTIONS = [
     { value: 'PENDIENTE', label: 'Pendiente' },
-    { value: 'RECIBIDA', label: 'Recibida' },
+    { value: 'COMPLETADO', label: 'Completado' },
+];
+
+const ESTADO_PAGO_OPTIONS = [
+    { value: 'EN_CARTERA', label: 'En cartera' },
+    { value: 'SALDADO', label: 'Saldado' },
+    { value: 'NO_APLICA', label: 'No aplica' },
 ];
 
 type FilterCellProps = {
-    filterKey: ColumnKey;
+    filterKey: SortKey;
     value: string;
-    onChange: (key: ColumnKey, value: string) => void;
-    variant?: 'text' | 'estado';
+    onChange: (key: SortKey, value: string) => void;
+    variant?: 'text' | 'estado' | 'estado_pago';
     align?: 'left' | 'right';
 };
 
@@ -288,7 +418,10 @@ function FilterCell({
     variant = 'text',
     align = 'left',
 }: FilterCellProps) {
-    if (variant === 'estado') {
+    if (variant === 'estado' || variant === 'estado_pago') {
+        const options =
+            variant === 'estado' ? ESTADO_OPTIONS : ESTADO_PAGO_OPTIONS;
+
         return (
             <TableHead className={align === 'right' ? 'text-right' : undefined}>
                 <Select
@@ -300,13 +433,13 @@ function FilterCell({
                     <SelectTrigger
                         size="sm"
                         className="h-8 w-full text-xs"
-                        data-test={`compras-filter-${filterKey}`}
+                        data-test={`pedidos-filter-${filterKey}`}
                     >
                         <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="ALL">Todos</SelectItem>
-                        {ESTADO_OPTIONS.map((option) => (
+                        {options.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                                 {option.label}
                             </SelectItem>
@@ -324,7 +457,7 @@ function FilterCell({
                 onChange={(event) => onChange(filterKey, event.target.value)}
                 placeholder="Filtrar..."
                 className="h-8 text-xs"
-                data-test={`compras-filter-${filterKey}`}
+                data-test={`pedidos-filter-${filterKey}`}
             />
         </TableHead>
     );
@@ -332,9 +465,9 @@ function FilterCell({
 
 type HeaderCellProps = {
     meta: ColumnMeta;
-    activeSortKey: ColumnKey | null;
-    sortDirection: 'asc' | 'desc';
-    onSort: (key: ColumnKey) => void;
+    activeSortKey: SortKey | null;
+    sortDirection: SortDirection;
+    onSort: (key: SortKey) => void;
     onResizeStart: (event: React.MouseEvent) => void;
     onDragStart: (event: React.DragEvent) => void;
     onDragOver: (event: React.DragEvent) => void;
@@ -392,7 +525,7 @@ function HeaderCell({
                 {meta.sortable ? (
                     <button
                         type="button"
-                        onClick={() => onSort(meta.key)}
+                        onClick={() => onSort(meta.key as SortKey)}
                         className={cn(
                             'hover:text-foreground inline-flex items-center gap-1',
                             isRight && 'flex-row-reverse',
@@ -413,33 +546,37 @@ function HeaderCell({
     );
 }
 
-export default function ComprasTable({
-    compras,
+export default function PedidosTable({
+    pedidos,
     permissions,
+    routes,
     eliminados = false,
+    pucs = [],
+    vendedores = [],
 }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [compraToDelete, setCompraToDelete] = useState<Compra | null>(null);
-    const [compraToView, setCompraToView] = useState<Compra | null>(null);
-    const storageKey = `table:compras${eliminados ? ':papelera' : ''}`;
+    const [pedidoToAbonar, setPedidoToAbonar] = useState<Pedido | null>(null);
+    const [pedidoToDelete, setPedidoToDelete] = useState<Pedido | null>(null);
+    const [pedidoToView, setPedidoToView] = useState<Pedido | null>(null);
+    const storageKey = `table:pedidos${eliminados ? ':papelera' : ''}`;
     const session = { scope: 'session' } as const;
     const [search, setSearch] = usePersistedState(
         `${storageKey}:search`,
         '',
         session,
     );
-    const [sortKey, setSortKey] = usePersistedState<ColumnKey | null>(
+    const [sortKey, setSortKey] = usePersistedState<SortKey | null>(
         `${storageKey}:sort-key`,
         null,
         session,
     );
-    const [sortDirection, setSortDirection] = usePersistedState<'asc' | 'desc'>(
+    const [sortDirection, setSortDirection] = usePersistedState<SortDirection>(
         `${storageKey}:sort-direction`,
         'asc',
         session,
     );
     const [filters, setFilters] = usePersistedState<
-        Partial<Record<ColumnKey, string>>
+        Partial<Record<SortKey, string>>
     >(`${storageKey}:filters`, {}, session);
     const [dateRange, setDateRange] = usePersistedState<DateRangeValue>(
         `${storageKey}:dates`,
@@ -455,108 +592,20 @@ export default function ComprasTable({
                 Number.isInteger(stored) && stored >= 1 ? stored : 25,
         },
     );
-
-    const bodegas = useMemo(() => {
-        const map = new Map<number, string>();
-
-        compras.forEach((compra) => {
-            (compra.detalles_compra ?? []).forEach((detalle) => {
-                if (!map.has(detalle.bodega_id)) {
-                    map.set(
-                        detalle.bodega_id,
-                        detalle.bodega?.nombre_bodega ??
-                            `Bodega ${detalle.bodega_id}`,
-                    );
-                }
-            });
-        });
-
-        return Array.from(map.entries())
-            .map(([id, nombre]) => ({ id, nombre }))
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-    }, [compras]);
-
-    const columnDefs = useMemo<ColumnMeta[]>(
-        () => [
-            ACCIONES_COLUMN,
-            ...STATIC_COLUMN_DEFS,
-            ...bodegas.map((bodega): ColumnMeta => ({
-                key: bodegaColumnKey(bodega.id),
-                label: bodega.nombre,
-                sortable: true,
-                filter: 'text',
-            })),
-        ],
-        [bodegas],
-    );
-
-    const columnDefsMap = useMemo(
-        () => new Map(columnDefs.map((meta) => [meta.key, meta])),
-        [columnDefs],
-    );
-    const columnKeys = useMemo(
-        () => columnDefs.map((meta) => meta.key),
-        [columnDefs],
-    );
-    const hideableColumns = useMemo(
-        () => columnDefs.filter((meta) => meta.key !== 'acciones'),
-        [columnDefs],
-    );
-
     const [columnWidths, setColumnWidths] = usePersistedState<
-        Record<string, number>
-    >(
-        `${storageKey}:widths`,
-        () =>
-            Object.fromEntries(
-                columnKeys.map((key) => [
-                    key,
-                    DEFAULT_COLUMN_WIDTHS[key] ?? DEFAULT_BODEGA_COLUMN_WIDTH,
-                ]),
-            ),
-        { merge: mergeColumnWidths },
-    );
+        Record<ColumnKey, number>
+    >(`${storageKey}:widths`, DEFAULT_COLUMN_WIDTHS, {
+        merge: mergeColumnWidths,
+    });
     const [columnOrder, setColumnOrder] = usePersistedState<ColumnKey[]>(
         `${storageKey}:order`,
-        columnKeys,
+        COLUMN_KEYS,
         { merge: mergeColumnOrder },
     );
     const [hiddenColumns, setHiddenColumns] = usePersistedSet<ColumnKey>(
         `${storageKey}:hidden`,
         () => new Set(),
     );
-
-    useEffect(() => {
-        setColumnWidths((prev) => {
-            const missing = columnKeys.filter((key) => !(key in prev));
-
-            if (missing.length === 0) {
-                return prev;
-            }
-
-            const next = { ...prev };
-            missing.forEach((key) => {
-                next[key] =
-                    DEFAULT_COLUMN_WIDTHS[key] ?? DEFAULT_BODEGA_COLUMN_WIDTH;
-            });
-
-            return next;
-        });
-
-        setColumnOrder((prev) => {
-            const known = new Set(columnKeys);
-            const next = prev.filter((key) => known.has(key));
-
-            columnKeys.forEach((key) => {
-                if (!next.includes(key)) {
-                    next.push(key);
-                }
-            });
-
-            return next;
-        });
-    }, [columnKeys]);
-
     const [draggedKey, setDraggedKey] = useState<ColumnKey | null>(null);
     const [dragOverKey, setDragOverKey] = useState<ColumnKey | null>(null);
     const resizingKeyRef = useRef<ColumnKey | null>(null);
@@ -576,9 +625,9 @@ export default function ComprasTable({
 
     /**
      * FLIP animation: capture every header cell's current position before
-     * the reorder commits, then slide each one from its old spot to its new
-     * one instead of snapping instantly, so the drag-drop reads as "this
-     * column moved" rather than a hard jump.
+     * the reorder commits, then (in the layout effect below) slide each one
+     * from its old spot to its new one instead of snapping instantly, so
+     * the drag-drop reads as "this column moved" rather than a hard jump.
      */
     useLayoutEffect(() => {
         const prevRects = pendingFlipRef.current;
@@ -606,6 +655,8 @@ export default function ComprasTable({
             element.style.transition = 'none';
             element.style.transform = `translateX(${deltaX}px)`;
 
+            // Force layout so the browser registers the offset above
+            // before we animate it away.
             void element.getBoundingClientRect();
 
             requestAnimationFrame(() => {
@@ -722,7 +773,8 @@ export default function ComprasTable({
                     setDateRange({ from: '', to: '' });
                 } else {
                     setFilters((filtersPrev) => {
-                        const { [key]: _removed, ...rest } = filtersPrev;
+                        const { [key as SortKey]: _removed, ...rest } =
+                            filtersPrev;
 
                         return rest;
                     });
@@ -738,12 +790,12 @@ export default function ComprasTable({
         [columnOrder, hiddenColumns],
     );
 
-    const openDeleteDialog = (compra: Compra) => {
-        setCompraToDelete(compra);
+    const openDeleteDialog = (pedido: Pedido) => {
+        setPedidoToDelete(pedido);
         setDeleteDialogOpen(true);
     };
 
-    const handleSort = (key: ColumnKey) => {
+    const handleSort = (key: SortKey) => {
         if (sortKey === key) {
             setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
         } else {
@@ -752,7 +804,7 @@ export default function ComprasTable({
         }
     };
 
-    const setFilter = (key: ColumnKey, value: string) => {
+    const setFilter = (key: SortKey, value: string) => {
         setFilters((prev) => ({ ...prev, [key]: value }));
     };
 
@@ -765,10 +817,10 @@ export default function ComprasTable({
         Object.values(filters).filter(Boolean).length +
         (dateRange.from || dateRange.to ? 1 : 0);
 
-    const visibleCompras = useMemo(() => {
+    const visiblePedidos = useMemo(() => {
         const term = search.trim().toLowerCase();
         const activeFilters = (
-            Object.entries(filters) as [ColumnKey, string][]
+            Object.entries(filters) as [SortKey, string][]
         ).filter(([key, value]) => key !== 'fecha' && value.trim() !== '');
 
         const fromTime = dateRange.from
@@ -778,14 +830,14 @@ export default function ComprasTable({
             ? new Date(`${dateRange.to}T23:59:59.999`).getTime()
             : null;
 
-        let list = compras.filter((compra) => {
-            if (term && !searchableText(compra).includes(term)) {
+        let list = pedidos.filter((pedido) => {
+            if (term && !searchableText(pedido).includes(term)) {
                 return false;
             }
 
             if (fromTime !== null || toTime !== null) {
-                const fechaTime = compra.fecha
-                    ? new Date(compra.fecha).getTime()
+                const fechaTime = pedido.fecha
+                    ? new Date(pedido.fecha).getTime()
                     : null;
 
                 if (fechaTime === null) {
@@ -802,11 +854,11 @@ export default function ComprasTable({
             }
 
             return activeFilters.every(([key, value]) => {
-                const cellValue = String(getSortValue(compra, key))
+                const cellValue = String(getSortValue(pedido, key))
                     .toLowerCase()
                     .trim();
 
-                if (key === 'estado') {
+                if (key === 'estado' || key === 'estado_pago') {
                     return cellValue === value.toLowerCase();
                 }
 
@@ -831,18 +883,18 @@ export default function ComprasTable({
         }
 
         return list;
-    }, [compras, search, filters, dateRange, sortKey, sortDirection]);
+    }, [pedidos, search, filters, dateRange, sortKey, sortDirection]);
 
-    const totalPages = Math.max(Math.ceil(visibleCompras.length / pageSize), 1);
+    const totalPages = Math.max(Math.ceil(visiblePedidos.length / pageSize), 1);
     const currentPage = Math.min(page, totalPages);
 
-    const paginatedCompras = useMemo(
+    const paginatedPedidos = useMemo(
         () =>
-            visibleCompras.slice(
+            visiblePedidos.slice(
                 (currentPage - 1) * pageSize,
                 currentPage * pageSize,
             ),
-        [visibleCompras, currentPage],
+        [visiblePedidos, currentPage],
     );
 
     useEffect(() => {
@@ -855,20 +907,21 @@ export default function ComprasTable({
                 return (
                     <FilterCell
                         key={meta.key}
-                        filterKey={meta.key}
-                        value={filters[meta.key] ?? ''}
+                        filterKey={meta.key as SortKey}
+                        value={filters[meta.key as SortKey] ?? ''}
                         onChange={setFilter}
                         align={meta.align}
                     />
                 );
             case 'estado':
+            case 'estado_pago':
                 return (
                     <FilterCell
                         key={meta.key}
-                        filterKey={meta.key}
-                        value={filters[meta.key] ?? ''}
+                        filterKey={meta.key as SortKey}
+                        value={filters[meta.key as SortKey] ?? ''}
                         onChange={setFilter}
-                        variant="estado"
+                        variant={meta.filter}
                     />
                 );
             case 'date':
@@ -878,7 +931,7 @@ export default function ComprasTable({
                             value={dateRange}
                             onChange={setDateRange}
                             title="Filtrar por fecha"
-                            dataTest="compras-filter-fecha"
+                            dataTest="pedidos-filter-fecha"
                         />
                     </TableHead>
                 );
@@ -890,7 +943,7 @@ export default function ComprasTable({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                data-test="compras-clear-filters"
+                                data-test="pedidos-clear-filters"
                                 onClick={clearFilters}
                             >
                                 <X className="size-4" />
@@ -902,41 +955,76 @@ export default function ComprasTable({
         }
     };
 
-    const renderBodyCell = (key: ColumnKey, compra: Compra): ReactNode => {
+    const renderBodyCell = (key: ColumnKey, pedido: Pedido): ReactNode => {
         switch (key) {
             case 'id':
-                return compra.id;
-            case 'factura':
-                return <TruncatedCell value={compra.factura ?? '—'} />;
-            case 'fecha':
-                return compra.fecha
-                    ? new Date(compra.fecha).toLocaleDateString('es-CO')
-                    : '—';
-            case 'proveedor':
+                return pedido.id;
+            case 'bodega':
                 return (
                     <TruncatedCell
-                        value={compra.proveedor?.nombre_proveedor ?? '—'}
+                        value={pedido.bodega?.nombre_bodega ?? '—'}
                     />
                 );
+            case 'cliente':
+                return (
+                    <TruncatedCell
+                        value={pedido.cliente?.razon_social ?? '—'}
+                    />
+                );
+            case 'nit':
+                return (
+                    <TruncatedCell
+                        value={pedido.cliente?.numero_documento ?? '—'}
+                    />
+                );
+            case 'fecha':
+                return pedido.fecha
+                    ? new Date(pedido.fecha).toLocaleDateString('es-CO')
+                    : '—';
             case 'estado':
                 return (
                     <Badge
                         className={cn(
                             'border-transparent',
-                            compra.estado === 'RECIBIDA'
+                            pedido.estado === 'COMPLETADO'
                                 ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
                                 : 'bg-amber-100 text-amber-700 hover:bg-amber-100',
                         )}
                     >
-                        {compra.estado}
+                        {pedido.estado}
                     </Badge>
                 );
-            case 'subtotal':
-                return currencyFormatter.format(Number(compra.subtotal));
-            case 'descuento':
-                return currencyFormatter.format(Number(compra.descuento));
+            case 'ajuste':
+                return currencyFormatter.format(ajusteTotal(pedido));
             case 'total':
-                return currencyFormatter.format(Number(compra.total_a_pagar));
+                return currencyFormatter.format(Number(pedido.total_a_pagar));
+            case 'saldo':
+                return currencyFormatter.format(Number(pedido.saldo_pendiente));
+            case 'vendedor':
+                return <TruncatedCell value={pedido.user?.name ?? '—'} />;
+            case 'turno':
+                return <TruncatedCell value={pedido.turno ?? '—'} />;
+            case 'productos':
+                return <ProductosCell pedido={pedido} />;
+            case 'medios':
+                return <MediosCell pedido={pedido} />;
+            case 'observacion_pago':
+                return <TruncatedCell value={pedido.observacion_pago ?? '—'} />;
+            case 'observacion':
+                return <TruncatedCell value={pedido.observacion ?? '—'} />;
+            case 'estado_pago':
+                return (
+                    <Badge
+                        className={cn(
+                            'border-transparent',
+                            pedido.estado_pago === 'SALDADO'
+                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                                : 'bg-amber-100 text-amber-700 hover:bg-amber-100',
+                        )}
+                    >
+                        {pedido.estado_pago}
+                    </Badge>
+                );
             case 'acciones':
                 if (eliminados) {
                     return (
@@ -946,8 +1034,8 @@ export default function ComprasTable({
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        data-test="view-compra-button"
-                                        onClick={() => setCompraToView(compra)}
+                                        data-test="view-pedido-button"
+                                        onClick={() => setPedidoToView(pedido)}
                                     >
                                         <Eye className="h-4 w-4" />
                                     </Button>
@@ -958,10 +1046,10 @@ export default function ComprasTable({
                             </Tooltip>
                             {permissions.canRestore ? (
                                 <RestoreButton
-                                    action={restore([compra.id])}
-                                    nombre={`la compra ${compra.factura}`}
-                                    aviso="El stock de las líneas recibidas se sumará de nuevo a sus bodegas."
-                                    dataTest="restore-compra-button"
+                                    action={routes.pedidos.restore([pedido.id])}
+                                    nombre={`el pedido #${pedido.id}`}
+                                    aviso="El stock de sus productos se descontará de nuevo de la bodega."
+                                    dataTest="restore-pedido-button"
                                 />
                             ) : null}
                         </ActionsCell>
@@ -975,8 +1063,8 @@ export default function ComprasTable({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    data-test="view-compra-button"
-                                    onClick={() => setCompraToView(compra)}
+                                    data-test="view-pedido-button"
+                                    onClick={() => setPedidoToView(pedido)}
                                 >
                                     <Eye className="h-4 w-4" />
                                 </Button>
@@ -985,16 +1073,45 @@ export default function ComprasTable({
                                 <p>Ver</p>
                             </TooltipContent>
                         </Tooltip>
+                        <VoucherButton
+                            action={routes.pedidos.voucher([pedido.id])}
+                            dataTest="voucher-pedido-button"
+                        />
+                        {permissions.canCreateAbono &&
+                        Number(pedido.saldo_pendiente) > 0 ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="abono-pedido-button"
+                                        onClick={() =>
+                                            setPedidoToAbonar(pedido)
+                                        }
+                                    >
+                                        <Banknote className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Registrar abono</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
+
                         {permissions.canUpdate ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        data-test="edit-compra-button"
+                                        data-test="edit-pedido-button"
                                         asChild
                                     >
-                                        <Link href={edit([compra.id])}>
+                                        <Link
+                                            href={routes.pedidos.edit([
+                                                pedido.id,
+                                            ])}
+                                        >
                                             <Pencil className="h-4 w-4" />
                                         </Link>
                                     </Button>
@@ -1011,8 +1128,8 @@ export default function ComprasTable({
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        data-test="delete-compra-button"
-                                        onClick={() => openDeleteDialog(compra)}
+                                        data-test="delete-pedido-button"
+                                        onClick={() => openDeleteDialog(pedido)}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -1024,13 +1141,8 @@ export default function ComprasTable({
                         ) : null}
                     </ActionsCell>
                 );
-            default: {
-                const bodegaId = bodegaIdFromColumnKey(key);
-
-                return bodegaId !== null ? (
-                    <ListCell items={productosPorBodega(compra, bodegaId)} />
-                ) : null;
-            }
+            default:
+                return null;
         }
     };
 
@@ -1044,9 +1156,9 @@ export default function ComprasTable({
                     <Input
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Buscar compras..."
+                        placeholder="Buscar pedidos..."
                         className="pl-9"
-                        data-test="compras-search"
+                        data-test="pedidos-search"
                     />
                 </div>
 
@@ -1056,7 +1168,7 @@ export default function ComprasTable({
                             type="button"
                             variant="outline"
                             size="sm"
-                            data-test="compras-columns-toggle"
+                            data-test="pedidos-columns-toggle"
                         >
                             <Columns3 className="size-4" />
                             Columnas
@@ -1068,7 +1180,7 @@ export default function ComprasTable({
                     >
                         <DropdownMenuLabel>Mostrar columnas</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {hideableColumns.map((meta) => (
+                        {HIDEABLE_COLUMNS.map((meta) => (
                             <DropdownMenuCheckboxItem
                                 key={meta.key}
                                 checked={!hiddenColumns.has(meta.key)}
@@ -1076,7 +1188,7 @@ export default function ComprasTable({
                                 onCheckedChange={() =>
                                     toggleColumnVisibility(meta.key)
                                 }
-                                data-test={`compras-column-toggle-${meta.key}`}
+                                data-test={`pedidos-column-toggle-${meta.key}`}
                             >
                                 {meta.label}
                             </DropdownMenuCheckboxItem>
@@ -1101,7 +1213,7 @@ export default function ComprasTable({
                     <TableHeader className="bg-muted sticky top-0 z-20 shadow-sm">
                         <TableRow>
                             {visibleColumnOrder.map((key) => {
-                                const meta = columnDefsMap.get(key)!;
+                                const meta = COLUMN_DEFS_MAP.get(key)!;
 
                                 return (
                                     <HeaderCell
@@ -1127,15 +1239,15 @@ export default function ComprasTable({
                         </TableRow>
                         <TableRow>
                             {visibleColumnOrder.map((key) =>
-                                renderFilterHead(columnDefsMap.get(key)!),
+                                renderFilterHead(COLUMN_DEFS_MAP.get(key)!),
                             )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {paginatedCompras.map((compra) => (
-                            <TableRow key={compra.id} data-test="compra-row">
+                        {paginatedPedidos.map((pedido) => (
+                            <TableRow key={pedido.id} data-test="pedido-row">
                                 {visibleColumnOrder.map((key) => {
-                                    const meta = columnDefsMap.get(key)!;
+                                    const meta = COLUMN_DEFS_MAP.get(key)!;
 
                                     return (
                                         <TableCell
@@ -1146,7 +1258,7 @@ export default function ComprasTable({
                                                     : undefined
                                             }
                                         >
-                                            {renderBodyCell(key, compra)}
+                                            {renderBodyCell(key, pedido)}
                                         </TableCell>
                                     );
                                 })}
@@ -1156,11 +1268,11 @@ export default function ComprasTable({
                 </table>
             </div>
 
-            {visibleCompras.length === 0 ? (
+            {visiblePedidos.length === 0 ? (
                 <p className="text-muted-foreground py-8 text-center">
-                    {compras.length === 0
-                        ? 'No hay compras registradas.'
-                        : 'Ninguna compra coincide con la búsqueda.'}
+                    {pedidos.length === 0
+                        ? 'No hay pedidos registrados.'
+                        : 'Ningún pedido coincide con la búsqueda.'}
                 </p>
             ) : (
                 <TableBottomBar
@@ -1171,33 +1283,51 @@ export default function ComprasTable({
                         Mostrando {(currentPage - 1) * pageSize + 1}–
                         {Math.min(
                             currentPage * pageSize,
-                            visibleCompras.length,
+                            visiblePedidos.length,
                         )}{' '}
-                        de {visibleCompras.length} compras
+                        de {visiblePedidos.length} pedidos
                     </p>
 
                     <PageSizeSelect
                         value={pageSize}
                         onChange={setPageSize}
-                        dataTest="compras-page-size"
+                        dataTest="pedidos-page-size"
                     />
 
                     <Pagination
                         page={currentPage}
                         totalPages={totalPages}
                         onPageChange={setPage}
-                        dataTest="compras-page"
+                        dataTest="pedidos-page"
                     />
                 </TableBottomBar>
             )}
 
-            <VerCompraModal
-                compra={compraToView}
-                onClose={() => setCompraToView(null)}
+            <VerPedidoModal
+                pedido={pedidoToView}
+                routes={routes}
+                onClose={() => setPedidoToView(null)}
             />
 
-            <DeleteCompraModal
-                compra={compraToDelete}
+            {pedidoToAbonar ? (
+                <RegistrarPagoModal
+                    key={pedidoToAbonar.id}
+                    pedido={pedidoToAbonar}
+                    routes={routes}
+                    pucs={pucs}
+                    vendedores={vendedores}
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setPedidoToAbonar(null);
+                        }
+                    }}
+                />
+            ) : null}
+
+            <DeletePedidoModal
+                pedido={pedidoToDelete}
+                routes={routes}
                 open={deleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
             />

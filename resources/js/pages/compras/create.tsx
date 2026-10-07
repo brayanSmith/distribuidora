@@ -1,5 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import CompraFormFields from '@/components/compra-form-fields';
+import CompraFormFields from '@/components/compras/compra-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, store } from '@/routes/compras';
 import type { BodegaOption, ProductoOption, ProveedorOption } from '@/types';

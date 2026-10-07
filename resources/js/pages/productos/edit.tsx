@@ -1,7 +1,7 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
-import DeleteProductoModal from '@/components/delete-producto-modal';
-import ProductoFormFields from '@/components/producto-form-fields';
+import DeleteProductoModal from '@/components/productos/delete-producto-modal';
+import ProductoFormFields from '@/components/productos/producto-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, show, update } from '@/routes/productos';
 import type { MarcaOption, Producto } from '@/types';

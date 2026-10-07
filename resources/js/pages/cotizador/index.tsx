@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import CotizadorForm from '@/components/cotizador-form';
+import CotizadorForm from '@/components/cotizador/cotizador-form';
 import Heading from '@/components/heading';
 import { index } from '@/routes/cotizador';
 import type { CotizadorProducto, TipoPrecioCotizador } from '@/types';

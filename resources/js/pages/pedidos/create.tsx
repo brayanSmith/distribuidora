@@ -1,4 +1,4 @@
-import PedidoCreatePage from '@/components/pedido-create-page';
+import PedidoCreatePage from '@/components/pedidos/pedido-create-page';
 import * as pedidosAbonosRoutes from '@/routes/pedidos/abonos';
 import * as pedidosRoutes from '@/routes/pedidos';
 import { index } from '@/routes/pedidos';

@@ -1,7 +1,7 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import CompraFormFields from '@/components/compra-form-fields';
-import DeleteCompraModal from '@/components/delete-compra-modal';
+import CompraFormFields from '@/components/compras/compra-form-fields';
+import DeleteCompraModal from '@/components/compras/delete-compra-modal';
 import { Button } from '@/components/ui/button';
 import { index, update } from '@/routes/compras';
 import type {

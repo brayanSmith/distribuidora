@@ -2,10 +2,10 @@ import { Head, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
-import CreateTrasladoModal from '@/components/create-traslado-modal';
+import CreateTrasladoModal from '@/components/traslados/create-traslado-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
-import DeleteTrasladoModal from '@/components/delete-traslado-modal';
-import EditTrasladoModal from '@/components/edit-traslado-modal';
+import DeleteTrasladoModal from '@/components/traslados/delete-traslado-modal';
+import EditTrasladoModal from '@/components/traslados/edit-traslado-modal';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {

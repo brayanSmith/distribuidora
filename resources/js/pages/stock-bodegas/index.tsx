@@ -1,8 +1,8 @@
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
-import CreateTrasladoModal from '@/components/create-traslado-modal';
+import CreateTrasladoModal from '@/components/traslados/create-traslado-modal';
 import Heading from '@/components/heading';
-import StockBodegasTable from '@/components/stock-bodegas-table';
+import StockBodegasTable from '@/components/stock-bodegas/stock-bodegas-table';
 import { index } from '@/routes/stock-bodegas';
 import type { Bodega, StockBodega } from '@/types';
 

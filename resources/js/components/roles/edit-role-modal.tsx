@@ -1,8 +1,7 @@
 import { Form } from '@inertiajs/react';
-import type { PropsWithChildren } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import InputError from '@/components/input-error';
-import RoleAccessFields from '@/components/role-access-fields';
+import RoleAccessFields from '@/components/roles/role-access-fields';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -12,65 +11,66 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { store } from '@/routes/roles';
-import type { RoleBodegaOption } from '@/types';
+import { update } from '@/routes/roles';
+import type { Role, RoleBodegaOption } from '@/types';
 
-type Props = PropsWithChildren<{
+type Props = {
     permissions: string[];
     bodegas: RoleBodegaOption[];
-}>;
+    role: Role | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+};
 
-export default function CreateRoleModal({
+export default function EditRoleModal({
     permissions,
     bodegas,
-    children,
+    role,
+    open,
+    onOpenChange,
 }: Props) {
-    const [open, setOpen] = useState(false);
     const [selected, setSelected] = useState<string[]>([]);
     const [selectedBodegas, setSelectedBodegas] = useState<number[]>([]);
 
-    const handleOpenChange = (nextOpen: boolean) => {
-        setOpen(nextOpen);
+    useEffect(() => {
+        setSelected(role?.permissions ?? []);
+        setSelectedBodegas(role?.bodegas ?? []);
+    }, [role]);
 
-        if (!nextOpen) {
-            setSelected([]);
-            setSelectedBodegas([]);
-        }
-    };
+    if (!role) {
+        return null;
+    }
 
     return (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogTrigger asChild>{children}</DialogTrigger>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-4xl">
                 <Form
                     key={String(open)}
-                    {...store.form()}
+                    {...update.form([role.id])}
                     className="space-y-6"
-                    onSuccess={() => handleOpenChange(false)}
+                    onSuccess={() => onOpenChange(false)}
                 >
                     {({ errors, processing }) => (
                         <>
                             <DialogHeader>
-                                <DialogTitle>Crear un nuevo rol</DialogTitle>
+                                <DialogTitle>Editar rol</DialogTitle>
                                 <DialogDescription>
-                                    Crea un rol personalizado y elige qué
-                                    permisos otorgará.
+                                    Actualiza el nombre del rol y sus permisos.
                                 </DialogDescription>
                             </DialogHeader>
 
                             <div className="grid gap-2">
-                                <Label required htmlFor="role-name">
+                                <Label required htmlFor="edit-role-name">
                                     Nombre del rol
                                 </Label>
                                 <Input
-                                    id="role-name"
+                                    id="edit-role-name"
                                     name="name"
-                                    data-test="create-role-name"
-                                    placeholder="Vendedor"
+                                    data-test="edit-role-name"
+                                    defaultValue={role.name}
                                     required
                                 />
                                 <InputError message={errors.name} />
@@ -94,10 +94,10 @@ export default function CreateRoleModal({
 
                                 <Button
                                     type="submit"
-                                    data-test="create-role-submit"
+                                    data-test="edit-role-submit"
                                     disabled={processing}
                                 >
-                                    Crear rol
+                                    Guardar cambios
                                 </Button>
                             </DialogFooter>
                         </>

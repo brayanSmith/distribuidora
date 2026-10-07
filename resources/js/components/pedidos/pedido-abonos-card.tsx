@@ -1,9 +1,9 @@
 import { CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
-import DeleteAbonoModal from '@/components/delete-abono-modal';
-import EditAbonoModal from '@/components/edit-abono-modal';
-import RegistrarPagoModal from '@/components/registrar-pago-modal';
+import DeleteAbonoModal from '@/components/pedidos/delete-abono-modal';
+import EditAbonoModal from '@/components/pedidos/edit-abono-modal';
+import RegistrarPagoModal from '@/components/pedidos/registrar-pago-modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
