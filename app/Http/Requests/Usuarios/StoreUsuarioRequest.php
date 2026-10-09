@@ -22,7 +22,7 @@ class StoreUsuarioRequest extends FormRequest
         return [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
-            'tipos_precio_permitidos' => ['required', 'array', 'min:1'],
+            'tipos_precio_permitidos' => ['array'],
             'tipos_precio_permitidos.*' => ['string', 'in:valor_detal,valor_mayorista,costo'],
             'roles' => ['array'],
             'roles.*' => ['integer', 'exists:roles,id'],

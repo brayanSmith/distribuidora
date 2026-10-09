@@ -24,7 +24,7 @@ export default function TiposPrecioFields({
 
     return (
         <div className="grid gap-2">
-            <Label required>Precios permitidos</Label>
+            <Label>Precios permitidos</Label>
             <div className="flex flex-wrap gap-3">
                 {TIPOS_PRECIO.map((tipo) => (
                     <label

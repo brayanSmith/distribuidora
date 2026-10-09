@@ -271,7 +271,7 @@ export function AppSidebar() {
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                         placeholder="Buscar módulo..."
-                        className="pl-8"
+                        className="text-foreground pl-8"
                         data-test="nav-search-input"
                     />
                 </div>

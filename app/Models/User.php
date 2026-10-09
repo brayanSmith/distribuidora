@@ -108,8 +108,9 @@ class User extends Authenticatable implements PasskeyUser
     {
         $guardados = $this->tipos_precio_permitidos;
 
-        // Empty means no restriction, as in the previous system.
-        if (empty($guardados)) {
+        // Null means never restricted, as in the previous system: keep everything.
+        // An explicitly saved empty array means the user was restricted to no prices at all.
+        if ($guardados === null) {
             return self::TIPOS_PRECIO;
         }
 

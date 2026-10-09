@@ -51,7 +51,7 @@ class UsuarioController extends Controller
                 'name' => $request->validated('name'),
                 'email' => $request->validated('email'),
                 'password' => $request->validated('password'),
-                'tipos_precio_permitidos' => User::tiposPrecioParaGuardar($request->validated('tipos_precio_permitidos')),
+                'tipos_precio_permitidos' => User::tiposPrecioParaGuardar($request->validated('tipos_precio_permitidos', [])),
             ]);
 
             $usuario->forceFill(['email_verified_at' => now()])->save();
@@ -74,7 +74,7 @@ class UsuarioController extends Controller
             $data = [
                 'name' => $request->validated('name'),
                 'email' => $request->validated('email'),
-                'tipos_precio_permitidos' => User::tiposPrecioParaGuardar($request->validated('tipos_precio_permitidos')),
+                'tipos_precio_permitidos' => User::tiposPrecioParaGuardar($request->validated('tipos_precio_permitidos', [])),
             ];
 
             if ($password = $request->validated('password')) {

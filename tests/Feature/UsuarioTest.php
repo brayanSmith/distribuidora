@@ -37,7 +37,7 @@ test('owners can create a user with roles', function () {
     expect($usuario->email_verified_at)->not->toBeNull();
 });
 
-test('at least one price must stay allowed', function () {
+test('a user can be created with no allowed prices', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
@@ -47,7 +47,25 @@ test('at least one price must stay allowed', function () {
         'password' => 'password123',
         'password_confirmation' => 'password123',
         'tipos_precio_permitidos' => [],
-    ])->assertSessionHasErrors('tipos_precio_permitidos');
+    ])->assertRedirect()->assertSessionDoesntHaveErrors('tipos_precio_permitidos');
+
+    $usuario = User::where('email', 'nuevo@example.com')->firstOrFail();
+    expect($usuario->tiposPrecioPermitidos())->toBe([]);
+});
+
+test('a user can be created without sending the allowed prices at all', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $this->actingAs($owner)->post(route('usuarios.store'), [
+        'name' => 'Nuevo',
+        'email' => 'sinenviar@example.com',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+    ])->assertRedirect()->assertSessionDoesntHaveErrors('tipos_precio_permitidos');
+
+    $usuario = User::where('email', 'sinenviar@example.com')->firstOrFail();
+    expect($usuario->tiposPrecioPermitidos())->toBe([]);
 });
 
 test('members without permission cannot create users', function () {
@@ -84,6 +102,20 @@ test('a user can be edited and its roles replaced', function () {
     expect($empleado->fresh()->name)->toBe('Otro Nombre');
     expect($empleado->fresh()->tiposPrecioPermitidos())->toBe(['valor_mayorista']);
     expect($empleado->fresh()->roles->pluck('name')->all())->toBe(['Cajero']);
+});
+
+test('a user being edited can be left with no allowed prices', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    $empleado = User::factory()->create(['tipos_precio_permitidos' => ['valor_detal']]);
+
+    $this->actingAs($owner)->patch(route('usuarios.update', [$empleado]), [
+        'name' => $empleado->name,
+        'email' => $empleado->email,
+        'tipos_precio_permitidos' => [],
+    ])->assertRedirect()->assertSessionDoesntHaveErrors('tipos_precio_permitidos');
+
+    expect($empleado->fresh()->tiposPrecioPermitidos())->toBe([]);
 });
 
 test('nobody can delete their own user', function () {
@@ -134,7 +166,8 @@ test('the prices saved by the previous system are understood', function (?array 
 })->with([
     'its own names' => [['MAYORISTA', 'DETAL'], ['valor_detal', 'valor_mayorista']],
     'both systems names' => [['valor_detal', 'DETAL'], ['valor_detal']],
-    'empty means every price' => [[], ['valor_detal', 'valor_mayorista', 'costo']],
+    'null means never restricted: every price' => [null, ['valor_detal', 'valor_mayorista', 'costo']],
+    'an explicit empty array means no price at all' => [[], []],
 ]);
 
 test('saving a user keeps the prices readable by the previous system', function () {
