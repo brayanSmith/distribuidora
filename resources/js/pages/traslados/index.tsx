@@ -28,6 +28,11 @@ type Props = {
     permissions: TrasladoPermissions;
 };
 
+const dateTimeFormatter = new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+});
+
 export default function TrasladosIndex({
     traslados,
     productos,
@@ -86,6 +91,15 @@ export default function TrasladosIndex({
                 align: 'right',
                 getValue: (traslado) => Number(traslado.cantidad),
                 render: (traslado) => traslado.cantidad,
+            },
+            {
+                key: 'created_at',
+                label: 'Fecha de creación',
+                filter: 'date',
+                width: 190,
+                getValue: (traslado) => traslado.created_at,
+                render: (traslado) =>
+                    dateTimeFormatter.format(new Date(traslado.created_at)),
             },
             {
                 key: 'acciones',

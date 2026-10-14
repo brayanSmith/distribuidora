@@ -8,6 +8,7 @@ export type Traslado = {
     producto_id: number;
     cantidad: number;
     observaciones: string | null;
+    created_at: string;
     producto?: ProductoOption | null;
     bodega_donante?: Bodega | null;
     bodega_destino?: Bodega | null;
