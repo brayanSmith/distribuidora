@@ -28,23 +28,23 @@ return new class extends Migration
         Schema::create('productos', function (Blueprint $table) {
             $table->id();
             $table->enum('categoria', ['LLANTA', 'RIN', 'SERVICIO', 'OTRO'])->nullable();
-            $table->enum('tipo', ['NUEVO', 'USADO'])->nullable();
+            $table->string('tipo', 20)->nullable();
             $table->boolean('inventariable')->default(true)->nullable();
             $table->string('sku')->unique()->nullable();
-            //Llantas
+            // Llantas
             $table->string('ancho')->nullable();
             $table->string('perfil')->nullable();
             $table->string('construccion')->nullable();
             $table->string('rin')->nullable();
             // Solo aplica cuando categoria = 'LLANTA'; nulo para las demás categorías.
             $table->enum('tipo_vehiculo', ['MOTO', 'CARRO'])->nullable();
-            //Rines
+            // Rines
             $table->string('diametro')->nullable();
 
             $table->foreignId('marca_id')->nullable()->constrained('marcas')->onDelete('cascade');
             $table->string('referencia_producto')->nullable();
             $table->string('descripcion_producto')->nullable();
-            $table->decimal('costo_producto', 10, 2)->default(0)->nullable();//Ira cambiando de acuerdo a las entradas
+            $table->decimal('costo_producto', 10, 2)->default(0)->nullable(); // Ira cambiando de acuerdo a las entradas
             $table->decimal('valor_detal', 10, 2)->default(0)->nullable();
             $table->decimal('valor_mayorista', 10, 2)->default(0)->nullable();
             $table->decimal('valor_sin_instalacion', 10, 2)->default(0)->nullable();

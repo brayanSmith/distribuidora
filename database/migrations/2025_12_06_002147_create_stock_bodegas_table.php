@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('bodega_id')->constrained('bodegas');
             $table->foreignId('producto_id')->constrained('productos');
+            $table->decimal('stock_inicial')->default(0);
             $table->decimal('entradas')->default(0);
             $table->decimal('salidas')->default(0);
             $table->decimal('stock')->default(0);

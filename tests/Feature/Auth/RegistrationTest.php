@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Database\Seeders\PermissionSeeder;
 
 test('registration screen can be rendered', function () {
     $response = $this->get(route('register'));
@@ -29,6 +30,8 @@ test('the first registered user becomes administrator and the next ones get no r
         'password' => 'password',
         'password_confirmation' => 'password',
     ];
+
+    $this->seed(PermissionSeeder::class);
 
     $this->post(route('register.store'), $datos('primero@example.com'));
     $primero = User::where('email', 'primero@example.com')->firstOrFail();

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('pedido_id')->constrained('pedidos')->cascadeOnDelete();
             $table->foreignId('producto_id')->constrained('productos');
+            $table->foreignId('bodega_id')->nullable()->constrained('bodegas')->nullOnDelete();
             $table->integer('cantidad');
             $table->decimal('precio_unitario', 12, 2); // snapshot del precio
             $table->decimal('subtotal', 12, 2);
@@ -22,6 +23,7 @@ return new class extends Migration
             $table->decimal('costo_total', 12, 2)->nullable(); // Para control de inventario
             $table->decimal('ganancia_total', 12, 2)->nullable(); // Para control de inventario
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

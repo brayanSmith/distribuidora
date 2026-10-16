@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -14,15 +13,15 @@ return new class extends Migration
     {
         Schema::create('pedidos', function (Blueprint $table) {
             $table->id();
-            //$table->string('codigo')->unique()->nullable();
+            // $table->string('codigo')->unique()->nullable();
             $table->foreignId('cliente_id')->constrained('clientes');
             $table->date('fecha');
             $table->enum('estado', ['PENDIENTE', 'COMPLETADO'])->default(value: 'PENDIENTE');
             $table->enum('estado_pago', ['EN_CARTERA', 'SALDADO', 'NO_APLICA'])->default(value: 'EN_CARTERA');
 
-            $table->enum('tipo_pago', ['CONTADO', 'APARTADO', 'CONTRA_ENTREGA', 'CREDITO'])->default(value: 'CONTADO');
+            $table->enum('tipo_pago', ['CONTADO', 'SEPARADO', 'CREDITO'])->default(value: 'CONTADO');
             $table->enum('tipo_precio', ['DETAL', 'MAYORISTA', 'OTRO'])->default(value: 'DETAL');
-            //$table->foreignId('id_puc')->constrained('pucs')->nullable();//Medio de Pago
+            // $table->foreignId('id_puc')->constrained('pucs')->nullable();//Medio de Pago
             $table->foreignId('bodega_id')->constrained('bodegas')->nullable()->default(1);
             $table->text('observacion')->nullable();
             $table->text('observacion_pago')->nullable();
