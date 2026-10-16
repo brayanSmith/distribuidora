@@ -2,7 +2,7 @@
 
 namespace App\Listeners;
 
-use App\Models\InicioSesion;
+use App\Modules\Administracion\Models\InicioSesion;
 use App\Support\UserAgent;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;

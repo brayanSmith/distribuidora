@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Compra;
-use App\Models\Proveedor;
+use App\Modules\Compras\Models\Compra;
+use App\Modules\Compras\Models\Proveedor;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class CompraFactory extends Factory
 {
+    protected $model = Compra::class;
+
     /**
      * Define the model's default state.
      *

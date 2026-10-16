@@ -2,10 +2,10 @@
 
 namespace Database\Factories;
 
-use App\Models\Bodega;
-use App\Models\Compra;
-use App\Models\DetalleCompra;
-use App\Models\Producto;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Compras\Models\Compra;
+use App\Modules\Compras\Models\DetalleCompra;
+use App\Modules\Inventario\Models\Bodega;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class DetalleCompraFactory extends Factory
 {
+    protected $model = DetalleCompra::class;
+
     /**
      * Define the model's default state.
      *

@@ -2,12 +2,12 @@
 
 namespace App\Modules\Finanzas\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\HandlesTrash;
+use App\Http\Controllers\Controller;
 use App\Modules\Finanzas\Http\Requests\StoreGastoRequest;
 use App\Modules\Finanzas\Http\Requests\UpdateGastoRequest;
-use App\Models\Bodega;
 use App\Modules\Finanzas\Models\Gasto;
+use App\Modules\Inventario\Models\Bodega;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;

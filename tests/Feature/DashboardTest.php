@@ -1,12 +1,12 @@
 <?php
 
-use App\Models\Bodega;
-use App\Models\DetalleCompra;
-use App\Models\DetallePedido;
-use App\Models\Pedido;
-use App\Models\Producto;
 use App\Models\User;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Compras\Models\DetalleCompra;
 use App\Modules\Finanzas\Models\Gasto;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Ventas\Models\DetallePedido;
+use App\Modules\Ventas\Models\Pedido;
 
 test('guests are redirected to the login page', function () {
     $user = User::factory()->create();

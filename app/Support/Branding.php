@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use App\Models\Empresa;
+use App\Modules\Administracion\Models\Empresa;
 
 /**
  * The company saved in "Empresas" brands the app: its name replaces the

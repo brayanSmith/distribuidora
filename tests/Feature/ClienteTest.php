@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Cliente;
 use App\Models\User;
+use App\Modules\Ventas\Models\Cliente;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 

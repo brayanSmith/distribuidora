@@ -1,0 +1,24 @@
+<?php
+
+namespace App\Modules\Inventario\Http\Requests;
+
+use App\Modules\Catalogo\Rules\ProductoInventariable;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreStockInicialRequest extends FormRequest
+{
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return [
+            'producto_id' => ['required', 'integer', 'exists:productos,id', new ProductoInventariable],
+            'bodega_id' => ['required', 'integer', 'exists:bodegas,id'],
+            'cantidad' => ['required', 'integer', 'min:0'],
+        ];
+    }
+}

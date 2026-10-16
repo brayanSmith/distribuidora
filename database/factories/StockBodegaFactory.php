@@ -2,9 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Models\Bodega;
-use App\Models\Producto;
-use App\Models\StockBodega;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Inventario\Models\StockBodega;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class StockBodegaFactory extends Factory
 {
+    protected $model = StockBodega::class;
+
     /**
      * Define the model's default state.
      *

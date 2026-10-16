@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Compra;
-use App\Models\Empresa;
 use App\Models\User;
+use App\Modules\Administracion\Models\Empresa;
+use App\Modules\Compras\Models\Compra;
 use App\Support\Branding;
 
 test('the app is branded with the company name and logo from Empresas', function () {

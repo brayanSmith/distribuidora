@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Compra;
-use App\Models\Pedido;
 use App\Models\User;
+use App\Modules\Compras\Models\Compra;
+use App\Modules\Ventas\Models\Pedido;
 use App\Support\Branding;
 use Illuminate\Http\Request;
 use Inertia\Middleware;

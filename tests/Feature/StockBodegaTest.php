@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Producto;
-use App\Models\StockBodega;
 use App\Models\User;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Inventario\Models\StockBodega;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {

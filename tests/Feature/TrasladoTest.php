@@ -1,10 +1,10 @@
 <?php
 
-use App\Models\Bodega;
-use App\Models\Producto;
-use App\Models\StockBodega;
-use App\Models\Traslado;
 use App\Models\User;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Inventario\Models\StockBodega;
+use App\Modules\Inventario\Models\Traslado;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {

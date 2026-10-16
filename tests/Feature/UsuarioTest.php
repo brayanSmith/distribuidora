@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Role;
 use App\Models\User;
+use App\Modules\Administracion\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 

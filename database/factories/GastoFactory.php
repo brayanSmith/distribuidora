@@ -2,9 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Models\Bodega;
 use App\Models\User;
 use App\Modules\Finanzas\Models\Gasto;
+use App\Modules\Inventario\Models\Bodega;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**

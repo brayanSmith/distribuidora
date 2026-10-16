@@ -2,9 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Models\Bodega;
-use App\Models\Producto;
-use App\Models\Traslado;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Inventario\Models\Traslado;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class TrasladoFactory extends Factory
 {
+    protected $model = Traslado::class;
+
     /**
      * Define the model's default state.
      *

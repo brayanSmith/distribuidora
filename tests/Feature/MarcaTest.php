@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Marca;
 use App\Models\User;
+use App\Modules\Catalogo\Models\Marca;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 

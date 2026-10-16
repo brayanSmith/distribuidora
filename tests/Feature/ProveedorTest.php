@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Proveedor;
 use App\Models\User;
+use App\Modules\Compras\Models\Proveedor;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {

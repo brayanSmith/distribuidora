@@ -1,12 +1,12 @@
 <?php
 
-use App\Models\Bodega;
-use App\Models\Cliente;
-use App\Models\Pedido;
-use App\Models\Producto;
-use App\Models\StockBodega;
 use App\Models\User;
+use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Finanzas\Models\Puc;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Inventario\Models\StockBodega;
+use App\Modules\Ventas\Models\Cliente;
+use App\Modules\Ventas\Models\Pedido;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {

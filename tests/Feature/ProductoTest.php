@@ -1,14 +1,14 @@
 <?php
 
-use App\Models\Cliente;
-use App\Models\Compra;
-use App\Models\DetalleCompra;
-use App\Models\DetallePedido;
-use App\Models\Marca;
-use App\Models\Pedido;
-use App\Models\Producto;
-use App\Models\Proveedor;
 use App\Models\User;
+use App\Modules\Catalogo\Models\Marca;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Compras\Models\Compra;
+use App\Modules\Compras\Models\DetalleCompra;
+use App\Modules\Compras\Models\Proveedor;
+use App\Modules\Ventas\Models\Cliente;
+use App\Modules\Ventas\Models\DetallePedido;
+use App\Modules\Ventas\Models\Pedido;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {

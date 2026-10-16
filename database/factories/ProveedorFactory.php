@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Proveedor;
+use App\Modules\Compras\Models\Proveedor;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class ProveedorFactory extends Factory
 {
+    protected $model = Proveedor::class;
+
     /**
      * Define the model's default state.
      *

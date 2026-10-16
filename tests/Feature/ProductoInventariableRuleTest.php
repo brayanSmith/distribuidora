@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Producto;
-use App\Rules\ProductoInventariable;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Catalogo\Rules\ProductoInventariable;
 
 function validarProductoInventariable(int $productoId): ?string
 {

@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\InicioSesion;
 use App\Models\User;
+use App\Modules\Administracion\Models\InicioSesion;
 use App\Support\UserAgent;
 use Spatie\Permission\Models\Permission;
 

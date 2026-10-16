@@ -1,0 +1,118 @@
+<?php
+
+namespace App\Modules\Ventas\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\HandlesTrash;
+use App\Modules\Ventas\Http\Requests\StoreClienteRequest;
+use App\Modules\Ventas\Http\Requests\UpdateClienteRequest;
+use App\Modules\Ventas\Models\Cliente;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class ClienteController extends Controller
+{
+    use HandlesTrash;
+
+    /**
+     * Display a listing of clientes.
+     */
+    public function index(Request $request): Response
+    {
+        Gate::authorize('clientes.view');
+
+        $eliminados = $this->verEliminados($request, 'clientes');
+
+        return Inertia::render('clientes/index', [
+            'clientes' => Cliente::orderBy('razon_social')
+                ->when($eliminados, fn ($query) => $query->onlyTrashed())
+                ->get(),
+            'eliminados' => $eliminados,
+            'permissions' => [
+                'canCreate' => $request->user()->can('clientes.create'),
+                'canUpdate' => $request->user()->can('clientes.update'),
+                'canDelete' => $request->user()->can('clientes.delete'),
+                'canViewDeleted' => $request->user()->can('clientes.view-deleted'),
+                'canRestore' => $request->user()->can('clientes.restore'),
+            ],
+        ]);
+    }
+
+    /**
+     * Store a newly created cliente.
+     */
+    public function store(StoreClienteRequest $request): RedirectResponse
+    {
+        // From the POS (`desde_pos`) `pos.create-cliente` is enough.
+        abort_unless(
+            $request->user()->can('clientes.create')
+                || ($request->boolean('desde_pos') && $request->user()->can('pos.create-cliente')),
+            403,
+        );
+
+        $data = $request->validated();
+
+        if ($request->hasFile('rut_imagen')) {
+            $data['rut_imagen'] = $request->file('rut_imagen')->store('clientes', 'public');
+        }
+
+        Cliente::create($data);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Cliente created.')]);
+
+        return back();
+    }
+
+    /**
+     * Update the specified cliente.
+     */
+    public function update(UpdateClienteRequest $request, Cliente $cliente): RedirectResponse
+    {
+        Gate::authorize('clientes.update');
+
+        $data = $request->safe()->except(['rut_imagen', 'remove_rut_imagen']);
+
+        if ($request->hasFile('rut_imagen')) {
+            if ($cliente->rut_imagen) {
+                Storage::disk('public')->delete($cliente->rut_imagen);
+            }
+
+            $data['rut_imagen'] = $request->file('rut_imagen')->store('clientes', 'public');
+        } elseif ($request->boolean('remove_rut_imagen') && $cliente->rut_imagen) {
+            Storage::disk('public')->delete($cliente->rut_imagen);
+            $data['rut_imagen'] = null;
+        }
+
+        $cliente->update($data);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Cliente updated.')]);
+
+        return back();
+    }
+
+    /**
+     * Remove the specified cliente.
+     */
+    public function destroy(Cliente $cliente): RedirectResponse
+    {
+        Gate::authorize('clientes.delete');
+
+        $cliente->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Cliente deleted.')]);
+
+        return back();
+    }
+
+    /**
+     * Restore a deleted cliente.
+     */
+    public function restore(Cliente $cliente): RedirectResponse
+    {
+        return $this->restaurarRegistro('clientes', $cliente, __('Cliente restored.'));
+    }
+}

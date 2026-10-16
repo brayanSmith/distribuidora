@@ -2,11 +2,11 @@
 
 namespace App\Modules\Finanzas\Models;
 
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use App\Models\Bodega;
-use App\Models\User;
 use App\Models\Concerns\LogsCambios;
+use App\Models\User;
+use App\Modules\Inventario\Models\Bodega;
 use Database\Factories\GastoFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

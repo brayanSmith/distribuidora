@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\Bodega;
-use App\Models\Producto;
-use App\Models\StockBodega;
 use App\Models\User;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Inventario\Models\StockBodega;
 use Illuminate\Support\Facades\DB;
 
 function catalogoOwner(): User

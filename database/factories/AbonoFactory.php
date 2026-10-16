@@ -2,10 +2,10 @@
 
 namespace Database\Factories;
 
-use App\Models\Abono;
-use App\Models\Pedido;
 use App\Models\User;
 use App\Modules\Finanzas\Models\Puc;
+use App\Modules\Ventas\Models\Abono;
+use App\Modules\Ventas\Models\Pedido;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class AbonoFactory extends Factory
 {
+    protected $model = Abono::class;
+
     /**
      * Define the model's default state.
      *

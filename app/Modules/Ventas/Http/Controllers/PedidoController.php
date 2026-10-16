@@ -1,0 +1,415 @@
+<?php
+
+namespace App\Modules\Ventas\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Catalogo\Http\Controllers\ProductoController;
+use App\Http\Controllers\Concerns\HandlesTrash;
+use App\Modules\Ventas\Http\Requests\StorePedidoRequest;
+use App\Modules\Ventas\Http\Requests\UpdatePedidoRequest;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Ventas\Models\Cliente;
+use App\Modules\Ventas\Models\DetallePedido;
+use App\Modules\Ventas\Models\Pedido;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Compras\Models\Proveedor;
+use App\Models\User;
+use App\Modules\Finanzas\Models\Puc;
+use App\Modules\Ventas\Services\PedidoEdicion;
+use App\Modules\Ventas\Services\PedidoService;
+use App\Modules\Ventas\Services\PedidoVoucher;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response;
+
+/**
+ * Serves both the "pedidos" (DETAL) and "pedidos-mayoristas" (MAYORISTA)
+ * modules. Which one is active is derived from the matched route's name
+ * (e.g. "pedidos.index" vs "pedidos-mayoristas.index"), so both modules
+ * share this one controller instead of duplicating it.
+ */
+class PedidoController extends Controller
+{
+    use HandlesTrash;
+
+    /**
+     * Display a listing of pedidos.
+     */
+    public function index(Request $request): Response
+    {
+        $module = $this->module($request);
+
+        Gate::authorize("{$module}.view");
+
+        $eliminados = $this->verEliminados($request, $module);
+        $permissions = $this->permissions($request, $module);
+
+        // Only the fields the listing shows: every pedido brings its lines,
+        // products and payments, so whole models add up to megabytes.
+        $pedidos = Pedido::select([
+            'id', 'fecha', 'estado', 'estado_pago', 'tipo_precio', 'turno', 'observacion', 'observacion_pago',
+            'total_a_pagar', 'saldo_pendiente', 'descuento', 'reteica', 'retefuente', 'deleted_at',
+            'cliente_id', 'bodega_id', 'user_id',
+        ])
+            ->with([
+                'cliente:id,razon_social,numero_documento',
+                'bodega:id,nombre_bodega',
+                'user:id,name',
+                'detalles' => fn ($query) => $query->withTrashed()
+                    ->select(['id', 'pedido_id', 'producto_id', 'cantidad', 'precio_unitario', 'subtotal', 'costo_unitario', 'costo_total', 'ganancia_total'])
+                    ->with(['producto' => fn ($query) => $query
+                        ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'tipo_vehiculo'])
+                        ->withSum('stockBodegas as stock_total', 'stock')]),
+                'abonos:id,pedido_id,puc_id,monto',
+                'abonos.puc:id,concatenar_subcuenta_concepto',
+            ])
+            ->when($eliminados, fn ($query) => $query->onlyTrashed())
+            ->where('tipo_precio', $this->tipoPrecio($module))
+            ->when(
+                $module === 'pedidos' ? $request->user()->idsBodegasPermitidas() : null,
+                fn ($query, array $bodegaIds) => $query->whereIn('bodega_id', $bodegaIds),
+            )
+            ->orderByDesc('fecha')
+            ->get();
+
+        $this->agregarPendientes($pedidos, $permissions);
+
+        $pedidos->each(fn (Pedido $pedido) => $request->user()->puedeVerPrecio('costo')
+            ? null
+            : $pedido->detalles->each->makeHidden(['costo_unitario', 'costo_total', 'ganancia_total']));
+
+        return Inertia::render("{$module}/index", [
+            'pedidos' => $pedidos,
+            'eliminados' => $eliminados,
+            'permissions' => $permissions,
+            // For registering a payment right from the listing.
+            'pucs' => $permissions['canCreateAbono'] ? Puc::orderBy('concatenar_subcuenta_concepto')->get(['id', 'concatenar_subcuenta_concepto']) : [],
+            'vendedores' => $permissions['canCreateAbono'] ? User::orderBy('name')->get(['id', 'name']) : [],
+        ]);
+    }
+
+    /**
+     * Sets each detalle's producto `pendiente` (units still to arrive from a
+     * purchase) and `proveedor_pendiente` (their proveedores), the same
+     * numbers `ProductoController::listado()` shows — so the "Por detalle"
+     * view doesn't send anyone to the Productos page just to check this.
+     *
+     * @param  Collection<int, Pedido>  $pedidos
+     * @param  array{canViewPendiente: bool, canViewAlmacenP: bool}  $permissions
+     */
+    private function agregarPendientes(Collection $pedidos, array $permissions): void
+    {
+        $detalles = $pedidos->pluck('detalles')->flatten();
+
+        // Always set both keys (null when not permitted, or when nothing is
+        // pending), matching what ProductoController::listado() sends: the
+        // Producto model has no such columns, so an unset attribute would
+        // leave the key out of the JSON entirely instead of null.
+        if (! $permissions['canViewPendiente'] && ! $permissions['canViewAlmacenP']) {
+            $detalles->each(function (DetallePedido $detalle): void {
+                $detalle->producto?->setAttribute('pendiente', null);
+                $detalle->producto?->setAttribute('proveedor_pendiente', null);
+            });
+
+            return;
+        }
+
+        $productoIds = $detalles->pluck('producto_id')->unique();
+        $proveedores = (new Proveedor)->getTable();
+
+        $pendientes = DB::table('detalle_compras')
+            ->join('compras', 'compras.id', '=', 'detalle_compras.compra_id')
+            ->leftJoin($proveedores, "{$proveedores}.id", '=', 'compras.proveedor_id')
+            ->whereIn('detalle_compras.producto_id', $productoIds)
+            ->where('detalle_compras.estado_entrega', 'PENDIENTE')
+            ->whereNull('detalle_compras.deleted_at')
+            ->whereNull('compras.deleted_at')
+            ->get(['detalle_compras.producto_id', 'detalle_compras.cantidad', "{$proveedores}.nombre_proveedor"])
+            ->groupBy('producto_id');
+
+        $detalles->each(function (DetallePedido $detalle) use ($pendientes, $permissions): void {
+            if (! $detalle->producto) {
+                return;
+            }
+
+            $filas = $pendientes->get($detalle->producto->id, collect());
+
+            $detalle->producto->setAttribute(
+                'pendiente',
+                $permissions['canViewPendiente'] ? (float) $filas->sum('cantidad') : null,
+            );
+
+            $proveedoresPendientes = $filas->pluck('nombre_proveedor')->filter()->unique()->values();
+            $detalle->producto->setAttribute(
+                'proveedor_pendiente',
+                $permissions['canViewAlmacenP'] && $proveedoresPendientes->isNotEmpty()
+                    ? $proveedoresPendientes->implode(', ')
+                    : null,
+            );
+        });
+    }
+
+    /**
+     * Show the form for creating a new pedido.
+     */
+    public function create(Request $request): Response
+    {
+        $module = $this->module($request);
+
+        Gate::authorize("{$module}.create");
+
+        return Inertia::render("{$module}/create", [
+            ...$this->formData($request),
+            'defaultTipoPrecio' => $this->tipoPrecio($module),
+        ]);
+    }
+
+    /**
+     * Store a newly created pedido.
+     */
+    public function store(StorePedidoRequest $request, PedidoService $pedidoService): RedirectResponse
+    {
+        $module = $this->module($request);
+
+        Gate::authorize("{$module}.create");
+
+        $pedidoService->create($request->validated());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Pedido created.')]);
+
+        return to_route("{$module}.index");
+    }
+
+    /**
+     * The full detail of a pedido (header, lines and payments) as JSON, for
+     * the read-only "ver" modal. Loaded on demand so the listing stays light.
+     */
+    public function show(Request $request, Pedido $pedido): JsonResponse
+    {
+        Gate::authorize($this->module($request).'.view');
+
+        $pedido->load([
+            'cliente:id,razon_social,tipo_documento,numero_documento,telefono,ciudad,email,direccion',
+            'bodega:id,nombre_bodega',
+            'user:id,name',
+            'detalles' => fn ($query) => $query->withTrashed()
+                ->with(['producto:id,referencia_producto,concatenar_codigo_nombre', 'bodega:id,nombre_bodega']),
+            'abonos' => fn ($query) => $query->with(['puc:id,concatenar_subcuenta_concepto', 'vendedor:id,name']),
+        ]);
+
+        // What the pedido cost and earned is not for this view.
+        $pedido->detalles->each->makeHidden(['costo_unitario', 'costo_total', 'ganancia_total']);
+
+        return response()->json($pedido);
+    }
+
+    /**
+     * The data of a pedido's payment voucher (the PDF itself is rendered in
+     * the browser), for the "voucher" button of the listing and the modal.
+     */
+    public function voucher(Request $request, Pedido $pedido, PedidoVoucher $voucher): JsonResponse
+    {
+        Gate::authorize($this->module($request).'.view');
+
+        return response()->json($voucher->toArray($pedido));
+    }
+
+    /**
+     * Show the form for editing the specified pedido.
+     */
+    public function edit(Request $request, Pedido $pedido): Response
+    {
+        $module = $this->module($request);
+
+        Gate::authorize("{$module}.update");
+
+        return Inertia::render("{$module}/edit", [
+            'pedido' => $pedido->load([
+                'cliente',
+                'detalles.producto',
+                'detalles.bodega:id,nombre_bodega',
+                'abonos.puc',
+                'abonos.vendedor',
+                'user',
+                'bodega',
+            ]),
+            ...$this->formData($request, $pedido),
+            'permissions' => [
+                'canDelete' => $request->user()->can("{$module}.delete"),
+                'canCreateAbono' => $request->user()->can("{$module}.create-abono"),
+                'canUpdateAbono' => $request->user()->can("{$module}.update-abono"),
+                'canDeleteAbono' => $request->user()->can("{$module}.delete-abono"),
+                'canCreateDetalle' => $request->user()->can("{$module}.create-detalle"),
+                'canUpdateDetalle' => $request->user()->can("{$module}.update-detalle"),
+                'canDeleteDetalle' => $request->user()->can("{$module}.delete-detalle"),
+                'canUpdateDatos' => $request->user()->can("{$module}.update-datos"),
+            ],
+        ]);
+    }
+
+    /**
+     * Update the specified pedido.
+     */
+    public function update(UpdatePedidoRequest $request, PedidoService $pedidoService, PedidoEdicion $edicion, Pedido $pedido): RedirectResponse
+    {
+        $module = $this->module($request);
+
+        Gate::authorize("{$module}.update");
+
+        // Only what the user is allowed to change (data, products) is applied.
+        $data = $edicion->restringir($pedido, $request->validated(), $request->user(), $module);
+
+        DB::transaction(function () use ($pedido, $data, $pedidoService): void {
+            $detallesAntes = $pedido->resumenDetalles();
+            $totalAntes = (float) $pedido->total_a_pagar;
+
+            foreach ($pedido->detalles as $detalle) {
+                $pedidoService->adjustStock($detalle, $pedido, 1);
+            }
+
+            $pedido->detalles()->forceDelete();
+
+            $pedido->update([
+                'cliente_id' => $data['cliente_id'],
+                'fecha' => $data['fecha'],
+                'user_id' => $data['user_id'],
+                'bodega_id' => $data['bodega_id'],
+                'tipo_precio' => $data['tipo_precio'],
+                'placa' => $data['placa'] ?? null,
+                'facturacion_electronica' => $data['facturacion_electronica'] ?? false,
+                'observacion' => $data['observacion'] ?? null,
+                'observacion_pago' => $data['observacion_pago'] ?? null,
+                'flete' => $data['flete'] ?? 0,
+                'descuento' => $data['descuento'] ?? 0,
+                'reteica' => $data['reteica'] ?? 0,
+                'retefuente' => $data['retefuente'] ?? 0,
+            ]);
+
+            $pedidoService->syncDetalles($pedido, $data['detalles']);
+            $pedido->registrarCambioDetalles($detallesAntes, $totalAntes);
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Pedido updated.')]);
+
+        return to_route("{$module}.edit", ['pedido' => $pedido]);
+    }
+
+    /**
+     * Remove the specified pedido.
+     */
+    public function destroy(Request $request, PedidoService $pedidoService, Pedido $pedido): RedirectResponse
+    {
+        $module = $this->module($request);
+
+        Gate::authorize("{$module}.delete");
+
+        DB::transaction(function () use ($pedido, $pedidoService): void {
+            foreach ($pedido->detalles as $detalle) {
+                $pedidoService->adjustStock($detalle, $pedido, 1);
+            }
+
+            $pedido->detalles()->delete();
+            $pedido->delete();
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Pedido deleted.')]);
+
+        return to_route("{$module}.index");
+    }
+
+    /**
+     * Every producto can be put on a pedido (servicios and those without stock
+     * control too). Editing one also lists the productos of its lines even if
+     * they were deleted since, so their names always show.
+     *
+     * @return array{clientes: Collection, productos: Collection, bodegas: Collection, vendedores: Collection, pucs: Collection}
+     */
+    private function formData(Request $request, ?Pedido $pedido = null): array
+    {
+        $productosDelPedido = $pedido?->detalles()->withTrashed()->pluck('producto_id') ?? collect();
+
+        return [
+            'clientes' => Cliente::orderBy('razon_social')->get([
+                'id', 'tipo_documento', 'numero_documento', 'razon_social', 'direccion', 'telefono', 'ciudad', 'email',
+            ]),
+            'productos' => Producto::withTrashed()
+                ->where(fn ($query) => $query->whereNull('deleted_at')
+                    ->when($productosDelPedido->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $productosDelPedido)))
+                ->orderBy('referencia_producto')
+                ->get(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'valor_detal', 'valor_mayorista', 'costo_producto'])
+                ->each(function (Producto $producto) use ($request): void {
+                    foreach (['valor_detal' => 'valor_detal', 'valor_mayorista' => 'valor_mayorista', 'costo_producto' => 'costo'] as $campo => $tipo) {
+                        if (! $request->user()->puedeVerPrecio($tipo)) {
+                            $producto->setAttribute($campo, null);
+                        }
+                    }
+                }),
+            // Mayorista is its own section: it always offers every bodega.
+            'bodegas' => Bodega::query()
+                ->when($this->module($request) === 'pedidos', fn ($query) => $query->permitidas())
+                ->orderBy('nombre_bodega')
+                ->get(['id', 'nombre_bodega']),
+            'vendedores' => User::orderBy('name')->get(['id', 'name']),
+            'pucs' => Puc::orderBy('concatenar_subcuenta_concepto')->get(['id', 'concatenar_subcuenta_concepto']),
+        ];
+    }
+
+    /**
+     * @return array{canCreate: bool, canUpdate: bool, canDelete: bool}
+     */
+    private function permissions(Request $request, string $module): array
+    {
+        return [
+            'canCreate' => $request->user()->can("{$module}.create"),
+            'canUpdate' => $request->user()->can("{$module}.update"),
+            'canDelete' => $request->user()->can("{$module}.delete"),
+            'canViewDeleted' => $request->user()->can("{$module}.view-deleted"),
+            'canRestore' => $request->user()->can("{$module}.restore"),
+            'canViewDetalle' => $request->user()->can("{$module}.view-detalle"),
+            // Registering an abono also needs `update`, as AbonoController::store checks.
+            'canCreateAbono' => $request->user()->can("{$module}.update") && $request->user()->can("{$module}.create-abono"),
+            // Same producto-level permissions the Productos listing already uses.
+            'canViewPendiente' => $request->user()->can('productos.view-pendiente'),
+            'canViewAlmacenP' => $request->user()->can('productos.view-almacen-p'),
+        ];
+    }
+
+    /**
+     * The active module ("pedidos" or "pedidos-mayoristas"), derived from
+     * the matched route's name (e.g. "pedidos-mayoristas.index").
+     */
+    private function module(Request $request): string
+    {
+        return Str::before($request->route()->getName(), '.');
+    }
+
+    /**
+     * The tipo_precio this module is scoped to.
+     */
+    private function tipoPrecio(string $module): string
+    {
+        return $module === 'pedidos-mayoristas' ? 'MAYORISTA' : 'DETAL';
+    }
+
+    /**
+     * Restore a deleted pedido with its lines, taking their stock out of
+     * the bodega again.
+     */
+    public function restore(Request $request, PedidoService $pedidoService, Pedido $pedido): RedirectResponse
+    {
+        return $this->restaurarRegistro($this->module($request), $pedido, __('Pedido restored.'), function (Pedido $pedido) use ($pedidoService): void {
+            DB::transaction(function () use ($pedido, $pedidoService): void {
+                $pedido->detalles()->onlyTrashed()->get()->each(function (DetallePedido $detalle) use ($pedido, $pedidoService): void {
+                    $detalle->restore();
+                    $pedidoService->adjustStock($detalle, $pedido, -1);
+                });
+            });
+        });
+    }
+}

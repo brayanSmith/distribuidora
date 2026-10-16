@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Bodega;
+use App\Modules\Inventario\Models\Bodega;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class BodegaFactory extends Factory
 {
+    protected $model = Bodega::class;
+
     /**
      * Define the model's default state.
      *

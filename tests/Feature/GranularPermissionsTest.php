@@ -1,17 +1,17 @@
 <?php
 
-use App\Models\Abono;
-use App\Models\Bodega;
-use App\Models\Cliente;
-use App\Models\DetalleCompra;
-use App\Models\DetallePedido;
-use App\Models\Pedido;
-use App\Models\Producto;
-use App\Models\Role;
-use App\Models\StockBodega;
-use App\Models\Traslado;
 use App\Models\User;
+use App\Modules\Administracion\Models\Role;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Compras\Models\DetalleCompra;
 use App\Modules\Finanzas\Models\Puc;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Inventario\Models\StockBodega;
+use App\Modules\Inventario\Models\Traslado;
+use App\Modules\Ventas\Models\Abono;
+use App\Modules\Ventas\Models\Cliente;
+use App\Modules\Ventas\Models\DetallePedido;
+use App\Modules\Ventas\Models\Pedido;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {

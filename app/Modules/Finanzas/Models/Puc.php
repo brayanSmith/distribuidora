@@ -2,11 +2,11 @@
 
 namespace App\Modules\Finanzas\Models;
 
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use App\Models\Abono;
-use App\Models\Pedido;
 use App\Models\Concerns\LogsCambios;
+use App\Modules\Ventas\Models\Abono;
+use App\Modules\Ventas\Models\Pedido;
 use Database\Factories\PucFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

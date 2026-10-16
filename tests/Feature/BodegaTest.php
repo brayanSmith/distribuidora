@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Bodega;
 use App\Models\User;
+use App\Modules\Inventario\Models\Bodega;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 

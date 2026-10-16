@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\Bodega;
-use App\Models\Cliente;
 use App\Models\User;
 use App\Modules\Finanzas\Models\Puc;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Ventas\Models\Cliente;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 

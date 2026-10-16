@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\InicioSesion;
 use App\Models\User;
+use App\Modules\Administracion\Models\InicioSesion;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class InicioSesionFactory extends Factory
 {
+    protected $model = InicioSesion::class;
+
     /**
      * Define the model's default state.
      *

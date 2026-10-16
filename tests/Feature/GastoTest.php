@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Bodega;
 use App\Models\User;
 use App\Modules\Finanzas\Models\Gasto;
+use App\Modules\Inventario\Models\Bodega;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {

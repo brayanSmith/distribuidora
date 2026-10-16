@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Modules\Ventas\Models;
+
+use Database\Factories\ClienteFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+#[UseFactory(ClienteFactory::class)]
+class Cliente extends Model
+{
+    //
+    use HasFactory;
+    use LogsActivity;
+    use SoftDeletes;
+
+    protected $fillable = [
+        'tipo_documento',
+        'numero_documento',
+        'razon_social',
+        'direccion',
+        'telefono',
+        'ciudad',
+        'email',
+        'activo',
+        'novedad',
+        'rut_imagen',
+        'retenedor_fuente',
+    ];
+
+    protected $appends = [
+        'rut_imagen_url',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+    ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('clientes')
+            ->logOnly([
+                'tipo_documento', 'numero_documento', 'razon_social', 'direccion', 'telefono', 'ciudad',
+                'email', 'activo', 'novedad', 'retenedor_fuente',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(fn (string $event): string => match ($event) {
+                'created' => 'Cliente creado',
+                'updated' => 'Cliente editado',
+                'deleted' => 'Cliente eliminado',
+                'restored' => 'Cliente restaurado',
+                default => "Cliente {$event}",
+            });
+    }
+
+    public function pedidos()
+    {
+        return $this->hasMany(Pedido::class);
+    }
+
+    /**
+     * @return Attribute<string|null, never>
+     */
+    protected function rutImagenUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->rut_imagen ? Storage::disk('public')->url($this->rut_imagen) : null,
+        );
+    }
+}

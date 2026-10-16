@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Empresa;
 use App\Models\User;
+use App\Modules\Administracion\Models\Empresa;
 
 test('owners can view and create the company profile without a custom role', function () {
     $owner = User::factory()->create();

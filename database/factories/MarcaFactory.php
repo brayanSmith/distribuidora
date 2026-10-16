@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Marca;
+use App\Modules\Catalogo\Models\Marca;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class MarcaFactory extends Factory
 {
+    protected $model = Marca::class;
+
     /**
      * Define the model's default state.
      *
