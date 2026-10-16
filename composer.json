@@ -19,6 +19,7 @@
         "laravel/wayfinder": "^0.1.14",
         "league/flysystem-aws-s3-v3": "^3.0",
         "spatie/laravel-activitylog": "^4.12",
+        "spatie/laravel-multitenancy": "^4.2",
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {
@@ -51,7 +52,8 @@
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
-            "@php artisan migrate --force",
+            "@php artisan migrate --database=landlord --path=app/Modules/Tenancy/database/migrations --force",
+            "@php artisan tenants:artisan \"migrate --database=tenant --force\"",
             "npm install",
             "npm run build"
         ],
