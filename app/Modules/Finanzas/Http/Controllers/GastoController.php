@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Modules\Finanzas\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\HandlesTrash;
-use App\Http\Requests\Gastos\StoreGastoRequest;
-use App\Http\Requests\Gastos\UpdateGastoRequest;
+use App\Modules\Finanzas\Http\Requests\StoreGastoRequest;
+use App\Modules\Finanzas\Http\Requests\UpdateGastoRequest;
 use App\Models\Bodega;
-use App\Models\Gasto;
+use App\Modules\Finanzas\Models\Gasto;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;

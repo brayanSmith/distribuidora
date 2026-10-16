@@ -2,8 +2,8 @@
 
 use App\Models\Bodega;
 use App\Models\Cliente;
-use App\Models\Puc;
 use App\Models\User;
+use App\Modules\Finanzas\Models\Puc;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 

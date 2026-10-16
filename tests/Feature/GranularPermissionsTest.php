@@ -7,11 +7,11 @@ use App\Models\DetalleCompra;
 use App\Models\DetallePedido;
 use App\Models\Pedido;
 use App\Models\Producto;
-use App\Models\Puc;
 use App\Models\Role;
 use App\Models\StockBodega;
 use App\Models\Traslado;
 use App\Models\User;
+use App\Modules\Finanzas\Models\Puc;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {

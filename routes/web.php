@@ -7,7 +7,6 @@ use App\Http\Controllers\CompraController;
 use App\Http\Controllers\CotizadorController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpresaController;
-use App\Http\Controllers\GastoController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\InicioSesionController;
 use App\Http\Controllers\MarcaController;
@@ -15,7 +14,6 @@ use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProveedorController;
-use App\Http\Controllers\PucController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\StockBodegaController;
 use App\Http\Controllers\StockInicialController;
@@ -62,17 +60,6 @@ Route::middleware(['auth', 'verified'])
         Route::post('marcas', [MarcaController::class, 'store'])->name('marcas.store');
         Route::patch('marcas/{marca}', [MarcaController::class, 'update'])->name('marcas.update');
         Route::delete('marcas/{marca}', [MarcaController::class, 'destroy'])->name('marcas.destroy');
-
-        Route::get('pucs', [PucController::class, 'index'])->name('pucs.index');
-        Route::post('pucs', [PucController::class, 'store'])->name('pucs.store');
-        Route::patch('pucs/{puc}', [PucController::class, 'update'])->name('pucs.update');
-        Route::delete('pucs/{puc}', [PucController::class, 'destroy'])->name('pucs.destroy');
-
-        Route::get('gastos', [GastoController::class, 'index'])->name('gastos.index');
-        Route::post('gastos', [GastoController::class, 'store'])->name('gastos.store');
-        Route::patch('gastos/{gasto}', [GastoController::class, 'update'])->name('gastos.update');
-        Route::delete('gastos/{gasto}', [GastoController::class, 'destroy'])->name('gastos.destroy');
-        Route::patch('gastos/{gasto}/restaurar', [GastoController::class, 'restore'])->withTrashed()->name('gastos.restore');
 
         Route::get('historial', [HistorialController::class, 'index'])->name('historial.index');
         Route::get('inicios-sesion', [InicioSesionController::class, 'index'])->name('inicios-sesion.index');

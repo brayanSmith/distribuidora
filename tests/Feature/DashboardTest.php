@@ -3,10 +3,10 @@
 use App\Models\Bodega;
 use App\Models\DetalleCompra;
 use App\Models\DetallePedido;
-use App\Models\Gasto;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\User;
+use App\Modules\Finanzas\Models\Gasto;
 
 test('guests are redirected to the login page', function () {
     $user = User::factory()->create();

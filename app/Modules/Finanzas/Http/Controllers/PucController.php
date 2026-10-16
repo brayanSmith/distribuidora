@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Modules\Finanzas\Http\Controllers;
 
-use App\Http\Requests\Pucs\StorePucRequest;
-use App\Http\Requests\Pucs\UpdatePucRequest;
-use App\Models\Puc;
+use App\Http\Controllers\Controller;
+use App\Modules\Finanzas\Http\Requests\StorePucRequest;
+use App\Modules\Finanzas\Http\Requests\UpdatePucRequest;
+use App\Modules\Finanzas\Models\Puc;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;

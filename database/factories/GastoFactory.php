@@ -3,8 +3,8 @@
 namespace Database\Factories;
 
 use App\Models\Bodega;
-use App\Models\Gasto;
 use App\Models\User;
+use App\Modules\Finanzas\Models\Gasto;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class GastoFactory extends Factory
 {
+    protected $model = Gasto::class;
+
     /**
      * Define the model's default state.
      *

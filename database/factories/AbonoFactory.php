@@ -4,8 +4,8 @@ namespace Database\Factories;
 
 use App\Models\Abono;
 use App\Models\Pedido;
-use App\Models\Puc;
 use App\Models\User;
+use App\Modules\Finanzas\Models\Puc;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**

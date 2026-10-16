@@ -4,17 +4,17 @@ use App\Models\Bodega;
 use App\Models\Cliente;
 use App\Models\Compra;
 use App\Models\Empresa;
-use App\Models\Gasto;
 use App\Models\Marca;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\Proveedor;
-use App\Models\Puc;
 use App\Models\Role;
 use App\Models\StockBodega;
 use App\Models\StockInicial;
 use App\Models\Traslado;
 use App\Models\User;
+use App\Modules\Finanzas\Models\Gasto;
+use App\Modules\Finanzas\Models\Puc;
 use Spatie\Activitylog\Models\Activity;
 
 beforeEach(function () {

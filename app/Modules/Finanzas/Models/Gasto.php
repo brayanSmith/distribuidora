@@ -1,7 +1,10 @@
 <?php
 
-namespace App\Models;
+namespace App\Modules\Finanzas\Models;
 
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use App\Models\Bodega;
+use App\Models\User;
 use App\Models\Concerns\LogsCambios;
 use Database\Factories\GastoFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+#[UseFactory(GastoFactory::class)]
 class Gasto extends Model
 {
     /** @use HasFactory<GastoFactory> */

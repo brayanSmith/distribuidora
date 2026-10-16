@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Modules\Finanzas\Models\Puc;
+use Database\Factories\AbonoCompraFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AbonoCompra extends Model
 {
-    /** @use HasFactory<\Database\Factories\AbonoCompraFactory> */
+    /** @use HasFactory<AbonoCompraFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -24,10 +26,12 @@ class AbonoCompra extends Model
     {
         return $this->belongsTo(Compra::class, 'compra_id');
     }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
     public function formaPagoAbonoCompra()
     {
         return $this->belongsTo(Puc::class, 'forma_pago_abono_compra');

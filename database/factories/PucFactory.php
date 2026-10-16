@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Puc;
+use App\Modules\Finanzas\Models\Puc;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class PucFactory extends Factory
 {
+    protected $model = Puc::class;
+
     /**
      * Define the model's default state.
      *

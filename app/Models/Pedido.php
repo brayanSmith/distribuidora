@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\LogsDetalles;
+use App\Modules\Finanzas\Models\Puc;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

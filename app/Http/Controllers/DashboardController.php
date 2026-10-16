@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bodega;
-use App\Models\Gasto;
 use App\Models\Pedido;
 use App\Models\Producto;
+use App\Modules\Finanzas\Models\Gasto;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;

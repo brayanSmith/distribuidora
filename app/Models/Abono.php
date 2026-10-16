@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Modules\Finanzas\Models\Puc;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\LogOptions;

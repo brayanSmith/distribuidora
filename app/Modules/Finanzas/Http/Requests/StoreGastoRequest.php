@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Gastos;
+namespace App\Modules\Finanzas\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;

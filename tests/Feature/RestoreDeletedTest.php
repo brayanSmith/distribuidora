@@ -5,12 +5,12 @@ use App\Models\Cliente;
 use App\Models\Compra;
 use App\Models\DetalleCompra;
 use App\Models\DetallePedido;
-use App\Models\Gasto;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Models\Proveedor;
 use App\Models\StockBodega;
 use App\Models\User;
+use App\Modules\Finanzas\Models\Gasto;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {

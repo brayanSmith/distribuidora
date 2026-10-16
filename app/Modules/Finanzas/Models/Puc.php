@@ -1,12 +1,16 @@
 <?php
 
-namespace App\Models;
+namespace App\Modules\Finanzas\Models;
 
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use App\Models\Abono;
+use App\Models\Pedido;
 use App\Models\Concerns\LogsCambios;
 use Database\Factories\PucFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+#[UseFactory(PucFactory::class)]
 class Puc extends Model
 {
     /** @use HasFactory<PucFactory> */
