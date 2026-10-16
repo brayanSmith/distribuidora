@@ -3,10 +3,10 @@
 namespace App\Modules\Inventario\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Inventario\Http\Requests\StoreTrasladoRequest;
 use App\Modules\Inventario\Http\Requests\UpdateTrasladoRequest;
 use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Inventario\Models\StockBodega;
 use App\Modules\Inventario\Models\Traslado;
 use Illuminate\Http\RedirectResponse;
@@ -27,8 +27,7 @@ class TrasladoController extends Controller
 
         return Inertia::render('traslados/index', [
             'traslados' => Traslado::with(['producto', 'bodegaDonante', 'bodegaDestino'])->latest()->get(),
-            'productos' => Producto::where('categoria', '!=', 'SERVICIO')
-                ->where('inventariable', true)
+            'productos' => Producto::where('inventariable', true)
                 ->orderBy('referencia_producto')
                 ->get(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'costo_producto']),
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
@@ -119,7 +118,7 @@ class TrasladoController extends Controller
     {
         // Servicios (and any producto marked as not inventariable) never carry stock.
         if (Producto::withTrashed()->whereKey($productoId)
-            ->where(fn ($query) => $query->where('categoria', 'SERVICIO')->orWhere('inventariable', false))
+            ->where('inventariable', false)
             ->exists()) {
             return;
         }

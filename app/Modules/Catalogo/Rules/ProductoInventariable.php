@@ -22,7 +22,6 @@ class ProductoInventariable implements ValidationRule
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         $admiteStock = Producto::where('id', $value)
-            ->where('categoria', '!=', 'SERVICIO')
             ->where('inventariable', true)
             ->exists();
 

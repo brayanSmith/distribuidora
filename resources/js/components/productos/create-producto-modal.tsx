@@ -1,6 +1,6 @@
 import { Form } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import ProductoFormFields from '@/components/productos/producto-form-fields';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,35 +14,22 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { store } from '@/routes/productos';
-import type { MarcaOption } from '@/types';
+import type { CategoriaOption, MarcaOption } from '@/types';
 
 type Props = PropsWithChildren<{
     marcas: MarcaOption[];
+    categorias: CategoriaOption[];
     /** Keep the user on the current screen after saving (e.g. the POS). */
     stayOnPage?: boolean;
 }>;
 
 export default function CreateProductoModal({
     marcas,
+    categorias,
     stayOnPage = false,
     children,
 }: Props) {
     const [open, setOpen] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleImageChange = (file: File | null) => {
-        if (!fileInputRef.current) {
-            return;
-        }
-
-        const dataTransfer = new DataTransfer();
-
-        if (file) {
-            dataTransfer.items.add(file);
-        }
-
-        fileInputRef.current.files = dataTransfer.files;
-    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -73,14 +60,8 @@ export default function CreateProductoModal({
 
                             <ProductoFormFields
                                 marcas={marcas}
+                                categorias={categorias}
                                 errors={errors}
-                                onImageChange={handleImageChange}
-                            />
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                name="imagen_producto"
-                                className="hidden"
                             />
 
                             <DialogFooter className="gap-2">

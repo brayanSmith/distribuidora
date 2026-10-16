@@ -3,6 +3,7 @@ import { index } from '@/routes/pos';
 import type {
     BodegaOption,
     ClienteOption,
+    CategoriaOption,
     MarcaOption,
     PosCatalogoProducto,
     PucOption,
@@ -16,6 +17,7 @@ type Props = {
     vendedores: VendedorOption[];
     pucs: PucOption[];
     marcas: MarcaOption[];
+    categorias: CategoriaOption[];
     canCreateProducto: boolean;
     canCreateCliente: boolean;
     canViewAllPedidos: boolean;

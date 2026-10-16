@@ -14,6 +14,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import type {
+    CategoriaOption,
     MarcaOption,
     PosCatalogoProducto,
     TipoPrecioPedido,
@@ -36,6 +37,7 @@ type Props = {
     onRefresh: () => void;
     refreshing: boolean;
     marcas: MarcaOption[];
+    categorias: CategoriaOption[];
     /** Whether the user may register a new product from here. */
     canCreateProducto: boolean;
 };
@@ -61,6 +63,7 @@ export default function PosCatalog({
     tipoPrecio,
     onAdd,
     marcas,
+    categorias: categoriasForm,
     canCreateProducto,
     searchRef,
     nuevoProductoRef,
@@ -125,7 +128,11 @@ export default function PosCatalog({
                 </div>
 
                 {canCreateProducto ? (
-                    <CreateProductoModal marcas={marcas} stayOnPage>
+                    <CreateProductoModal
+                        marcas={marcas}
+                        categorias={categoriasForm}
+                        stayOnPage
+                    >
                         <Button
                             ref={nuevoProductoRef}
                             type="button"

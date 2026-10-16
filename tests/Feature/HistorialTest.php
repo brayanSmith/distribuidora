@@ -140,8 +140,6 @@ test('the history records who created, edited, received, deleted and restored a 
 test('the history records the changes of a producto and hides the prices its reader may not see', function () {
     $marca = Marca::factory()->create(['marca' => 'WANDA']);
     $this->actingAs($this->owner)->post(route('productos.store'), [
-        'categoria' => 'OTRO',
-        'tipo' => 'NUEVO',
         'referencia_producto' => 'REF-1',
         'marca_id' => $marca->id,
         'costo_producto' => 50000,
@@ -152,8 +150,6 @@ test('the history records the changes of a producto and hides the prices its rea
     expect(Activity::where('description', 'Producto creado')->where('subject_id', $producto->id)->exists())->toBeTrue();
 
     $this->actingAs($this->owner)->patch(route('productos.update', [$producto]), [
-        'categoria' => 'OTRO',
-        'tipo' => 'NUEVO',
         'referencia_producto' => 'REF-1',
         'marca_id' => $marca->id,
         'costo_producto' => 50000,

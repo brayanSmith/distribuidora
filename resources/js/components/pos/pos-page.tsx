@@ -37,6 +37,7 @@ import { voucher as voucherRoute } from '@/routes/pos/pedidos';
 import type {
     BodegaOption,
     ClienteOption,
+    CategoriaOption,
     MarcaOption,
     PosCatalogoProducto,
     PosVoucher,
@@ -52,6 +53,7 @@ type Props = {
     vendedores: VendedorOption[];
     pucs: PucOption[];
     marcas: MarcaOption[];
+    categorias: CategoriaOption[];
     canCreateProducto: boolean;
     canCreateCliente: boolean;
     /** Without it the history only lists the user's own pedidos (no vendedor filter). */
@@ -71,6 +73,7 @@ export default function PosPage({
     vendedores,
     pucs,
     marcas,
+    categorias,
     canCreateProducto,
     canCreateCliente,
     canViewAllPedidos,
@@ -342,6 +345,7 @@ export default function PosPage({
                         tipoPrecio={header.tipoPrecio}
                         onAdd={handleSelect}
                         marcas={marcas}
+                        categorias={categorias}
                         canCreateProducto={canCreateProducto}
                         searchRef={searchRef}
                         nuevoProductoRef={nuevoProductoRef}

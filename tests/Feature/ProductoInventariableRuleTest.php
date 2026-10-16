@@ -20,8 +20,8 @@ test('a regular, inventariable producto passes', function () {
     expect(validarProductoInventariable($producto->id))->toBeNull();
 });
 
-test('a servicio producto fails, even when marked inventariable', function () {
-    $producto = Producto::factory()->servicio()->create(['inventariable' => true]);
+test('a servicio producto fails', function () {
+    $producto = Producto::factory()->servicio()->create();
 
     expect(validarProductoInventariable($producto->id))
         ->toBe('El producto seleccionado es un servicio y no maneja stock.');

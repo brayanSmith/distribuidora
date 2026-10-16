@@ -16,7 +16,7 @@ function catalogoOwner(): User
 
 test('the POS catalog is served from cache until a product changes', function () {
     $owner = catalogoOwner();
-    $producto = Producto::factory()->create(['inventariable' => true, 'categoria' => 'LLANTA', 'valor_detal' => 100]);
+    $producto = Producto::factory()->create(['inventariable' => true, 'valor_detal' => 100]);
 
     $this->actingAs($owner)->get(route('pos.index'))
         ->assertInertia(fn ($page) => $page->where('productos.0.valor_detal', '100.00'));
@@ -36,7 +36,7 @@ test('the POS catalog is served from cache until a product changes', function ()
 
 test('a stock change refreshes the POS catalog and the stock per bodega', function () {
     $owner = catalogoOwner();
-    $producto = Producto::factory()->create(['inventariable' => true, 'categoria' => 'LLANTA']);
+    $producto = Producto::factory()->create(['inventariable' => true]);
     $bodega = Bodega::factory()->create();
 
     $this->actingAs($owner)->get(route('pos.index'))

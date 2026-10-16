@@ -232,16 +232,6 @@ function productosList(pedido: Pedido): string[] {
     return (pedido.detalles ?? []).map(productoNombre);
 }
 
-function tiposVehiculo(pedido: Pedido): string {
-    return Array.from(
-        new Set(
-            (pedido.detalles ?? [])
-                .map((detalle) => detalle.producto?.tipo_vehiculo)
-                .filter((tipo): tipo is string => Boolean(tipo)),
-        ),
-    ).join(' ');
-}
-
 function productosResumen(pedido: Pedido): string {
     const nombres = productosList(pedido);
 
@@ -319,7 +309,6 @@ function searchableText(pedido: Pedido): string {
         pedido.user?.name,
         pedido.turno,
         productosResumen(pedido),
-        tiposVehiculo(pedido),
         mediosDePagoResumen(pedido),
         pedido.observacion_pago,
         pedido.observacion,

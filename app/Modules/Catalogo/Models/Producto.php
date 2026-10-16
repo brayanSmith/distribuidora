@@ -2,19 +2,18 @@
 
 namespace App\Modules\Catalogo\Models;
 
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use App\Modules\Ventas\Models\DetallePedido;
+use App\Modules\Compras\Models\DetalleCompra;
 use App\Modules\Inventario\Models\StockBodega;
 use App\Modules\Inventario\Models\StockInicial;
 use App\Modules\Inventario\Models\Traslado;
-use App\Modules\Compras\Models\DetalleCompra;
+use App\Modules\Ventas\Models\DetallePedido;
 use Database\Factories\ProductoFactory;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -27,53 +26,39 @@ class Producto extends Model
     use LogsActivity;
     use SoftDeletes;
 
-    protected $appends = [
-        'imagen_producto_url',
-    ];
-
     protected $casts = [
         'inventariable' => 'boolean',
         'costo_producto' => 'decimal:2',
         'valor_detal' => 'decimal:2',
         'valor_mayorista' => 'decimal:2',
-        'valor_sin_instalacion' => 'decimal:2',
     ];
 
     protected $fillable = [
-        'categoria',
-        'tipo',
+        'categoria_id',
+        'sub_categoria_id',
         'inventariable',
-        'ancho',
-        'perfil',
-        'construccion',
-        'rin',
-        'tipo_vehiculo',
-        'diametro',
         'marca_id',
         'referencia_producto',
         'descripcion_producto',
         'costo_producto',
         'valor_detal',
         'valor_mayorista',
-        'valor_sin_instalacion',
-        'imagen_producto',
         'concatenar_codigo_nombre',
         'codigo_appsheet',
         'sku',
     ];
 
     /**
-     * What gets written to the history. The composed name and the image path
-     * are left out: they follow from the fields below.
+     * What gets written to the history. The composed name is left out: it
+     * follows from the fields below.
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->useLogName('productos')
             ->logOnly([
-                'categoria', 'tipo', 'inventariable', 'sku', 'referencia_producto', 'descripcion_producto', 'marca_id',
-                'ancho', 'perfil', 'construccion', 'rin', 'tipo_vehiculo', 'diametro',
-                'costo_producto', 'valor_detal', 'valor_mayorista', 'valor_sin_instalacion',
+                'categoria_id', 'sub_categoria_id', 'inventariable', 'sku', 'referencia_producto', 'descripcion_producto', 'marca_id',
+                'costo_producto', 'valor_detal', 'valor_mayorista',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
@@ -92,6 +77,30 @@ class Producto extends Model
     public function marca(): BelongsTo
     {
         return $this->belongsTo(Marca::class, 'marca_id');
+    }
+
+    /**
+     * @return BelongsTo<Categoria, $this>
+     */
+    public function categoria(): BelongsTo
+    {
+        return $this->belongsTo(Categoria::class, 'categoria_id');
+    }
+
+    /**
+     * @return BelongsTo<SubCategoria, $this>
+     */
+    public function subCategoria(): BelongsTo
+    {
+        return $this->belongsTo(SubCategoria::class, 'sub_categoria_id');
+    }
+
+    /**
+     * @return HasMany<ImagenProducto, $this>
+     */
+    public function imagenes(): HasMany
+    {
+        return $this->hasMany(ImagenProducto::class);
     }
 
     public function detalleCompras()
@@ -117,16 +126,6 @@ class Producto extends Model
     public function stockIniciales()
     {
         return $this->hasMany(StockInicial::class);
-    }
-
-    /**
-     * @return Attribute<string|null, never>
-     */
-    protected function imagenProductoUrl(): Attribute
-    {
-        return Attribute::make(
-            get: fn () => $this->imagen_producto ? Storage::disk('public')->url($this->imagen_producto) : null,
-        );
     }
 
     public function enStock(float|int $cantidad): bool

@@ -7,6 +7,7 @@ export type * from './empresa';
 export type * from './gastos';
 export type * from './historial';
 export type * from './inicios-sesion';
+export type * from './categorias';
 export type * from './marcas';
 export type * from './navigation';
 export type * from './pedidos';

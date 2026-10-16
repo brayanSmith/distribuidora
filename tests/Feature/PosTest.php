@@ -18,10 +18,10 @@ test('the POS page lists every sellable producto, including out-of-stock ones an
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
-    $conStock = Producto::factory()->create(['inventariable' => true, 'categoria' => 'LLANTA']);
-    Producto::factory()->create(['inventariable' => true, 'categoria' => 'LLANTA']);
-    Producto::factory()->create(['inventariable' => false, 'categoria' => 'SERVICIO']);
-    Producto::factory()->create(['inventariable' => false, 'categoria' => 'LLANTA']);
+    $conStock = Producto::factory()->create(['inventariable' => true]);
+    Producto::factory()->create(['inventariable' => true]);
+    Producto::factory()->create(['inventariable' => false]);
+    Producto::factory()->create(['inventariable' => false]);
 
     StockBodega::create([
         'bodega_id' => Bodega::factory()->create()->id,
@@ -37,7 +37,7 @@ test('the POS page lists every sellable producto, including out-of-stock ones an
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('pos/index')
-            ->has('productos', 3)
+            ->has('productos', 4)
             ->has('productos.0.inventariable')
             ->has('clientes')
             ->has('bodegas')
@@ -151,7 +151,7 @@ test('the POS catalog exposes the stock of every bodega', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
-    $producto = Producto::factory()->create(['inventariable' => true, 'categoria' => 'LLANTA']);
+    $producto = Producto::factory()->create(['inventariable' => true]);
     $bodega = Bodega::factory()->create();
 
     StockBodega::create([
@@ -572,7 +572,7 @@ test('selling a servicio through the POS does not move any stock', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
-    $servicio = Producto::factory()->create(['inventariable' => false, 'categoria' => 'SERVICIO', 'tipo' => 'SERVICIO']);
+    $servicio = Producto::factory()->create(['inventariable' => false]);
 
     $this->actingAs($owner)->post(route('pos.store'), [
         'cliente_id' => Cliente::factory()->create()->id,

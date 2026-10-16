@@ -11,7 +11,6 @@ export type PosCatalogoProducto = {
     sku: string | null;
     valor_detal: string | null;
     valor_mayorista: string | null;
-    valor_sin_instalacion: string | null;
     costo_producto: string | null;
     imagen_producto_url: string | null;
     stock_total: number;

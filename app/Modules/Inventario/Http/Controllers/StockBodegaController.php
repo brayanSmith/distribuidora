@@ -3,8 +3,8 @@
 namespace App\Modules\Inventario\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Inventario\Models\StockBodega;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -30,8 +30,7 @@ class StockBodegaController extends Controller
 
         // Stock rows whose product no longer exists (or is a servicio, which
         // never carries stock) are orphans: not listed.
-        $productosVigentes = Producto::where('categoria', '!=', 'SERVICIO')
-            ->where('inventariable', true)
+        $productosVigentes = Producto::where('inventariable', true)
             ->select('id');
 
         $conStock = StockBodega::query()

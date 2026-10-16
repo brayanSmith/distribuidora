@@ -1,9 +1,21 @@
 <?php
 
+use App\Modules\Catalogo\Http\Controllers\CategoriaController;
 use App\Modules\Catalogo\Http\Controllers\CotizadorController;
 use App\Modules\Catalogo\Http\Controllers\MarcaController;
 use App\Modules\Catalogo\Http\Controllers\ProductoController;
+use App\Modules\Catalogo\Http\Controllers\SubCategoriaController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('categorias', [CategoriaController::class, 'index'])->name('categorias.index');
+Route::post('categorias', [CategoriaController::class, 'store'])->name('categorias.store');
+Route::patch('categorias/{categoria}', [CategoriaController::class, 'update'])->name('categorias.update');
+Route::delete('categorias/{categoria}', [CategoriaController::class, 'destroy'])->name('categorias.destroy');
+
+Route::get('sub-categorias', [SubCategoriaController::class, 'index'])->name('sub-categorias.index');
+Route::post('sub-categorias', [SubCategoriaController::class, 'store'])->name('sub-categorias.store');
+Route::patch('sub-categorias/{sub_categoria}', [SubCategoriaController::class, 'update'])->name('sub-categorias.update');
+Route::delete('sub-categorias/{sub_categoria}', [SubCategoriaController::class, 'destroy'])->name('sub-categorias.destroy');
 
 Route::get('marcas', [MarcaController::class, 'index'])->name('marcas.index');
 Route::post('marcas', [MarcaController::class, 'store'])->name('marcas.store');

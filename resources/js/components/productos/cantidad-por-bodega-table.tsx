@@ -53,15 +53,6 @@ function Celda({
     );
 }
 
-type Columna = 'NUEVO' | 'USADO' | 'SERVICIO' | 'total';
-
-const COLUMNAS: { key: Columna; label: string }[] = [
-    { key: 'NUEVO', label: 'Nuevo' },
-    { key: 'USADO', label: 'Usado' },
-    { key: 'SERVICIO', label: 'Servicios' },
-    { key: 'total', label: 'Total' },
-];
-
 export default function CantidadPorBodegaTable({
     data,
 }: {
@@ -73,8 +64,20 @@ export default function CantidadPorBodegaTable({
         [data.filas],
     );
 
-    const columns = useMemo<DataTableColumn<CantidadPorBodegaFila>[]>(
-        () => [
+    const columns = useMemo<DataTableColumn<CantidadPorBodegaFila>[]>(() => {
+        // One column per categoria sold, then the total.
+        const columnas = [
+            ...data.categorias.map((categoria) => ({
+                key: categoria,
+                label: categoria,
+            })),
+            { key: 'total', label: 'Total' },
+        ];
+
+        const cantidadDe = (fila: CantidadPorBodegaFila, key: string): number =>
+            key === 'total' ? fila.total : (fila.cantidades[key] ?? 0);
+
+        return [
             {
                 key: 'almacen',
                 label: 'Almacén',
@@ -82,17 +85,17 @@ export default function CantidadPorBodegaTable({
                 render: (fila) => fila.almacen,
                 footer: () => 'Total Sum',
             },
-            ...COLUMNAS.map(
+            ...columnas.map(
                 ({ key, label }): DataTableColumn<CantidadPorBodegaFila> => ({
                     key,
                     label,
                     align: 'right',
                     width: 160,
-                    getValue: (fila) => fila[key],
+                    getValue: (fila) => cantidadDe(fila, key),
                     render: (fila) => (
                         <Celda
-                            cantidad={fila[key]}
-                            valor={fila.valores[key]}
+                            cantidad={cantidadDe(fila, key)}
+                            valor={fila.valores[key] ?? 0}
                             destacada={key === 'total'}
                             calor={
                                 key === 'total' && maxTotal > 0
@@ -104,11 +107,11 @@ export default function CantidadPorBodegaTable({
                     footer: (filas) => (
                         <Celda
                             cantidad={filas.reduce(
-                                (suma, fila) => suma + fila[key],
+                                (suma, fila) => suma + cantidadDe(fila, key),
                                 0,
                             )}
                             valor={filas.reduce(
-                                (suma, fila) => suma + fila.valores[key],
+                                (suma, fila) => suma + (fila.valores[key] ?? 0),
                                 0,
                             )}
                             destacada
@@ -116,9 +119,8 @@ export default function CantidadPorBodegaTable({
                     ),
                 }),
             ),
-        ],
-        [maxTotal],
-    );
+        ];
+    }, [data.categorias, maxTotal]);
 
     return (
         <div className="space-y-3" data-test="cantidad-por-bodega">

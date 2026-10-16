@@ -3,10 +3,10 @@
 namespace App\Modules\Inventario\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Inventario\Http\Requests\StoreStockInicialRequest;
 use App\Modules\Inventario\Http\Requests\UpdateStockInicialRequest;
 use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Inventario\Models\StockBodega;
 use App\Modules\Inventario\Models\StockInicial;
 use Illuminate\Http\RedirectResponse;
@@ -27,8 +27,7 @@ class StockInicialController extends Controller
 
         return Inertia::render('stock-iniciales/index', [
             'stockIniciales' => StockInicial::with(['producto', 'bodega'])->latest()->get(),
-            'productos' => Producto::where('categoria', '!=', 'SERVICIO')
-                ->where('inventariable', true)
+            'productos' => Producto::where('inventariable', true)
                 ->orderBy('referencia_producto')
                 ->get(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'costo_producto']),
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
@@ -107,7 +106,7 @@ class StockInicialController extends Controller
     {
         // Servicios (and any producto marked as not inventariable) never carry stock.
         if (Producto::withTrashed()->whereKey($productoId)
-            ->where(fn ($query) => $query->where('categoria', 'SERVICIO')->orWhere('inventariable', false))
+            ->where('inventariable', false)
             ->exists()) {
             return;
         }

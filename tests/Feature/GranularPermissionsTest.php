@@ -193,7 +193,7 @@ test('the POS can create clientes and productos with its own permissions', funct
     // The permission only counts from the POS, not for the clientes module.
     $this->actingAs($this->miembro)->post(route('clientes.store'), ['numero_documento' => '999', 'razon_social' => 'Otro'] + $cliente)->assertForbidden();
 
-    $producto = ['categoria' => 'OTRO', 'tipo' => 'NUEVO', 'referencia_producto' => 'X-1', 'stay_on_page' => 1];
+    $producto = ['referencia_producto' => 'X-1', 'stay_on_page' => 1];
     $this->actingAs($this->miembro)->post(route('productos.store'), $producto)->assertForbidden();
 
     concederPermisos($this->miembro, 'pos.create-producto');
@@ -356,7 +356,7 @@ test('the sidebar count of pedidos general only counts the authorized bodegas', 
 });
 
 test('a user without the costo price gets no costs in the POS, productos or pedidos', function () {
-    $producto = Producto::factory()->create(['inventariable' => true, 'categoria' => 'LLANTA', 'costo_producto' => 50, 'valor_detal' => 100, 'valor_mayorista' => 90]);
+    $producto = Producto::factory()->create(['inventariable' => true, 'costo_producto' => 50, 'valor_detal' => 100, 'valor_mayorista' => 90]);
     $pedido = Pedido::factory()->create(['tipo_precio' => 'DETAL']);
     DetallePedido::factory()->create(['pedido_id' => $pedido->id, 'producto_id' => $producto->id, 'costo_unitario' => 50, 'costo_total' => 100, 'ganancia_total' => 100]);
     concederPermisos($this->miembro, ['pos.view', 'productos.view', 'productos.view-sin-stock', 'pedidos.view']);
@@ -484,7 +484,7 @@ test('editing a role keeps its permissions of the previous system', function () 
 });
 
 test('each column of the productos listing is only sent with its permission', function () {
-    $producto = Producto::factory()->create(['inventariable' => true, 'valor_sin_instalacion' => 80]);
+    $producto = Producto::factory()->create(['inventariable' => true]);
     $stock = StockBodega::factory()->create(['producto_id' => $producto->id, 'stock' => 5]);
     DetalleCompra::factory()->create(['producto_id' => $producto->id, 'estado_entrega' => 'PENDIENTE', 'cantidad' => 4]);
     DetalleCompra::factory()->create(['producto_id' => $producto->id, 'estado_entrega' => 'PENDIENTE', 'cantidad' => 3]);
@@ -496,20 +496,18 @@ test('each column of the productos listing is only sent with its permission', fu
             ->where('productos.0.stock_total', null)
             ->where('productos.0.pendiente', null)
             ->where('productos.0.proveedor_pendiente', null)
-            ->where('productos.0.valor_sin_instalacion', null)
             ->where('productos.0.stock_por_bodega', null)
             ->where('permissions.canViewStockTotal', false)
             ->where('permissions.canViewStockBodegas', false)
         );
 
-    concederPermisos($this->miembro, ['productos.view-stock-total', 'productos.view-pendiente', 'productos.view-almacen-p', 'productos.view-sin-instalacion', 'productos.view-stock-bodegas']);
+    concederPermisos($this->miembro, ['productos.view-stock-total', 'productos.view-pendiente', 'productos.view-almacen-p', 'productos.view-stock-bodegas']);
 
     $this->actingAs($this->miembro)->get(route('productos.index'))
         ->assertInertia(fn ($page) => $page
             ->where('productos.0.stock_total', 5)
             ->where('productos.0.pendiente', 7)
             ->whereType('productos.0.proveedor_pendiente', 'string')
-            ->where('productos.0.valor_sin_instalacion', '80.00')
             ->where("productos.0.stock_por_bodega.{$stock->bodega_id}", 5)
             ->where('permissions.canViewStockTotal', true)
             ->where('permissions.canViewStockBodegas', true)
@@ -536,7 +534,7 @@ test('products with no stock and no pending purchase are only listed with produc
 });
 
 test('the prices the user cannot see are neither sent to the edit page nor overwritten', function () {
-    $producto = Producto::factory()->create(['categoria' => 'LLANTA', 'tipo' => 'NUEVO', 'costo_producto' => 50, 'valor_detal' => 100, 'valor_mayorista' => 90, 'valor_sin_instalacion' => 80]);
+    $producto = Producto::factory()->create(['costo_producto' => 50, 'valor_detal' => 100, 'valor_mayorista' => 90]);
     concederPermisos($this->miembro, ['productos.view', 'productos.update']);
     $this->miembro->update(['tipos_precio_permitidos' => ['valor_detal']]);
 
@@ -545,23 +543,18 @@ test('the prices the user cannot see are neither sent to the edit page nor overw
             ->where('producto.valor_detal', '100.00')
             ->missing('producto.costo_producto')
             ->missing('producto.valor_mayorista')
-            ->missing('producto.valor_sin_instalacion')
         );
 
     $this->actingAs($this->miembro)->patch(route('productos.update', [$producto]), [
-        'categoria' => 'LLANTA',
-        'tipo' => 'NUEVO',
         'costo_producto' => 0,
         'valor_detal' => 120,
         'valor_mayorista' => 0,
-        'valor_sin_instalacion' => 0,
     ])->assertSessionHasNoErrors();
 
     $producto->refresh();
     expect((float) $producto->valor_detal)->toBe(120.0)
         ->and((float) $producto->costo_producto)->toBe(50.0)
-        ->and((float) $producto->valor_mayorista)->toBe(90.0)
-        ->and((float) $producto->valor_sin_instalacion)->toBe(80.0);
+        ->and((float) $producto->valor_mayorista)->toBe(90.0);
 });
 
 test('a traslado can be created from stock por bodega with its own permission', function () {

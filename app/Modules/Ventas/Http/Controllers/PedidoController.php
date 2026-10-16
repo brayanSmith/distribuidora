@@ -2,19 +2,19 @@
 
 namespace App\Modules\Ventas\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Modules\Catalogo\Http\Controllers\ProductoController;
 use App\Http\Controllers\Concerns\HandlesTrash;
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Modules\Catalogo\Http\Controllers\ProductoController;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Compras\Models\Proveedor;
+use App\Modules\Finanzas\Models\Puc;
+use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Ventas\Http\Requests\StorePedidoRequest;
 use App\Modules\Ventas\Http\Requests\UpdatePedidoRequest;
-use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Ventas\Models\Cliente;
 use App\Modules\Ventas\Models\DetallePedido;
 use App\Modules\Ventas\Models\Pedido;
-use App\Modules\Catalogo\Models\Producto;
-use App\Modules\Compras\Models\Proveedor;
-use App\Models\User;
-use App\Modules\Finanzas\Models\Puc;
 use App\Modules\Ventas\Services\PedidoEdicion;
 use App\Modules\Ventas\Services\PedidoService;
 use App\Modules\Ventas\Services\PedidoVoucher;
@@ -64,7 +64,7 @@ class PedidoController extends Controller
                 'detalles' => fn ($query) => $query->withTrashed()
                     ->select(['id', 'pedido_id', 'producto_id', 'cantidad', 'precio_unitario', 'subtotal', 'costo_unitario', 'costo_total', 'ganancia_total'])
                     ->with(['producto' => fn ($query) => $query
-                        ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'tipo_vehiculo'])
+                        ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre'])
                         ->withSum('stockBodegas as stock_total', 'stock')]),
                 'abonos:id,pedido_id,puc_id,monto',
                 'abonos.puc:id,concatenar_subcuenta_concepto',

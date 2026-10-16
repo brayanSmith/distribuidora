@@ -16,27 +16,17 @@ class StoreProductoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'categoria' => ['required', Rule::in(['LLANTA', 'RIN', 'SERVICIO', 'OTRO'])],
-            'tipo' => ['required', Rule::in(['NUEVO', 'USADO', 'SERVICIO']), function (string $attribute, mixed $value, \Closure $fail) {
-                if (($value === 'SERVICIO') !== ($this->input('categoria') === 'SERVICIO')) {
-                    $fail('El tipo Servicio solo aplica a la categoría Servicio, y viceversa.');
-                }
-            }],
+            'categoria_id' => ['nullable', 'integer', 'exists:categorias,id'],
+            'sub_categoria_id' => ['nullable', 'integer', Rule::exists('sub_categorias', 'id')->where(fn ($query) => $query->where('categoria_id', $this->input('categoria_id')))],
             'inventariable' => ['boolean'],
-            'ancho' => ['nullable', 'string', 'max:255'],
-            'perfil' => ['nullable', 'string', 'max:255'],
-            'construccion' => ['nullable', 'string', 'max:255'],
-            'rin' => ['nullable', 'string', 'max:255'],
-            'tipo_vehiculo' => ['nullable', Rule::in(['MOTO', 'CARRO'])],
-            'diametro' => ['nullable', 'string', 'max:255'],
             'marca_id' => ['nullable', 'integer', 'exists:marcas,id'],
             'referencia_producto' => ['nullable', 'string', 'max:255'],
             'descripcion_producto' => ['nullable', 'string', 'max:255'],
             'costo_producto' => ['nullable', 'numeric', 'min:0'],
             'valor_detal' => ['nullable', 'numeric', 'min:0'],
             'valor_mayorista' => ['nullable', 'numeric', 'min:0'],
-            'valor_sin_instalacion' => ['nullable', 'numeric', 'min:0'],
-            'imagen_producto' => ['nullable', 'image', 'max:4096'],
+            'imagenes' => ['nullable', 'array', 'max:10'],
+            'imagenes.*' => ['image', 'max:4096'],
             'sku' => ['nullable', 'string', 'max:255', 'unique:productos,sku'],
         ];
     }

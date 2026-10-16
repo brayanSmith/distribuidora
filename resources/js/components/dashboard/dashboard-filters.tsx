@@ -1,7 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import { BarChart3, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import Combobox from '@/components/combobox';
 import MultiCombobox from '@/components/multi-combobox';
 import { Button } from '@/components/ui/button';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
@@ -20,12 +19,6 @@ type Props = {
     productos: DashboardProductoOption[];
 };
 
-const TIPOS_VEHICULO = [
-    { value: '', label: 'Todos' },
-    { value: 'CARRO', label: 'Carro' },
-    { value: 'MOTO', label: 'Moto' },
-];
-
 /** Not a real bodega: groups the orders sold with the MAYORISTA price. */
 const MAYORISTA = 'mayorista';
 
@@ -33,7 +26,6 @@ const SIN_FILTROS: DashboardFiltros = {
     bodega_ids: [],
     desde: '',
     hasta: '',
-    tipo_vehiculo: '',
     producto_ids: [],
 };
 
@@ -79,43 +71,19 @@ export default function DashboardFilters({
         [bodegas, puedeMayorista],
     );
 
-    // The product list follows the selected vehicle type.
     const productoOptions = useMemo(
         () =>
-            productos
-                .filter(
-                    (producto) =>
-                        borrador.tipo_vehiculo === '' ||
-                        producto.tipo_vehiculo === borrador.tipo_vehiculo,
-                )
-                .map((producto) => ({
-                    value: String(producto.id),
-                    label:
-                        producto.concatenar_codigo_nombre ??
-                        `Producto ${producto.id}`,
-                })),
-        [productos, borrador.tipo_vehiculo],
+            productos.map((producto) => ({
+                value: String(producto.id),
+                label:
+                    producto.concatenar_codigo_nombre ??
+                    `Producto ${producto.id}`,
+            })),
+        [productos],
     );
 
     const cambiar = (cambios: Partial<DashboardFiltros>) =>
-        setBorrador((prev) => {
-            const siguiente = { ...prev, ...cambios };
-
-            // Products from another vehicle type no longer apply.
-            if ('tipo_vehiculo' in cambios) {
-                siguiente.producto_ids = siguiente.producto_ids.filter((id) =>
-                    productos.some(
-                        (producto) =>
-                            String(producto.id) === id &&
-                            (siguiente.tipo_vehiculo === '' ||
-                                producto.tipo_vehiculo ===
-                                    siguiente.tipo_vehiculo),
-                    ),
-                );
-            }
-
-            return siguiente;
-        });
+        setBorrador((prev) => ({ ...prev, ...cambios }));
 
     const analizar = (aplicados: DashboardFiltros) => {
         const query = Object.fromEntries(
@@ -186,19 +154,6 @@ export default function DashboardFilters({
                             cambiar({ hasta: event.target.value })
                         }
                         data-test="dashboard-filter-hasta"
-                    />
-                </div>
-
-                <div className="space-y-1.5">
-                    <Label>Tipo de vehículo</Label>
-                    <Combobox
-                        options={TIPOS_VEHICULO}
-                        value={borrador.tipo_vehiculo}
-                        onValueChange={(value) =>
-                            cambiar({ tipo_vehiculo: value })
-                        }
-                        placeholder="Todos"
-                        dataTest="dashboard-filter-tipo-vehiculo"
                     />
                 </div>
 

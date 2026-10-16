@@ -130,11 +130,6 @@ export default function PosProductCard({
                         colorClassName="text-amber-600 dark:text-amber-400"
                     />
                 ) : null}
-                <PrecioRow
-                    label="S. Instalación"
-                    value={producto.valor_sin_instalacion}
-                    colorClassName="text-red-600 dark:text-red-400"
-                />
             </div>
         </button>
     );

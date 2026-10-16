@@ -1,14 +1,19 @@
 <?php
 
 use App\Models\User;
+use App\Modules\Catalogo\Models\Categoria;
+use App\Modules\Catalogo\Models\ImagenProducto;
 use App\Modules\Catalogo\Models\Marca;
 use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Catalogo\Models\SubCategoria;
 use App\Modules\Compras\Models\Compra;
 use App\Modules\Compras\Models\DetalleCompra;
 use App\Modules\Compras\Models\Proveedor;
 use App\Modules\Ventas\Models\Cliente;
 use App\Modules\Ventas\Models\DetallePedido;
 use App\Modules\Ventas\Models\Pedido;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {
@@ -27,13 +32,7 @@ test('owners can view, create, update and delete productos without a custom role
     $this->actingAs($owner)->get(route('productos.create'))->assertOk();
 
     $response = $this->actingAs($owner)->post(route('productos.store'), [
-        'categoria' => 'LLANTA',
-        'tipo' => 'NUEVO',
         'inventariable' => true,
-        'ancho' => '155',
-        'construccion' => 'R',
-        'rin' => '13',
-        'tipo_vehiculo' => 'CARRO',
         'marca_id' => $marca->id,
         'referencia_producto' => '155R13',
         'descripcion_producto' => '8PR/WR082/90/88N',
@@ -51,12 +50,6 @@ test('owners can view, create, update and delete productos without a custom role
     $this->actingAs($owner)->get(route('productos.edit', [$producto]))->assertOk();
 
     $this->actingAs($owner)->patch(route('productos.update', [$producto]), [
-        'categoria' => 'LLANTA',
-        'tipo' => 'NUEVO',
-        'ancho' => '155',
-        'construccion' => 'R',
-        'rin' => '13',
-        'tipo_vehiculo' => 'CARRO',
         'marca_id' => $marca->id,
         'referencia_producto' => '155R13',
         'descripcion_producto' => 'Actualizada',
@@ -85,8 +78,6 @@ test('sku must be unique when provided', function () {
     Producto::factory()->create(['sku' => '12345678']);
 
     $this->actingAs($owner)->post(route('productos.store'), [
-        'categoria' => 'OTRO',
-        'tipo' => 'NUEVO',
         'sku' => '12345678',
     ])->assertSessionHasErrors('sku');
 });
@@ -129,7 +120,7 @@ test('creating a producto from another screen can keep the user there', function
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
-    $payload = ['categoria' => 'OTRO', 'tipo' => 'NUEVO', 'referencia_producto' => 'X-1'];
+    $payload = ['referencia_producto' => 'X-1'];
 
     $this->actingAs($owner)->from(route('pos.index'))
         ->post(route('productos.store'), $payload + ['stay_on_page' => '1'])
@@ -140,21 +131,67 @@ test('creating a producto from another screen can keep the user there', function
         ->assertRedirect(route('productos.index'));
 });
 
-test('tipo servicio only pairs with the servicio category', function () {
+test('a producto belongs to a categoria and one of its subcategorias', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
-    $base = ['referencia_producto' => 'SRV-1', 'inventariable' => false];
+    $llantas = Categoria::factory()->hasSubCategorias(2)->create();
+    $otraSubCategoria = SubCategoria::factory()->create();
 
-    $this->actingAs($owner)
-        ->post(route('productos.store'), $base + ['categoria' => 'OTRO', 'tipo' => 'SERVICIO'])
-        ->assertSessionHasErrors('tipo');
+    $this->actingAs($owner)->post(route('productos.store'), [
+        'referencia_producto' => 'CAT-1',
+        'categoria_id' => $llantas->id,
+        'sub_categoria_id' => $llantas->subCategorias->first()->id,
+    ])->assertSessionHasNoErrors();
 
-    $this->actingAs($owner)
-        ->post(route('productos.store'), $base + ['categoria' => 'SERVICIO', 'tipo' => 'NUEVO'])
-        ->assertSessionHasErrors('tipo');
+    $producto = Producto::where('referencia_producto', 'CAT-1')->firstOrFail();
+    expect($producto->categoria->is($llantas))->toBeTrue()
+        ->and($producto->subCategoria->is($llantas->subCategorias->first()))->toBeTrue();
 
-    $this->actingAs($owner)
-        ->post(route('productos.store'), $base + ['categoria' => 'SERVICIO', 'tipo' => 'SERVICIO'])
-        ->assertSessionHasNoErrors();
+    $this->actingAs($owner)->post(route('productos.store'), [
+        'referencia_producto' => 'CAT-2',
+        'categoria_id' => $llantas->id,
+        'sub_categoria_id' => $otraSubCategoria->id,
+    ])->assertSessionHasErrors('sub_categoria_id');
+});
+
+test('a producto can have several imagenes, added and removed on update', function () {
+    Storage::fake('public');
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $this->actingAs($owner)->post(route('productos.store'), [
+        'referencia_producto' => 'IMG-1',
+        'imagenes' => [UploadedFile::fake()->image('a.jpg'), UploadedFile::fake()->image('b.jpg')],
+    ])->assertSessionHasNoErrors();
+
+    $producto = Producto::where('referencia_producto', 'IMG-1')->firstOrFail();
+    expect($producto->imagenes)->toHaveCount(2);
+    $producto->imagenes->each(fn (ImagenProducto $imagen) => Storage::disk('public')->assertExists($imagen->imagen_producto));
+
+    $quitada = $producto->imagenes->first();
+
+    $this->actingAs($owner)->patch(route('productos.update', [$producto]), [
+        'referencia_producto' => 'IMG-1',
+        'remove_imagen_ids' => [$quitada->id],
+        'imagenes' => [UploadedFile::fake()->image('c.jpg')],
+    ])->assertSessionHasNoErrors();
+
+    expect($producto->fresh()->imagenes)->toHaveCount(2)
+        ->and(ImagenProducto::find($quitada->id))->toBeNull();
+    Storage::disk('public')->assertMissing($quitada->imagen_producto);
+});
+
+test('imagenes of another producto cannot be removed', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $producto = Producto::factory()->create();
+    $ajena = ImagenProducto::factory()->create();
+
+    $this->actingAs($owner)->patch(route('productos.update', [$producto]), [
+        'remove_imagen_ids' => [$ajena->id],
+    ])->assertSessionHasErrors('remove_imagen_ids.0');
+
+    expect(ImagenProducto::find($ajena->id))->not->toBeNull();
 });

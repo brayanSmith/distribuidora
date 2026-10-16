@@ -3,10 +3,10 @@
 namespace App\Modules\Administracion\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Ventas\Models\Pedido;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Finanzas\Models\Gasto;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Ventas\Models\Pedido;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -38,12 +38,12 @@ class DashboardController extends Controller
                     ->whereIn('id', DB::table('detalle_pedidos')->select('producto_id'))
                     ->orWhereIn('id', DB::table('detalle_compras')->select('producto_id')))
                 ->orderBy('concatenar_codigo_nombre')
-                ->get(['id', 'concatenar_codigo_nombre', 'tipo_vehiculo']),
+                ->get(['id', 'concatenar_codigo_nombre']),
         ]);
     }
 
     /**
-     * @return array{bodega_ids: list<string>, desde: string, hasta: string, tipo_vehiculo: string, producto_ids: list<string>}
+     * @return array{bodega_ids: list<string>, desde: string, hasta: string, producto_ids: list<string>}
      */
     private function filtros(Request $request): array
     {
@@ -52,7 +52,6 @@ class DashboardController extends Controller
             'bodega_ids.*' => ['regex:/^(\d+|mayorista)$/'],
             'desde' => ['nullable', 'date'],
             'hasta' => ['nullable', 'date'],
-            'tipo_vehiculo' => ['nullable', 'in:MOTO,CARRO'],
             'producto_ids' => ['nullable', 'array'],
             'producto_ids.*' => ['integer'],
         ]);
@@ -65,7 +64,6 @@ class DashboardController extends Controller
             )),
             'desde' => (string) ($datos['desde'] ?? ''),
             'hasta' => (string) ($datos['hasta'] ?? ''),
-            'tipo_vehiculo' => (string) ($datos['tipo_vehiculo'] ?? ''),
             'producto_ids' => array_map('strval', $datos['producto_ids'] ?? []),
         ];
     }
@@ -120,7 +118,6 @@ class DashboardController extends Controller
             ->when($filtros['bodega_ids'] !== [], fn (Builder $query) => $this->limitarPorBodegas($query, $filtros, 'COALESCE(detalle_pedidos.bodega_id, pedidos.bodega_id)'))
             ->when($filtros['desde'] !== '', fn (Builder $query) => $query->where('pedidos.fecha', '>=', $filtros['desde']))
             ->when($filtros['hasta'] !== '', fn (Builder $query) => $query->where('pedidos.fecha', '<', $this->diaSiguiente($filtros['hasta'])))
-            ->when($filtros['tipo_vehiculo'] !== '', fn (Builder $query) => $query->where('productos.tipo_vehiculo', $filtros['tipo_vehiculo']))
             ->when($filtros['producto_ids'] !== [], fn (Builder $query) => $query->whereIn('detalle_pedidos.producto_id', $filtros['producto_ids']));
     }
 
@@ -140,15 +137,30 @@ class DashboardController extends Controller
     }
 
     /**
-     * Units sold per bodega split by product tipo. Mayorista orders are
+     * Units sold per bodega split by product categoria. Mayorista orders are
      * pulled out of their bodega and grouped in their own "Mayorista" row.
      *
-     * @return array{filas: list<array{almacen: string, NUEVO: int, USADO: int, SERVICIO: int, total: int, valores: array<string, float>}>, totales: array{NUEVO: int, USADO: int, SERVICIO: int, total: int}}
+     * @return array{categorias: list<string>, filas: list<array{almacen: string, cantidades: array<string, int>, total: int, valores: array<string, float>}>, totales: array<string, int>}
      */
     private function cantidadPorBodega(array $filtros): array
     {
-        $tipos = ['NUEVO', 'USADO', 'SERVICIO'];
-        $vacia = fn (string $almacen): array => ['almacen' => $almacen, 'NUEVO' => 0, 'USADO' => 0, 'SERVICIO' => 0, 'total' => 0, 'valores' => ['NUEVO' => 0.0, 'USADO' => 0.0, 'SERVICIO' => 0.0, 'total' => 0.0]];
+        $sinCategoria = 'Sin categoría';
+
+        $ventas = $this->detalles($filtros)
+            ->leftJoin('categorias', 'categorias.id', '=', 'productos.categoria_id')
+            ->selectRaw("CASE WHEN pedidos.tipo_precio = 'MAYORISTA' THEN 'mayorista' ELSE COALESCE(detalle_pedidos.bodega_id, pedidos.bodega_id) END as grupo")
+            ->selectRaw('COALESCE(categorias.nombre_categoria, ?) as categoria, SUM(detalle_pedidos.cantidad) as cantidad, SUM(detalle_pedidos.subtotal) as valor', [$sinCategoria])
+            ->groupBy('grupo', 'categoria')
+            ->get();
+
+        $categorias = $ventas->pluck('categoria')->unique()->sort()->values()->all();
+
+        $vacia = fn (string $almacen): array => [
+            'almacen' => $almacen,
+            'cantidades' => array_fill_keys($categorias, 0),
+            'total' => 0,
+            'valores' => array_fill_keys([...$categorias, 'total'], 0.0),
+        ];
 
         $filas = [];
         $bodegas = Bodega::permitidas()->orderBy('nombre_bodega')
@@ -162,39 +174,33 @@ class DashboardController extends Controller
             $filas['mayorista'] = $vacia('Mayorista');
         }
 
-        $ventas = $this->detalles($filtros)
-            ->selectRaw("CASE WHEN pedidos.tipo_precio = 'MAYORISTA' THEN 'mayorista' ELSE COALESCE(detalle_pedidos.bodega_id, pedidos.bodega_id) END as grupo")
-            ->selectRaw('productos.tipo as tipo, SUM(detalle_pedidos.cantidad) as cantidad, SUM(detalle_pedidos.subtotal) as valor')
-            ->groupBy('grupo', 'productos.tipo')
-            ->get();
-
         foreach ($ventas as $venta) {
             $clave = $venta->grupo === 'mayorista' ? 'mayorista' : 'b'.$venta->grupo;
-            $tipo = in_array($venta->tipo, $tipos, true) ? $venta->tipo : 'NUEVO';
 
             if (! isset($filas[$clave])) {
                 continue;
             }
 
-            $filas[$clave][$tipo] += (int) $venta->cantidad;
+            $filas[$clave]['cantidades'][$venta->categoria] += (int) $venta->cantidad;
             $filas[$clave]['total'] += (int) $venta->cantidad;
-            $filas[$clave]['valores'][$tipo] += (float) $venta->valor;
+            $filas[$clave]['valores'][$venta->categoria] += (float) $venta->valor;
             $filas[$clave]['valores']['total'] += (float) $venta->valor;
         }
 
-        $totales = ['NUEVO' => 0, 'USADO' => 0, 'SERVICIO' => 0, 'total' => 0];
+        $totales = array_fill_keys([...$categorias, 'total'], 0);
         foreach ($filas as $fila) {
-            foreach (array_keys($totales) as $columna) {
-                $totales[$columna] += $fila[$columna];
+            foreach ($categorias as $categoria) {
+                $totales[$categoria] += $fila['cantidades'][$categoria];
             }
+            $totales['total'] += $fila['total'];
         }
 
-        return ['filas' => array_values($filas), 'totales' => $totales];
+        return ['categorias' => $categorias, 'filas' => array_values($filas), 'totales' => $totales];
     }
 
     /**
-     * The orders the "valor de pedidos" widget adds up. With a product or
-     * vehicle filter an order's total can't be split by line, so the orders
+     * The orders the "valor de pedidos" widget adds up. With a product
+     * filter an order's total can't be split by line, so the orders
      * that contain those lines are the ones counted.
      *
      * @param  array<string, mixed>  $filtros
@@ -225,8 +231,9 @@ class DashboardController extends Controller
         $detalles = $this->detalles($filtros);
 
         $categorias = (clone $detalles)
-            ->selectRaw("COALESCE(productos.categoria, 'SIN CATEGORÍA') as categoria, SUM(detalle_pedidos.cantidad) as cantidad, SUM(detalle_pedidos.subtotal) as valor")
-            ->groupBy('productos.categoria')
+            ->leftJoin('categorias', 'categorias.id', '=', 'productos.categoria_id')
+            ->selectRaw("COALESCE(categorias.nombre_categoria, 'SIN CATEGORÍA') as categoria, SUM(detalle_pedidos.cantidad) as cantidad, SUM(detalle_pedidos.subtotal) as valor")
+            ->groupBy('categorias.nombre_categoria')
             ->orderByDesc('cantidad')
             ->get()
             ->map(fn ($fila) => ['categoria' => $fila->categoria, 'cantidad' => (int) $fila->cantidad, 'valor' => (float) $fila->valor])
@@ -241,7 +248,7 @@ class DashboardController extends Controller
             ->map(fn ($fila) => ['producto' => $fila->producto ?? 'Producto '.$fila->producto_id, 'cantidad' => (int) $fila->cantidad, 'valor' => (float) $fila->valor])
             ->all();
 
-        $filtraPorProducto = $filtros['tipo_vehiculo'] !== '' || $filtros['producto_ids'] !== [];
+        $filtraPorProducto = $filtros['producto_ids'] !== [];
 
         $lineasPorFecha = (clone $detalles)
             ->selectRaw('substr(pedidos.fecha, 1, 10) as dia, COUNT(DISTINCT pedidos.id) as pedidos, SUM(detalle_pedidos.cantidad) as cantidad, SUM(detalle_pedidos.subtotal) as valor, SUM(detalle_pedidos.costo_total) as inversion')
@@ -299,7 +306,6 @@ class DashboardController extends Controller
     {
         return $this->detalles($filtros)
             ->where('productos.inventariable', true)
-            ->where(fn (Builder $query) => $query->where('productos.categoria', '!=', 'SERVICIO')->orWhereNull('productos.categoria'))
             ->whereRaw('(select coalesce(sum(stock), 0) from stock_bodegas where stock_bodegas.producto_id = detalle_pedidos.producto_id) <= 0')
             ->selectRaw('detalle_pedidos.producto_id, MAX(productos.concatenar_codigo_nombre) as producto, SUM(detalle_pedidos.cantidad) as vendidas, (select coalesce(sum(stock), 0) from stock_bodegas where stock_bodegas.producto_id = detalle_pedidos.producto_id) as stock')
             ->groupBy('detalle_pedidos.producto_id')
@@ -324,7 +330,7 @@ class DashboardController extends Controller
     private function resumen(array $filtros): array
     {
         $detalles = $this->detalles($filtros);
-        $filtraPorProducto = $filtros['tipo_vehiculo'] !== '' || $filtros['producto_ids'] !== [];
+        $filtraPorProducto = $filtros['producto_ids'] !== [];
 
         $productos = (clone $detalles)
             ->selectRaw('COALESCE(SUM(detalle_pedidos.cantidad), 0) as cantidad, COALESCE(SUM(detalle_pedidos.subtotal), 0) as valor, COALESCE(SUM(detalle_pedidos.costo_total), 0) as inversion')
@@ -344,7 +350,7 @@ class DashboardController extends Controller
             ])
             ->all();
 
-        // With a product/vehicle filter an order's total can't be split by
+        // With a product filter an order's total can't be split by
         // line, so the orders that contain those lines are valued by their lines.
         $pedidos = $this->pedidos($filtros, $detalles, $filtraPorProducto)
             ->selectRaw('COUNT(*) as cantidad, COALESCE(SUM(total_a_pagar), 0) as valor, COALESCE(SUM(descuento), 0) as descuento, COALESCE(SUM(reteica), 0) as reteica, COALESCE(SUM(retefuente), 0) as retefuente')

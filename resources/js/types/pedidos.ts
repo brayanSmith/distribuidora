@@ -53,7 +53,6 @@ export type ProductoPedidoOption = {
     valor_detal: string | null;
     valor_mayorista: string | null;
     costo_producto: string | null;
-    tipo_vehiculo?: string | null;
     stock_bodegas?: StockBodegaOption[];
     /** Sum of the product's stock over every bodega (the pedidos listing). */
     stock_total?: number | string | null;

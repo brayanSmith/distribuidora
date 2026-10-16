@@ -72,7 +72,6 @@ type ColumnKey =
     | 'stockTotal'
     | 'pendiente'
     | 'almacenP'
-    | 'tipoVehiculo'
     | 'producto'
     | 'fecha'
     | 'estado'
@@ -87,7 +86,7 @@ type ColumnKey =
 
 type SortDirection = 'asc' | 'desc';
 
-type FilterVariant = 'text' | 'tipoVehiculo' | 'estado' | 'date';
+type FilterVariant = 'text' | 'estado' | 'date';
 
 type ColumnMeta = {
     key: ColumnKey;
@@ -103,7 +102,6 @@ const COLUMN_DEFS: ColumnMeta[] = [
     { key: 'stockTotal', label: 'Stock total', filter: 'text', align: 'right' },
     { key: 'pendiente', label: 'Pendiente', filter: 'text', align: 'right' },
     { key: 'almacenP', label: 'Almacen_P', filter: 'text' },
-    { key: 'tipoVehiculo', label: 'Tipo Vehículo', filter: 'tipoVehiculo' },
     { key: 'producto', label: 'Producto', filter: 'text' },
     { key: 'fecha', label: 'Fecha', filter: 'date' },
     { key: 'estado', label: 'Estado', filter: 'estado' },
@@ -158,7 +156,6 @@ const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
     stockTotal: 110,
     pendiente: 100,
     almacenP: 150,
-    tipoVehiculo: 130,
     producto: 220,
     fecha: 150,
     estado: 120,
@@ -173,11 +170,6 @@ const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
 };
 
 const MIN_COLUMN_WIDTH = 60;
-
-const TIPO_VEHICULO_OPTIONS = [
-    { value: 'CARRO', label: 'Carro' },
-    { value: 'MOTO', label: 'Moto' },
-];
 
 const ESTADO_OPTIONS = [
     { value: 'PENDIENTE', label: 'Pendiente' },
@@ -197,7 +189,6 @@ type DetalleRow = {
     stockTotal: number;
     pendiente: number;
     almacenP: string;
-    tipoVehiculo: string;
     producto: string;
     fecha: string | null;
     /** The estado of the detalle's pedido. */
@@ -243,8 +234,6 @@ function getSortValue(row: DetalleRow, key: ColumnKey): string | number {
             return row.pendiente;
         case 'almacenP':
             return row.almacenP;
-        case 'tipoVehiculo':
-            return row.tipoVehiculo;
         case 'producto':
             return row.producto;
         case 'fecha':
@@ -277,7 +266,6 @@ function searchableText(row: DetalleRow): string {
         row.id,
         row.bodega,
         row.pedidoId,
-        row.tipoVehiculo,
         row.estado,
         row.producto,
         row.almacenP,
@@ -301,7 +289,7 @@ type FilterCellProps = {
     filterKey: ColumnKey;
     value: string;
     onChange: (key: ColumnKey, value: string) => void;
-    variant?: 'text' | 'tipoVehiculo' | 'estado';
+    variant?: 'text' | 'estado';
     align?: 'right' | 'center';
 };
 
@@ -319,9 +307,8 @@ function FilterCell({
               ? 'text-center'
               : undefined;
 
-    if (variant === 'tipoVehiculo' || variant === 'estado') {
-        const options =
-            variant === 'estado' ? ESTADO_OPTIONS : TIPO_VEHICULO_OPTIONS;
+    if (variant === 'estado') {
+        const options = ESTADO_OPTIONS;
 
         return (
             <TableHead className={alignClass}>
@@ -720,7 +707,6 @@ export default function PedidoDetallesTable({
                     stockTotal: stockTotalFor(detalle),
                     pendiente: pendienteFor(detalle),
                     almacenP: detalle.producto?.proveedor_pendiente ?? '',
-                    tipoVehiculo: detalle.producto?.tipo_vehiculo ?? '—',
                     producto: productoLabelFor(detalle),
                     fecha: pedido.fecha,
                     estado: pedido.estado,
@@ -778,7 +764,7 @@ export default function PedidoDetallesTable({
                     .toLowerCase()
                     .trim();
 
-                if (key === 'tipoVehiculo' || key === 'estado') {
+                if (key === 'estado') {
                     return cellValue === value.toLowerCase();
                 }
 
@@ -841,11 +827,7 @@ export default function PedidoDetallesTable({
                 filterKey={meta.key}
                 value={filters[meta.key] ?? ''}
                 onChange={setFilter}
-                variant={
-                    meta.filter === 'tipoVehiculo' || meta.filter === 'estado'
-                        ? meta.filter
-                        : 'text'
-                }
+                variant={meta.filter === 'estado' ? 'estado' : 'text'}
                 align={meta.align === 'center' ? 'center' : meta.align}
             />
         );
@@ -903,8 +885,6 @@ export default function PedidoDetallesTable({
                 ) : (
                     '—'
                 );
-            case 'tipoVehiculo':
-                return <TruncatedCell value={row.tipoVehiculo} />;
             case 'producto':
                 return <TruncatedCell value={row.producto} />;
             case 'fecha':

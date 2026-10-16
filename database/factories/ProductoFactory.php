@@ -20,29 +20,19 @@ class ProductoFactory extends Factory
      */
     public function definition(): array
     {
-        $ancho = fake()->randomElement(['155', '175', '185', '195']);
-        $rin = fake()->randomElement(['13', '14', '15', '16']);
-        $referencia = "{$ancho}R{$rin}";
+        $referencia = fake()->bothify('REF-####');
         $descripcion = fake()->bothify('#PR/WR0##/##/##N');
 
         return [
-            'categoria' => 'LLANTA',
-            'tipo' => 'NUEVO',
+            'categoria_id' => null,
+            'sub_categoria_id' => null,
             'inventariable' => true,
-            'ancho' => $ancho,
-            'perfil' => null,
-            'construccion' => 'R',
-            'rin' => $rin,
-            'tipo_vehiculo' => 'CARRO',
-            'diametro' => null,
             'marca_id' => null,
             'referencia_producto' => $referencia,
             'descripcion_producto' => $descripcion,
             'costo_producto' => fake()->randomFloat(2, 50000, 200000),
             'valor_detal' => fake()->randomFloat(2, 100000, 300000),
             'valor_mayorista' => fake()->randomFloat(2, 80000, 250000),
-            'valor_sin_instalacion' => 0,
-            'imagen_producto' => null,
             'concatenar_codigo_nombre' => $referencia.'-'.$descripcion,
             'codigo_appsheet' => null,
             'sku' => fake()->unique()->numerify('########'),
@@ -63,15 +53,7 @@ class ProductoFactory extends Factory
     public function servicio(): static
     {
         return $this->state(fn () => [
-            'categoria' => 'SERVICIO',
-            'tipo' => 'SERVICIO',
             'inventariable' => false,
-            'ancho' => null,
-            'perfil' => null,
-            'construccion' => null,
-            'rin' => null,
-            'tipo_vehiculo' => null,
-            'diametro' => null,
         ]);
     }
 }

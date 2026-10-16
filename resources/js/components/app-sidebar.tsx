@@ -16,6 +16,8 @@ import {
     Search,
     Shield,
     ShoppingCart,
+    Layers,
+    Shapes,
     Tags,
     Truck,
     UserCog,
@@ -45,7 +47,9 @@ import { edit as empresaEdit } from '@/routes/empresa';
 import { index as gastosIndex } from '@/routes/gastos';
 import { index as historialIndex } from '@/routes/historial';
 import { index as iniciosSesionIndex } from '@/routes/inicios-sesion';
+import { index as categoriasIndex } from '@/routes/categorias';
 import { index as marcasIndex } from '@/routes/marcas';
+import { index as subCategoriasIndex } from '@/routes/sub-categorias';
 import { index as pedidosIndex } from '@/routes/pedidos';
 import { index as pedidosMayoristasIndex } from '@/routes/pedidos-mayoristas';
 import { index as posIndex } from '@/routes/pos';
@@ -155,6 +159,18 @@ export function AppSidebar() {
                     Warehouse,
                 ),
                 ...entry(page.props.canViewMarcas, 'Marcas', marcasIndex, Tags),
+                ...entry(
+                    page.props.canViewCategorias,
+                    'Categorías',
+                    categoriasIndex,
+                    Shapes,
+                ),
+                ...entry(
+                    page.props.canViewSubCategorias,
+                    'Subcategorías',
+                    subCategoriasIndex,
+                    Layers,
+                ),
                 ...entry(
                     page.props.canViewProductos,
                     'Productos',

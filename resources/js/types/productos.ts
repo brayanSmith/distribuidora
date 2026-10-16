@@ -1,8 +1,19 @@
-export type CategoriaProducto = 'LLANTA' | 'RIN' | 'SERVICIO' | 'OTRO';
+export type SubCategoriaOption = {
+    id: number;
+    categoria_id: number;
+    nombre_sub_categoria: string;
+};
 
-export type TipoProducto = 'NUEVO' | 'USADO' | 'SERVICIO';
+export type CategoriaOption = {
+    id: number;
+    nombre_categoria: string;
+    sub_categorias: SubCategoriaOption[];
+};
 
-export type TipoVehiculo = 'MOTO' | 'CARRO';
+export type ProductoImagen = {
+    id: number;
+    url: string;
+};
 
 export type MarcaOption = {
     id: number;
@@ -11,16 +22,12 @@ export type MarcaOption = {
 
 export type Producto = {
     id: number;
-    categoria: CategoriaProducto | null;
-    tipo: TipoProducto | null;
+    categoria_id: number | null;
+    categoria: string | null;
+    sub_categoria_id: number | null;
+    sub_categoria: string | null;
     inventariable: boolean;
     sku: string | null;
-    ancho: string | null;
-    perfil: string | null;
-    construccion: string | null;
-    rin: string | null;
-    tipo_vehiculo: TipoVehiculo | null;
-    diametro: string | null;
     marca_id: number | null;
     marca: MarcaOption | null;
     referencia_producto: string | null;
@@ -28,8 +35,7 @@ export type Producto = {
     costo_producto: string;
     valor_detal: string;
     valor_mayorista: string;
-    valor_sin_instalacion: string | null;
-    imagen_producto: string | null;
+    imagenes: ProductoImagen[];
     imagen_producto_url: string | null;
     concatenar_codigo_nombre: string | null;
     stock_total?: number | null;
@@ -47,7 +53,6 @@ export type ProductoPermissions = {
     canViewStockTotal: boolean;
     canViewPendiente: boolean;
     canViewAlmacenP: boolean;
-    canViewSinInstalacion: boolean;
     canViewStockBodegas: boolean;
     canCreateTraslado: boolean;
 };
@@ -100,16 +105,15 @@ export type ProductoDetallesResponse = {
 
 export type CantidadPorBodegaFila = {
     almacen: string;
-    NUEVO: number;
-    USADO: number;
-    SERVICIO: number;
+    cantidades: Record<string, number>;
     total: number;
-    valores: Record<'NUEVO' | 'USADO' | 'SERVICIO' | 'total', number>;
+    valores: Record<string, number>;
 };
 
 export type CantidadPorBodega = {
+    categorias: string[];
     filas: CantidadPorBodegaFila[];
-    totales: Omit<CantidadPorBodegaFila, 'almacen' | 'valores'>;
+    totales: Record<string, number>;
 };
 
 export type DashboardResumen = {
@@ -142,7 +146,6 @@ export type DashboardFiltros = {
     bodega_ids: string[];
     desde: string;
     hasta: string;
-    tipo_vehiculo: string;
     producto_ids: string[];
 };
 
@@ -170,5 +173,4 @@ export type DashboardBodegaOption = { id: number; nombre_bodega: string };
 export type DashboardProductoOption = {
     id: number;
     concatenar_codigo_nombre: string | null;
-    tipo_vehiculo: 'MOTO' | 'CARRO' | null;
 };

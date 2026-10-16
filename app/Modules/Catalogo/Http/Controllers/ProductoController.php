@@ -2,20 +2,25 @@
 
 namespace App\Modules\Catalogo\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\HandlesTrash;
+use App\Http\Controllers\Controller;
 use App\Modules\Catalogo\Http\Requests\StoreProductoRequest;
 use App\Modules\Catalogo\Http\Requests\UpdateProductoRequest;
-use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Compras\Models\DetalleCompra;
-use App\Modules\Ventas\Models\DetallePedido;
+use App\Modules\Catalogo\Models\Categoria;
+use App\Modules\Catalogo\Models\ImagenProducto;
 use App\Modules\Catalogo\Models\Marca;
 use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Catalogo\Models\SubCategoria;
+use App\Modules\Compras\Models\DetalleCompra;
 use App\Modules\Compras\Models\Proveedor;
+use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Inventario\Models\StockBodega;
+use App\Modules\Ventas\Models\DetallePedido;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -40,6 +45,7 @@ class ProductoController extends Controller
             'eliminados' => $eliminados,
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
             'marcas' => Marca::orderBy('marca')->get(['id', 'marca']),
+            'categorias' => $this->categorias(),
             'permissions' => $this->permissions($request),
         ]);
     }
@@ -53,6 +59,7 @@ class ProductoController extends Controller
 
         return Inertia::render('productos/create', [
             'marcas' => Marca::orderBy('marca')->get(['id', 'marca']),
+            'categorias' => $this->categorias(),
             'permissions' => $this->permissions($request),
         ]);
     }
@@ -70,15 +77,13 @@ class ProductoController extends Controller
         );
 
         // A price the user cannot see is left at its default.
-        $data = $request->safe()->except($this->preciosOcultos($request));
-
-        if ($request->hasFile('imagen_producto')) {
-            $data['imagen_producto'] = $request->file('imagen_producto')->store('productos', 'public');
-        }
+        $data = $request->safe()->except(['imagenes', ...$this->preciosOcultos($request)]);
 
         $data['concatenar_codigo_nombre'] = $this->buildConcatenacion($data);
 
-        Producto::create($data);
+        $producto = Producto::create($data);
+
+        $this->guardarImagenes($producto, $request->file('imagenes', []));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Producto created.')]);
 
@@ -100,7 +105,7 @@ class ProductoController extends Controller
         $producto->makeHidden($this->preciosOcultos($request));
 
         return Inertia::render('productos/show', [
-            'producto' => $producto->load('marca'),
+            'producto' => $producto->load(['marca', 'categoria', 'subCategoria', 'imagenes']),
             'permissions' => $this->permissions($request),
         ]);
     }
@@ -155,8 +160,9 @@ class ProductoController extends Controller
         $producto->makeHidden($this->preciosOcultos($request));
 
         return Inertia::render('productos/edit', [
-            'producto' => $producto->load('marca'),
+            'producto' => $producto->load(['marca', 'imagenes']),
             'marcas' => Marca::orderBy('marca')->get(['id', 'marca']),
+            'categorias' => $this->categorias(),
             'permissions' => $this->permissions($request),
         ]);
     }
@@ -169,22 +175,18 @@ class ProductoController extends Controller
         Gate::authorize('productos.update');
 
         // A price the user cannot see is not overwritten from the form.
-        $data = $request->safe()->except(['imagen_producto', 'remove_imagen_producto', ...$this->preciosOcultos($request)]);
-
-        if ($request->hasFile('imagen_producto')) {
-            if ($producto->imagen_producto) {
-                Storage::disk('public')->delete($producto->imagen_producto);
-            }
-
-            $data['imagen_producto'] = $request->file('imagen_producto')->store('productos', 'public');
-        } elseif ($request->boolean('remove_imagen_producto') && $producto->imagen_producto) {
-            Storage::disk('public')->delete($producto->imagen_producto);
-            $data['imagen_producto'] = null;
-        }
+        $data = $request->safe()->except(['imagenes', 'remove_imagen_ids', ...$this->preciosOcultos($request)]);
 
         $data['concatenar_codigo_nombre'] = $this->buildConcatenacion($data);
 
         $producto->update($data);
+
+        $producto->imagenes()->whereKey($request->input('remove_imagen_ids', []))->get()->each(function (ImagenProducto $imagen): void {
+            Storage::disk('public')->delete($imagen->imagen_producto);
+            $imagen->delete();
+        });
+
+        $this->guardarImagenes($producto, $request->file('imagenes', []));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Producto updated.')]);
 
@@ -224,8 +226,33 @@ class ProductoController extends Controller
             $usuario->puedeVerPrecio('costo') ? null : 'costo_producto',
             $usuario->puedeVerPrecio('valor_detal') ? null : 'valor_detal',
             $usuario->puedeVerPrecio('valor_mayorista') ? null : 'valor_mayorista',
-            $usuario->can('productos.view-sin-instalacion') ? null : 'valor_sin_instalacion',
         ]));
+    }
+
+    /**
+     * Categorias with their subcategorias, for the form selects.
+     *
+     * @return Collection<int, Categoria>
+     */
+    private function categorias()
+    {
+        return Categoria::with('subCategorias:id,categoria_id,nombre_sub_categoria')
+            ->orderBy('nombre_categoria')
+            ->get(['id', 'nombre_categoria']);
+    }
+
+    /**
+     * Store the uploaded files as imagenes of the producto.
+     *
+     * @param  list<UploadedFile>  $archivos
+     */
+    private function guardarImagenes(Producto $producto, array $archivos): void
+    {
+        foreach ($archivos as $archivo) {
+            $producto->imagenes()->create([
+                'imagen_producto' => $archivo->store('productos', 'public'),
+            ]);
+        }
     }
 
     private function buildConcatenacion(array $data): string
@@ -256,13 +283,18 @@ class ProductoController extends Controller
             ->orderBy('referencia_producto')
             ->toBase()
             ->get([
-                'id', 'categoria', 'tipo', 'inventariable', 'sku', 'ancho', 'perfil', 'construccion', 'rin',
-                'tipo_vehiculo', 'diametro', 'marca_id', 'referencia_producto', 'descripcion_producto',
-                'costo_producto', 'valor_detal', 'valor_mayorista', 'valor_sin_instalacion',
-                'imagen_producto', 'concatenar_codigo_nombre',
+                'id', 'categoria_id', 'sub_categoria_id', 'inventariable', 'sku', 'marca_id', 'referencia_producto',
+                'descripcion_producto', 'costo_producto', 'valor_detal', 'valor_mayorista', 'concatenar_codigo_nombre',
             ]);
 
         $marcas = Marca::pluck('marca', 'id');
+        $categorias = Categoria::pluck('nombre_categoria', 'id');
+        $subCategorias = SubCategoria::pluck('nombre_sub_categoria', 'id');
+        $imagenes = ImagenProducto::query()
+            ->whereIn('producto_id', $productos->pluck('id'))
+            ->orderBy('id')
+            ->get(['id', 'producto_id', 'imagen_producto'])
+            ->groupBy('producto_id');
 
         $stock = StockBodega::query()
             ->whereIn('producto_id', $productos->pluck('id'))
@@ -288,7 +320,6 @@ class ProductoController extends Controller
         $verStockTotal = $puede('view-stock-total');
         $verPendiente = $puede('view-pendiente');
         $verAlmacenP = $puede('view-almacen-p');
-        $verSinInstalacion = $puede('view-sin-instalacion');
         $verStockBodegas = $puede('view-stock-bodegas');
 
         // Without `productos.view-sin-stock`, inventoried products with no stock
@@ -299,23 +330,20 @@ class ProductoController extends Controller
                 && ! $pendientes->has($producto->id))->values();
         }
 
-        return $productos->map(function (object $producto) use ($marcas, $stock, $pendientes, $dinero, $usuario, $verStockTotal, $verPendiente, $verAlmacenP, $verSinInstalacion, $verStockBodegas): array {
+        return $productos->map(function (object $producto) use ($marcas, $stock, $pendientes, $dinero, $usuario, $verStockTotal, $verPendiente, $verAlmacenP, $verStockBodegas, $categorias, $subCategorias, $imagenes): array {
             $filasStock = $stock->get($producto->id, collect());
+            $filasImagenes = $imagenes->get($producto->id, collect());
             $filasPendientes = $pendientes->get($producto->id, collect());
             $proveedores = $filasPendientes->pluck('nombre_proveedor')->filter()->unique()->values();
 
             return [
                 'id' => $producto->id,
-                'categoria' => $producto->categoria,
-                'tipo' => $producto->tipo,
+                'categoria_id' => $producto->categoria_id,
+                'categoria' => $categorias[$producto->categoria_id] ?? null,
+                'sub_categoria_id' => $producto->sub_categoria_id,
+                'sub_categoria' => $subCategorias[$producto->sub_categoria_id] ?? null,
                 'inventariable' => (bool) $producto->inventariable,
                 'sku' => $producto->sku,
-                'ancho' => $producto->ancho,
-                'perfil' => $producto->perfil,
-                'construccion' => $producto->construccion,
-                'rin' => $producto->rin,
-                'tipo_vehiculo' => $producto->tipo_vehiculo,
-                'diametro' => $producto->diametro,
                 'marca_id' => $producto->marca_id,
                 'marca' => isset($marcas[$producto->marca_id])
                     ? ['id' => $producto->marca_id, 'marca' => $marcas[$producto->marca_id]]
@@ -325,8 +353,8 @@ class ProductoController extends Controller
                 'costo_producto' => $usuario->puedeVerPrecio('costo') ? $dinero($producto->costo_producto) : null,
                 'valor_detal' => $usuario->puedeVerPrecio('valor_detal') ? $dinero($producto->valor_detal) : null,
                 'valor_mayorista' => $usuario->puedeVerPrecio('valor_mayorista') ? $dinero($producto->valor_mayorista) : null,
-                'valor_sin_instalacion' => $verSinInstalacion ? $dinero($producto->valor_sin_instalacion) : null,
-                'imagen_producto_url' => $producto->imagen_producto ? Storage::disk('public')->url($producto->imagen_producto) : null,
+                'imagenes' => $filasImagenes->map(fn (ImagenProducto $imagen): array => ['id' => $imagen->id, 'url' => $imagen->url])->values()->all(),
+                'imagen_producto_url' => $filasImagenes->first()?->url,
                 'concatenar_codigo_nombre' => $producto->concatenar_codigo_nombre,
                 'stock_total' => $verStockTotal ? (float) $filasStock->sum('stock') : null,
                 // Units still to arrive: the quantity of every pending purchase line.
@@ -351,7 +379,6 @@ class ProductoController extends Controller
             'canViewStockTotal' => $request->user()->can('productos.view-stock-total'),
             'canViewPendiente' => $request->user()->can('productos.view-pendiente'),
             'canViewAlmacenP' => $request->user()->can('productos.view-almacen-p'),
-            'canViewSinInstalacion' => $request->user()->can('productos.view-sin-instalacion'),
             'canViewStockBodegas' => $request->user()->can('productos.view-stock-bodegas'),
             // The same permissions the traslado store accepts.
             'canCreateTraslado' => $request->user()->canAny(['traslados.create', 'stock-bodegas.create-traslado']),

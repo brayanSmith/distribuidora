@@ -1,31 +1,15 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { useRef } from 'react';
+import { Form, Head, Link } from '@inertiajs/react';
 import ProductoFormFields from '@/components/productos/producto-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, store } from '@/routes/productos';
-import type { MarcaOption } from '@/types';
+import type { CategoriaOption, MarcaOption } from '@/types';
 
 type Props = {
     marcas: MarcaOption[];
+    categorias: CategoriaOption[];
 };
 
-export default function ProductoCreate({ marcas }: Props) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleImageChange = (file: File | null) => {
-        if (!fileInputRef.current) {
-            return;
-        }
-
-        const dataTransfer = new DataTransfer();
-
-        if (file) {
-            dataTransfer.items.add(file);
-        }
-
-        fileInputRef.current.files = dataTransfer.files;
-    };
-
+export default function ProductoCreate({ marcas, categorias }: Props) {
     return (
         <>
             <Head title="Nuevo producto" />
@@ -44,14 +28,8 @@ export default function ProductoCreate({ marcas }: Props) {
                     <>
                         <ProductoFormFields
                             marcas={marcas}
+                            categorias={categorias}
                             errors={errors}
-                            onImageChange={handleImageChange}
-                        />
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            name="imagen_producto"
-                            className="hidden"
                         />
 
                         <div className="flex justify-end gap-2">

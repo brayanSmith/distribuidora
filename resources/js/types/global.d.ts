@@ -22,11 +22,12 @@ declare module '@inertiajs/core' {
             canViewBodegas: boolean;
             canViewProveedores: boolean;
             canViewMarcas: boolean;
+            canViewCategorias: boolean;
+            canViewSubCategorias: boolean;
             canViewPucs: boolean;
             canViewEmpresa: boolean;
             canViewGastos: boolean;
             canViewProductos: boolean;
-            canViewSinInstalacion: boolean;
             canViewCotizador: boolean;
             canViewPos: boolean;
             canViewCompras: boolean;

@@ -1,5 +1,4 @@
 import { Form } from '@inertiajs/react';
-import { useRef, useState } from 'react';
 import ProductoFormFields from '@/components/productos/producto-form-fields';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,10 +11,11 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { update } from '@/routes/productos';
-import type { MarcaOption, Producto } from '@/types';
+import type { CategoriaOption, MarcaOption, Producto } from '@/types';
 
 type Props = {
     marcas: MarcaOption[];
+    categorias: CategoriaOption[];
     producto: Producto | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -23,29 +23,11 @@ type Props = {
 
 export default function EditProductoModal({
     marcas,
+    categorias,
     producto,
     open,
     onOpenChange,
 }: Props) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [removeImage, setRemoveImage] = useState(false);
-
-    const handleImageChange = (file: File | null, removed: boolean) => {
-        setRemoveImage(removed);
-
-        if (!fileInputRef.current) {
-            return;
-        }
-
-        const dataTransfer = new DataTransfer();
-
-        if (file) {
-            dataTransfer.items.add(file);
-        }
-
-        fileInputRef.current.files = dataTransfer.files;
-    };
-
     if (!producto) {
         return null;
     }
@@ -71,19 +53,8 @@ export default function EditProductoModal({
                             <ProductoFormFields
                                 producto={producto}
                                 marcas={marcas}
+                                categorias={categorias}
                                 errors={errors}
-                                onImageChange={handleImageChange}
-                            />
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                name="imagen_producto"
-                                className="hidden"
-                            />
-                            <input
-                                type="hidden"
-                                name="remove_imagen_producto"
-                                value={removeImage ? '1' : '0'}
                             />
 
                             <DialogFooter className="gap-2">

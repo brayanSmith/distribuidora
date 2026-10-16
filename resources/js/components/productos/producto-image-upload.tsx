@@ -1,47 +1,64 @@
-import { ImagePlus } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { ImagePlus, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import type { ProductoImagen } from '@/types';
 
 type Props = {
-    value?: string | null;
-    onChange: (file: File | null, removed: boolean) => void;
-    error?: string;
+    /** Images the producto already has (edit only). */
+    existentes?: ProductoImagen[];
+    errors: Partial<Record<string, string>>;
 };
 
-export default function ProductoImageUpload({ value, onChange, error }: Props) {
-    const [preview, setPreview] = useState<string | null>(value ?? null);
+type NuevaImagen = { file: File; preview: string };
 
+export default function ProductoImageUpload({
+    existentes = [],
+    errors,
+}: Props) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [nuevas, setNuevas] = useState<NuevaImagen[]>([]);
+    const [quitadas, setQuitadas] = useState<number[]>([]);
+
+    // The form submits whatever the hidden file input holds, so it is kept in
+    // sync with the images chosen here.
     useEffect(() => {
-        setPreview(value ?? null);
-    }, [value]);
+        if (!fileInputRef.current) {
+            return;
+        }
 
-    const onDrop = useCallback(
-        (acceptedFiles: File[]) => {
-            const file = acceptedFiles[0];
+        const dataTransfer = new DataTransfer();
+        nuevas.forEach(({ file }) => dataTransfer.items.add(file));
+        fileInputRef.current.files = dataTransfer.files;
+    }, [nuevas]);
 
-            if (!file) {
-                return;
-            }
-
-            setPreview(URL.createObjectURL(file));
-            onChange(file, false);
-        },
-        [onChange],
-    );
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        setNuevas((actuales) => [
+            ...actuales,
+            ...acceptedFiles.map((file) => ({
+                file,
+                preview: URL.createObjectURL(file),
+            })),
+        ]);
+    }, []);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         accept: { 'image/*': [] },
-        maxFiles: 1,
-        multiple: false,
+        multiple: true,
     });
 
-    const removeImage = () => {
-        setPreview(null);
-        onChange(null, true);
+    const quitarNueva = (preview: string) => {
+        URL.revokeObjectURL(preview);
+        setNuevas((actuales) =>
+            actuales.filter((imagen) => imagen.preview !== preview),
+        );
     };
+
+    const visibles = existentes.filter(({ id }) => !quitadas.includes(id));
+    const mensajes = Object.entries(errors)
+        .filter(([campo]) => campo.startsWith('imagenes'))
+        .map(([, mensaje]) => mensaje);
 
     return (
         <div className="space-y-3">
@@ -56,40 +73,83 @@ export default function ProductoImageUpload({ value, onChange, error }: Props) {
             >
                 <input {...getInputProps()} />
 
-                {preview ? (
-                    <div className="space-y-2 p-3">
-                        <p className="text-muted-foreground text-sm">
-                            Imagen Cargada
-                        </p>
-                        <img
-                            src={preview}
-                            alt=""
-                            className="aspect-square w-full rounded-md border object-contain"
-                        />
-                    </div>
-                ) : (
-                    <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 p-8 text-center">
-                        <ImagePlus className="h-8 w-8" />
-                        <span className="text-sm">
-                            Arrastra una imagen o haz clic
-                        </span>
-                    </div>
-                )}
+                <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 p-6 text-center">
+                    <ImagePlus className="h-8 w-8" />
+                    <span className="text-sm">
+                        Arrastra imágenes o haz clic
+                    </span>
+                </div>
             </div>
 
-            {error ? <p className="text-destructive text-sm">{error}</p> : null}
+            <input
+                ref={fileInputRef}
+                type="file"
+                name="imagenes[]"
+                multiple
+                className="hidden"
+            />
+            {quitadas.map((id) => (
+                <input
+                    key={id}
+                    type="hidden"
+                    name="remove_imagen_ids[]"
+                    value={id}
+                />
+            ))}
 
-            {preview ? (
-                <Button
-                    type="button"
-                    variant="outline"
-                    data-test="producto-imagen-remove"
-                    className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive w-full"
-                    onClick={removeImage}
+            {visibles.length + nuevas.length > 0 ? (
+                <div
+                    className="grid grid-cols-2 gap-2"
+                    data-test="producto-imagenes"
                 >
-                    Eliminar imagen
-                </Button>
+                    {visibles.map((imagen) => (
+                        <Miniatura
+                            key={`imagen-${imagen.id}`}
+                            src={imagen.url}
+                            onRemove={() =>
+                                setQuitadas((actuales) => [
+                                    ...actuales,
+                                    imagen.id,
+                                ])
+                            }
+                        />
+                    ))}
+                    {nuevas.map((imagen) => (
+                        <Miniatura
+                            key={imagen.preview}
+                            src={imagen.preview}
+                            onRemove={() => quitarNueva(imagen.preview)}
+                        />
+                    ))}
+                </div>
             ) : null}
+
+            {mensajes.map((mensaje) => (
+                <p key={mensaje} className="text-destructive text-sm">
+                    {mensaje}
+                </p>
+            ))}
+        </div>
+    );
+}
+
+function Miniatura({ src, onRemove }: { src: string; onRemove: () => void }) {
+    return (
+        <div className="relative">
+            <img
+                src={src}
+                alt=""
+                className="aspect-square w-full rounded-md border object-contain"
+            />
+            <button
+                type="button"
+                aria-label="Eliminar imagen"
+                data-test="producto-imagen-remove"
+                className="bg-background/90 text-destructive hover:bg-destructive/10 absolute top-1 right-1 rounded-full border p-1"
+                onClick={onRemove}
+            >
+                <X className="h-4 w-4" />
+            </button>
         </div>
     );
 }

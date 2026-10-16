@@ -232,8 +232,8 @@ test('every producto can be put on a pedido, and editing one lists those of its 
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
-    $sinControl = Producto::factory()->create(['inventariable' => false, 'categoria' => 'LLANTA']);
-    $servicio = Producto::factory()->create(['inventariable' => false, 'categoria' => 'SERVICIO', 'tipo' => 'SERVICIO']);
+    $sinControl = Producto::factory()->create(['inventariable' => false]);
+    $servicio = Producto::factory()->create(['inventariable' => false]);
     $eliminado = Producto::factory()->create();
     $pedido = Pedido::factory()->create(['tipo_precio' => 'DETAL']);
     DetallePedido::factory()->create(['pedido_id' => $pedido->id, 'producto_id' => $eliminado->id]);
@@ -314,7 +314,7 @@ test('a user without productos.view-pendiente does not see pending purchases on 
 test('selling a producto without stock control does not move stock', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
-    $producto = Producto::factory()->create(['inventariable' => false, 'categoria' => 'LLANTA']);
+    $producto = Producto::factory()->create(['inventariable' => false]);
     $bodega = Bodega::factory()->create();
 
     $this->actingAs($owner)->post(route('pedidos.store'), [

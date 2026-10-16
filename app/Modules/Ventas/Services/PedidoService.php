@@ -2,11 +2,11 @@
 
 namespace App\Modules\Ventas\Services;
 
+use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Inventario\Models\StockBodega;
 use App\Modules\Ventas\Models\DetallePedido;
 use App\Modules\Ventas\Models\Pedido;
-use App\Modules\Catalogo\Models\Producto;
-use App\Modules\Inventario\Models\StockBodega;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -171,7 +171,7 @@ class PedidoService
     public function adjustStock(DetallePedido $detalle, Pedido $pedido, int $sign): void
     {
         if (Producto::withTrashed()->whereKey($detalle->producto_id)
-            ->where(fn ($query) => $query->where('categoria', 'SERVICIO')->orWhere('inventariable', false))
+            ->where('inventariable', false)
             ->exists()) {
             return;
         }

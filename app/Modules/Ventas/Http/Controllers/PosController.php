@@ -3,14 +3,15 @@
 namespace App\Modules\Ventas\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Ventas\Http\Requests\StorePedidoRequest;
-use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Ventas\Models\Cliente;
-use App\Modules\Catalogo\Models\Marca;
-use App\Modules\Ventas\Models\Pedido;
-use App\Modules\Catalogo\Models\Producto;
 use App\Models\User;
+use App\Modules\Catalogo\Models\Categoria;
+use App\Modules\Catalogo\Models\Marca;
+use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Finanzas\Models\Puc;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Ventas\Http\Requests\StorePedidoRequest;
+use App\Modules\Ventas\Models\Cliente;
+use App\Modules\Ventas\Models\Pedido;
 use App\Modules\Ventas\Services\PedidoService;
 use App\Modules\Ventas\Services\PedidoVoucher;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -46,6 +47,7 @@ class PosController extends Controller
             'vendedores' => User::orderBy('name')->get(['id', 'name']),
             'pucs' => Puc::orderBy('concatenar_subcuenta_concepto')->get(['id', 'concatenar_subcuenta_concepto']),
             'marcas' => Marca::orderBy('marca')->get(['id', 'marca']),
+            'categorias' => Categoria::with('subCategorias:id,categoria_id,nombre_sub_categoria')->orderBy('nombre_categoria')->get(['id', 'nombre_categoria']),
             'canCreateProducto' => $request->user()->can('pos.create-producto'),
             'canCreateCliente' => $request->user()->can('pos.create-cliente'),
             'canViewAllPedidos' => $request->user()->can('pos.view-all-pedidos'),
@@ -175,23 +177,22 @@ class PosController extends Controller
         $usuario = auth()->user();
 
         // Servicios are not inventariable but are sold like any other producto.
-        return Producto::where(fn (Builder $query) => $query->where('inventariable', true)->orWhere('categoria', 'SERVICIO'))
-            ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'categoria', 'inventariable', 'sku', 'valor_detal', 'valor_mayorista', 'valor_sin_instalacion', 'costo_producto', 'imagen_producto'])
-            ->with('stockBodegas:id,producto_id,bodega_id,stock')
+        return Producto::query()
+            ->select(['id', 'categoria_id', 'referencia_producto', 'concatenar_codigo_nombre', 'inventariable', 'sku', 'valor_detal', 'valor_mayorista', 'costo_producto'])
+            ->with(['stockBodegas:id,producto_id,bodega_id,stock', 'categoria:id,nombre_categoria', 'imagenes:id,producto_id,imagen_producto'])
             ->orderBy('referencia_producto')
             ->get()
             ->map(fn (Producto $producto): array => [
                 'id' => $producto->id,
                 'referencia_producto' => $producto->referencia_producto,
                 'concatenar_codigo_nombre' => $producto->concatenar_codigo_nombre,
-                'categoria' => $producto->categoria,
+                'categoria' => $producto->categoria?->nombre_categoria,
                 'inventariable' => (bool) $producto->inventariable,
                 'sku' => $producto->sku,
                 'valor_detal' => $usuario->puedeVerPrecio('valor_detal') ? $producto->valor_detal : null,
                 'valor_mayorista' => $usuario->puedeVerPrecio('valor_mayorista') ? $producto->valor_mayorista : null,
-                'valor_sin_instalacion' => $producto->valor_sin_instalacion,
                 'costo_producto' => $usuario->puedeVerPrecio('costo') ? $producto->costo_producto : null,
-                'imagen_producto_url' => $producto->imagen_producto_url,
+                'imagen_producto_url' => $producto->imagenes->first()?->url,
                 'stock_total' => (float) $producto->stockBodegas->sum('stock'),
                 'stock_por_bodega' => $producto->stockBodegas->mapWithKeys(fn ($stock): array => [$stock->bodega_id => (float) $stock->stock])->all(),
             ])

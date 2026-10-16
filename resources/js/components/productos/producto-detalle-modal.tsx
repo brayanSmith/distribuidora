@@ -1,4 +1,4 @@
-import { Link, useHttp, usePage } from '@inertiajs/react';
+import { Link, useHttp } from '@inertiajs/react';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import {
     ArrowDown,
@@ -310,7 +310,6 @@ export default function ProductoDetalleModal({
     onOpenChange,
 }: Props) {
     const { puedeCosto, puedeDetal, puedeMayorista } = useTiposPrecio();
-    const { canViewSinInstalacion } = usePage().props;
     const { submit } = useHttp();
 
     const [pedidosPage, setPedidosPage] = useState(1);
@@ -415,8 +414,8 @@ export default function ProductoDetalleModal({
     }
 
     const nombre = producto.concatenar_codigo_nombre || 'Producto';
-    // Servicios (and any producto marked as not inventariable) never carry stock.
-    const esSinStock = producto.categoria === 'SERVICIO' || !producto.inventariable;
+    // Servicios (any producto marked as not inventariable) never carry stock.
+    const esSinStock = !producto.inventariable;
     const detallePedidos = data?.detallePedidos;
     const detalleCompras = data?.detalleCompras;
 
@@ -465,38 +464,18 @@ export default function ProductoDetalleModal({
                                                 {producto.categoria ?? '—'}
                                             </Badge>
                                         </div>
-                                        <div className="grid gap-0.5">
-                                            <span className="text-muted-foreground text-xs">
-                                                Tipo
-                                            </span>
-                                            <Badge variant="secondary">
-                                                {producto.tipo ?? '—'}
-                                            </Badge>
-                                        </div>
-                                        {producto.tipo_vehiculo ? (
+                                        {producto.sub_categoria ? (
                                             <div className="grid gap-0.5">
                                                 <span className="text-muted-foreground text-xs">
-                                                    Vehículo
+                                                    Subcategoría
                                                 </span>
-                                                <Badge className="border-transparent bg-amber-100 text-amber-700 hover:bg-amber-100">
-                                                    {producto.tipo_vehiculo}
+                                                <Badge variant="secondary">
+                                                    {producto.sub_categoria}
                                                 </Badge>
                                             </div>
                                         ) : null}
                                     </div>
                                 </div>
-                            </div>
-                        </SectionCard>
-
-                        <SectionCard icon={Ruler} title="Medidas">
-                            <div className="grid grid-cols-4 gap-4">
-                                <Field label="Ancho" value={producto.ancho} />
-                                <Field label="Perfil" value={producto.perfil} />
-                                <Field
-                                    label="Construcción"
-                                    value={producto.construccion}
-                                />
-                                <Field label="Rin" value={producto.rin} />
                             </div>
                         </SectionCard>
 
@@ -521,15 +500,6 @@ export default function ProductoDetalleModal({
                                         label="Mayorista"
                                         value={Number(producto.valor_mayorista)}
                                         colorClassName="text-amber-600 dark:text-amber-400"
-                                    />
-                                ) : null}
-                                {canViewSinInstalacion ? (
-                                    <PrecioField
-                                        label="Sin Instalación"
-                                        value={Number(
-                                            producto.valor_sin_instalacion,
-                                        )}
-                                        colorClassName="text-red-600 dark:text-red-400"
                                     />
                                 ) : null}
                             </div>

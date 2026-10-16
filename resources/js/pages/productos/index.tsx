@@ -13,7 +13,6 @@ import RestoreButton from '@/components/restore-button';
 import TrashToggle from '@/components/trash-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -40,27 +39,24 @@ import { cn } from '@/lib/utils';
 import { index, restore } from '@/routes/productos';
 import type {
     Bodega,
-    CategoriaProducto,
+    CategoriaOption,
     MarcaOption,
     Producto,
     ProductoPermissions,
 } from '@/types';
 
-type CategoriaTab = CategoriaProducto | 'TODOS';
+/** `TODOS`, `SIN_CATEGORIA` or the id of a categoria. */
+type CategoriaTab = string;
 
-const CATEGORIA_TABS: { value: CategoriaTab; label: string }[] = [
-    { value: 'TODOS', label: 'Todos' },
-    { value: 'LLANTA', label: 'Llantas' },
-    { value: 'RIN', label: 'Rines' },
-    { value: 'SERVICIO', label: 'Servicios' },
-    { value: 'OTRO', label: 'Otros' },
-];
+const TAB_TODOS = 'TODOS';
+const TAB_SIN_CATEGORIA = 'SIN_CATEGORIA';
 
 type Props = {
     productos: Producto[];
     eliminados: boolean;
     bodegas: Bodega[];
     marcas: MarcaOption[];
+    categorias: CategoriaOption[];
     permissions: ProductoPermissions;
 };
 
@@ -74,19 +70,20 @@ type Accessor = {
     get: (producto: Producto) => string | number;
 };
 
-const SIN_TIPO = 'Sin tipo';
-const SIN_RIN = 'Sin rin';
+const SIN_CATEGORIA = 'Sin categoría';
+const SIN_SUB_CATEGORIA = 'Sin subcategoría';
 
-const tipoDe = (producto: Producto): string =>
-    producto.tipo_vehiculo ?? SIN_TIPO;
-const rinDe = (producto: Producto): string => producto.rin ?? SIN_RIN;
+const categoriaDe = (producto: Producto): string =>
+    producto.categoria ?? SIN_CATEGORIA;
+const subCategoriaDe = (producto: Producto): string =>
+    producto.sub_categoria ?? SIN_SUB_CATEGORIA;
 
 /** Each row renders many controls, so bigger pages make the table sluggish. */
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 const PAGE_SIZE_MAX = 100;
 
-/** A tipo de vehículo / rin of the filters, with how many productos it has. */
-type VehiculoOption = { value: string; count: number };
+/** A subcategoria of the filter, with how many productos it has. */
+type SubCategoriaFilterOption = { value: string; count: number };
 
 const DEFAULT_BODEGA_WIDTH = 110;
 /** Fits the edit / delete / traslado buttons on one line. */
@@ -101,7 +98,6 @@ const STATIC_COLUMN_ORDER = [
     'costo',
     'detal',
     'mayorista',
-    'sin_instalacion',
 ] as const;
 
 const STATIC_ACCESSORS: Record<string, Accessor> = {
@@ -154,18 +150,11 @@ const STATIC_ACCESSORS: Record<string, Accessor> = {
         color: 'text-amber-600 dark:text-amber-400',
         get: (p) => Number(p.valor_mayorista ?? 0),
     },
-    sin_instalacion: {
-        label: 'Sin Instalación',
-        width: 130,
-        align: 'right',
-        color: 'text-red-600 dark:text-red-400',
-        get: (p) => Number(p.valor_sin_instalacion ?? 0),
-    },
 };
 
-/** Servicios (and any producto marked as not inventariable) never carry stock. */
+/** Servicios (any producto marked as not inventariable) never carry stock. */
 function esSinStock(producto: Producto): boolean {
-    return producto.categoria === 'SERVICIO' || !producto.inventariable;
+    return !producto.inventariable;
 }
 
 function renderCellValue(key: string, accessor: Accessor, producto: Producto) {
@@ -224,6 +213,7 @@ export default function ProductosIndex({
     eliminados,
     bodegas,
     marcas,
+    categorias,
     permissions,
 }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -241,39 +231,39 @@ export default function ProductosIndex({
     // The filters and the tabs are remembered for the tab's session (the trash is its own list).
     const storageKey = `productos${eliminados ? ':papelera' : ''}`;
     // A saved pick whose productos are gone would leave an empty table.
-    const [tipoSel, setTipoSel] = usePersistedState<string>(
-        `filtro:${storageKey}:tipo`,
+    const categoriaTabs = useMemo<{ value: CategoriaTab; label: string }[]>(
+        () => [
+            { value: TAB_TODOS, label: 'Todos' },
+            ...categorias.map((categoria) => ({
+                value: String(categoria.id),
+                label: categoria.nombre_categoria,
+            })),
+            { value: TAB_SIN_CATEGORIA, label: SIN_CATEGORIA },
+        ],
+        [categorias],
+    );
+    const [subCategoriaSel, setSubCategoriaSel] = usePersistedState<string>(
+        `filtro:${storageKey}:sub-categoria`,
         '',
         {
             scope: 'session',
             merge: (stored) =>
-                productos.some((producto) => tipoDe(producto) === stored)
+                productos.some(
+                    (producto) => subCategoriaDe(producto) === stored,
+                )
                     ? stored
                     : '',
         },
     );
-    const [rinesSel, setRinesSel] = usePersistedState<string[]>(
-        `filtro:${storageKey}:rines`,
-        [],
-        {
-            scope: 'session',
-            merge: (stored) =>
-                Array.isArray(stored)
-                    ? stored.filter((rin) =>
-                          productos.some((producto) => rinDe(producto) === rin),
-                      )
-                    : [],
-        },
-    );
     const [categoriaTab, setCategoriaTab] = usePersistedState<CategoriaTab>(
         `filtro:${storageKey}:categoria`,
-        'TODOS',
+        TAB_TODOS,
         {
             scope: 'session',
             merge: (stored) =>
-                CATEGORIA_TABS.some((tab) => tab.value === stored)
+                categoriaTabs.some((tab) => tab.value === stored)
                     ? stored
-                    : 'TODOS',
+                    : TAB_TODOS,
         },
     );
 
@@ -303,9 +293,7 @@ export default function ProductosIndex({
                     (key !== 'mayorista' || puedeMayorista) &&
                     (key !== 'stock_total' || permissions.canViewStockTotal) &&
                     (key !== 'pendiente' || permissions.canViewPendiente) &&
-                    (key !== 'almacen_p' || permissions.canViewAlmacenP) &&
-                    (key !== 'sin_instalacion' ||
-                        permissions.canViewSinInstalacion),
+                    (key !== 'almacen_p' || permissions.canViewAlmacenP),
             ).map((key): [string, Accessor] => [key, STATIC_ACCESSORS[key]]),
             ...(permissions.canViewStockBodegas
                 ? bodegas.map((bodega): [string, Accessor] => [
@@ -460,99 +448,62 @@ export default function ProductosIndex({
     ]);
 
     const categoryFilteredProductos = useMemo(() => {
-        if (categoriaTab === 'TODOS') {
+        if (categoriaTab === TAB_TODOS) {
             return productos;
         }
 
-        return productos.filter(
-            (producto) => producto.categoria === categoriaTab,
+        return productos.filter((producto) =>
+            categoriaTab === TAB_SIN_CATEGORIA
+                ? producto.categoria_id === null
+                : String(producto.categoria_id) === categoriaTab,
         );
     }, [productos, categoriaTab]);
 
     const categoriaCounts = useMemo(() => {
-        const counts: Record<string, number> = { TODOS: productos.length };
+        const counts: Record<string, number> = {
+            [TAB_TODOS]: productos.length,
+        };
 
         productos.forEach((producto) => {
-            const categoria = producto.categoria ?? 'TODOS';
-            counts[categoria] = (counts[categoria] ?? 0) + 1;
+            const tab =
+                producto.categoria_id === null
+                    ? TAB_SIN_CATEGORIA
+                    : String(producto.categoria_id);
+            counts[tab] = (counts[tab] ?? 0) + 1;
         });
 
         return counts;
     }, [productos]);
 
     const handleCategoriaTabChange = (value: string) => {
-        setCategoriaTab(value as CategoriaTab);
-        setTipoSel('');
-        setRinesSel([]);
+        setCategoriaTab(value);
+        setSubCategoriaSel('');
     };
 
-    // Tipos de vehículo of the tab, with how many productos each one has
-    // among the picked rines.
-    const tipoOptions = useMemo<VehiculoOption[]>(() => {
+    // Subcategorias of the tab, with how many productos each one has.
+    const subCategoriaOptions = useMemo<SubCategoriaFilterOption[]>(() => {
         const counts = new Map<string, number>();
 
         categoryFilteredProductos.forEach((producto) => {
-            const tipo = tipoDe(producto);
-            const cuenta =
-                rinesSel.length === 0 || rinesSel.includes(rinDe(producto));
+            const subCategoria = subCategoriaDe(producto);
 
-            counts.set(tipo, (counts.get(tipo) ?? 0) + (cuenta ? 1 : 0));
+            counts.set(subCategoria, (counts.get(subCategoria) ?? 0) + 1);
         });
 
         return Array.from(counts.entries())
             .sort(([a], [b]) => a.localeCompare(b, 'es'))
             .map(([value, count]) => ({ value, count }));
-    }, [categoryFilteredProductos, rinesSel]);
-
-    // Rines only of the picked tipo de vehículo (all of them while none is picked).
-    const rinOptions = useMemo<VehiculoOption[]>(() => {
-        const counts = new Map<string, number>();
-
-        categoryFilteredProductos
-            .filter((producto) => !tipoSel || tipoDe(producto) === tipoSel)
-            .forEach((producto) => {
-                const rin = rinDe(producto);
-
-                counts.set(rin, (counts.get(rin) ?? 0) + 1);
-            });
-
-        return Array.from(counts.entries())
-            .sort(([a], [b]) => a.localeCompare(b, 'es', { numeric: true }))
-            .map(([value, count]) => ({ value, count }));
-    }, [categoryFilteredProductos, tipoSel]);
-
-    // Changing the tipo drops the picked rines that don't belong to it.
-    const handleTipoChange = (tipo: string) => {
-        const permitidos = new Set(
-            categoryFilteredProductos
-                .filter((producto) => !tipo || tipoDe(producto) === tipo)
-                .map(rinDe),
-        );
-
-        setTipoSel(tipo);
-        setRinesSel((actuales) =>
-            actuales.filter((rin) => permitidos.has(rin)),
-        );
-    };
-
-    const toggleRin = (rin: string) =>
-        setRinesSel((actuales) =>
-            actuales.includes(rin)
-                ? actuales.filter((item) => item !== rin)
-                : [...actuales, rin],
-        );
+    }, [categoryFilteredProductos]);
 
     const filteredProductos = useMemo(
         () =>
             categoryFilteredProductos.filter(
                 (producto) =>
-                    (!tipoSel || tipoDe(producto) === tipoSel) &&
-                    (rinesSel.length === 0 ||
-                        rinesSel.includes(rinDe(producto))),
+                    !subCategoriaSel ||
+                    subCategoriaDe(producto) === subCategoriaSel,
             ),
-        [categoryFilteredProductos, tipoSel, rinesSel],
+        [categoryFilteredProductos, subCategoriaSel],
     );
-    const hayFiltrosDeVehiculo = tipoSel !== '' || rinesSel.length > 0;
     // Servicios never carry stock, so they can't be picked for a traslado.
     const productosTrasladables = useMemo(
         () => productos.filter((producto) => !esSinStock(producto)),
@@ -577,7 +528,10 @@ export default function ProductosIndex({
                         />
 
                         {permissions.canCreate && !eliminados ? (
-                            <CreateProductoModal marcas={marcas}>
+                            <CreateProductoModal
+                                marcas={marcas}
+                                categorias={categorias}
+                            >
                                 <Button data-test="create-producto-button">
                                     <Plus /> Nuevo producto
                                 </Button>
@@ -591,7 +545,7 @@ export default function ProductosIndex({
                     onValueChange={handleCategoriaTabChange}
                 >
                     <TabsList data-test="productos-categoria-tabs">
-                        {CATEGORIA_TABS.map((tab) => (
+                        {categoriaTabs.map((tab) => (
                             <TabsTrigger
                                 key={tab.value}
                                 value={tab.value}
@@ -610,25 +564,29 @@ export default function ProductosIndex({
                     <div className="flex flex-wrap items-end gap-3">
                         <div className="grid w-full gap-1 sm:w-56">
                             <Label className="text-muted-foreground text-xs">
-                                Tipo de vehículo
+                                Subcategoría
                             </Label>
                             <Select
-                                value={tipoSel === '' ? 'ALL' : tipoSel}
+                                value={
+                                    subCategoriaSel === ''
+                                        ? 'ALL'
+                                        : subCategoriaSel
+                                }
                                 onValueChange={(value) =>
-                                    handleTipoChange(
+                                    setSubCategoriaSel(
                                         value === 'ALL' ? '' : value,
                                     )
                                 }
                             >
                                 <SelectTrigger
                                     className="w-full"
-                                    data-test="productos-filtro-tipo"
+                                    data-test="productos-filtro-sub-categoria"
                                 >
-                                    <SelectValue placeholder="Todos" />
+                                    <SelectValue placeholder="Todas" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="ALL">Todos</SelectItem>
-                                    {tipoOptions.map((option) => (
+                                    <SelectItem value="ALL">Todas</SelectItem>
+                                    {subCategoriaOptions.map((option) => (
                                         <SelectItem
                                             key={option.value}
                                             value={option.value}
@@ -643,59 +601,18 @@ export default function ProductosIndex({
                             </Select>
                         </div>
 
-                        {hayFiltrosDeVehiculo ? (
+                        {subCategoriaSel !== '' ? (
                             <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                    setTipoSel('');
-                                    setRinesSel([]);
-                                }}
+                                onClick={() => setSubCategoriaSel('')}
                                 data-test="productos-filtro-limpiar"
                             >
                                 <X className="size-4" />
                                 Limpiar
                             </Button>
                         ) : null}
-                    </div>
-
-                    <div className="grid gap-1">
-                        <Label className="text-muted-foreground text-xs">
-                            Rin
-                        </Label>
-                        {rinOptions.length === 0 ? (
-                            <p className="text-muted-foreground text-sm">
-                                No hay rines.
-                            </p>
-                        ) : (
-                            <div
-                                className="flex max-h-28 flex-wrap gap-2 overflow-y-auto"
-                                data-test="productos-filtro-rin"
-                            >
-                                {rinOptions.map((option) => (
-                                    <label
-                                        key={option.value}
-                                        className={cn(
-                                            'hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1 text-sm',
-                                            rinesSel.includes(option.value) &&
-                                                'bg-accent',
-                                        )}
-                                    >
-                                        <Checkbox
-                                            checked={rinesSel.includes(
-                                                option.value,
-                                            )}
-                                            onCheckedChange={() =>
-                                                toggleRin(option.value)
-                                            }
-                                            data-test={`productos-filtro-rin-${option.value}`}
-                                        />
-                                        {option.value}
-                                    </label>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
                 <DataTable
@@ -713,18 +630,13 @@ export default function ProductosIndex({
                     onRowClick={openViewDialog}
                     pageSize={50}
                     pageSizeOptions={PAGE_SIZE_OPTIONS}
-                    // Always grouped by tipo de vehículo; with rines picked,
-                    // each group gets rin as a nested sub-grouping.
-                    groupBy={tipoDe}
-                    groupLabel={(tipo) => tipo}
-                    groupBySecondary={
-                        rinesSel.length > 0 ? rinDe : undefined
+                    // Grouped by categoria, or by subcategoria inside a categoria tab.
+                    groupBy={
+                        categoriaTab === TAB_TODOS ? categoriaDe : subCategoriaDe
                     }
-                    groupSecondaryLabel={(rin) =>
-                        rin === SIN_RIN ? rin : `Rin ${rin}`
-                    }
+                    groupLabel={(grupo) => grupo}
                     pageSizeMax={PAGE_SIZE_MAX}
-                    pageResetKey={`${categoriaTab}|${tipoSel}|${rinesSel.join(',')}`}
+                    pageResetKey={`${categoriaTab}|${subCategoriaSel}`}
                 />
             </div>
             <DeleteProductoModal
@@ -735,6 +647,7 @@ export default function ProductosIndex({
 
             <EditProductoModal
                 marcas={marcas}
+                categorias={categorias}
                 producto={productoToEdit}
                 open={editDialogOpen}
                 onOpenChange={setEditDialogOpen}

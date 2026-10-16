@@ -1,37 +1,25 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import DeleteProductoModal from '@/components/productos/delete-producto-modal';
 import ProductoFormFields from '@/components/productos/producto-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, show, update } from '@/routes/productos';
-import type { MarcaOption, Producto } from '@/types';
+import type { CategoriaOption, MarcaOption, Producto } from '@/types';
 
 type Props = {
     producto: Producto;
     marcas: MarcaOption[];
+    categorias: CategoriaOption[];
     permissions: { canDelete: boolean };
 };
 
-export default function ProductoEdit({ producto, marcas, permissions }: Props) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [removeImage, setRemoveImage] = useState(false);
+export default function ProductoEdit({
+    producto,
+    marcas,
+    categorias,
+    permissions,
+}: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-    const handleImageChange = (file: File | null, removed: boolean) => {
-        setRemoveImage(removed);
-
-        if (!fileInputRef.current) {
-            return;
-        }
-
-        const dataTransfer = new DataTransfer();
-
-        if (file) {
-            dataTransfer.items.add(file);
-        }
-
-        fileInputRef.current.files = dataTransfer.files;
-    };
 
     const nombre = producto.concatenar_codigo_nombre || 'Producto';
 
@@ -70,19 +58,8 @@ export default function ProductoEdit({ producto, marcas, permissions }: Props) {
                         <ProductoFormFields
                             producto={producto}
                             marcas={marcas}
+                            categorias={categorias}
                             errors={errors}
-                            onImageChange={handleImageChange}
-                        />
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            name="imagen_producto"
-                            className="hidden"
-                        />
-                        <input
-                            type="hidden"
-                            name="remove_imagen_producto"
-                            value={removeImage ? '1' : '0'}
                         />
 
                         <div className="flex justify-end gap-2">

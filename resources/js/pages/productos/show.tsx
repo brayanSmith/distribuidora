@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import { Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,10 @@ import { edit, index } from '@/routes/productos';
 import type { Producto } from '@/types';
 
 type Props = {
-    producto: Producto;
+    producto: Omit<Producto, 'categoria' | 'sub_categoria'> & {
+        categoria: { nombre_categoria: string } | null;
+        sub_categoria: { nombre_sub_categoria: string } | null;
+    };
 };
 
 function Field({
@@ -26,7 +29,6 @@ function Field({
 
 export default function ProductoShow({ producto }: Props) {
     const { puedeCosto, puedeDetal, puedeMayorista } = useTiposPrecio();
-    const { canViewSinInstalacion } = usePage().props;
     const nombre = producto.concatenar_codigo_nombre || 'Producto';
 
     return (
@@ -50,8 +52,14 @@ export default function ProductoShow({ producto }: Props) {
 
             <div className="space-y-6">
                 <div className="bg-card flex flex-wrap items-center gap-8 rounded-lg border p-4">
-                    <Field label="Categoría" value={producto.categoria} />
-                    <Field label="Tipo" value={producto.tipo} />
+                    <Field
+                        label="Categoría"
+                        value={producto.categoria?.nombre_categoria}
+                    />
+                    <Field
+                        label="Subcategoría"
+                        value={producto.sub_categoria?.nombre_sub_categoria}
+                    />
                     <Field
                         label="Inventariable"
                         value={producto.inventariable ? 'Sí' : 'No'}
@@ -62,18 +70,6 @@ export default function ProductoShow({ producto }: Props) {
                     <div className="bg-card space-y-4 rounded-lg border p-4 lg:col-span-2">
                         <div className="font-semibold">Datos del Producto</div>
                         <div className="grid gap-4 sm:grid-cols-4">
-                            <Field label="Ancho" value={producto.ancho} />
-                            <Field label="Perfil" value={producto.perfil} />
-                            <Field
-                                label="Construcción"
-                                value={producto.construccion}
-                            />
-                            <Field label="Rin" value={producto.rin} />
-                            <Field
-                                label="Tipo de Vehículo"
-                                value={producto.tipo_vehiculo}
-                            />
-                            <Field label="Diámetro" value={producto.diametro} />
                             <Field
                                 label="Referencia"
                                 value={producto.referencia_producto}
@@ -91,13 +87,20 @@ export default function ProductoShow({ producto }: Props) {
                     </div>
 
                     <div className="bg-card space-y-3 rounded-lg border p-4">
-                        <div className="font-semibold">Imagen del Producto</div>
-                        {producto.imagen_producto_url ? (
-                            <img
-                                src={producto.imagen_producto_url}
-                                alt={nombre}
-                                className="aspect-square w-full rounded-md border object-contain"
-                            />
+                        <div className="font-semibold">
+                            Imágenes del Producto
+                        </div>
+                        {producto.imagenes.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                {producto.imagenes.map((imagen) => (
+                                    <img
+                                        key={imagen.id}
+                                        src={imagen.url}
+                                        alt={nombre}
+                                        className="aspect-square w-full rounded-md border object-contain"
+                                    />
+                                ))}
+                            </div>
                         ) : (
                             <p className="text-muted-foreground text-sm">
                                 Sin imagen
@@ -125,12 +128,6 @@ export default function ProductoShow({ producto }: Props) {
                             <Field
                                 label="Valor Mayorista"
                                 value={producto.valor_mayorista}
-                            />
-                        ) : null}
-                        {canViewSinInstalacion ? (
-                            <Field
-                                label="Valor Sin Instalación"
-                                value={producto.valor_sin_instalacion}
                             />
                         ) : null}
                     </div>

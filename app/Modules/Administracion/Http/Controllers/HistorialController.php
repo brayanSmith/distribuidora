@@ -3,21 +3,23 @@
 namespace App\Modules\Administracion\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Ventas\Models\Abono;
-use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Ventas\Models\Cliente;
-use App\Modules\Compras\Models\Compra;
-use App\Modules\Administracion\Models\Empresa;
-use App\Modules\Catalogo\Models\Marca;
-use App\Modules\Ventas\Models\Pedido;
-use App\Modules\Catalogo\Models\Producto;
-use App\Modules\Compras\Models\Proveedor;
-use App\Modules\Administracion\Models\Role;
-use App\Modules\Inventario\Models\StockInicial;
-use App\Modules\Inventario\Models\Traslado;
 use App\Models\User;
+use App\Modules\Administracion\Models\Empresa;
+use App\Modules\Administracion\Models\Role;
+use App\Modules\Catalogo\Models\Categoria;
+use App\Modules\Catalogo\Models\Marca;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Catalogo\Models\SubCategoria;
+use App\Modules\Compras\Models\Compra;
+use App\Modules\Compras\Models\Proveedor;
 use App\Modules\Finanzas\Models\Gasto;
 use App\Modules\Finanzas\Models\Puc;
+use App\Modules\Inventario\Models\Bodega;
+use App\Modules\Inventario\Models\StockInicial;
+use App\Modules\Inventario\Models\Traslado;
+use App\Modules\Ventas\Models\Abono;
+use App\Modules\Ventas\Models\Cliente;
+use App\Modules\Ventas\Models\Pedido;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -80,6 +82,8 @@ class HistorialController extends Controller
         'proveedor_id' => 'Proveedor',
         'observaciones' => 'Observaciones',
         'categoria' => 'Categoría',
+        'categoria_id' => 'Categoría',
+        'sub_categoria_id' => 'Subcategoría',
         'tipo' => 'Tipo',
         'inventariable' => 'Inventariable',
         'sku' => 'SKU',
@@ -168,7 +172,7 @@ class HistorialController extends Controller
 
     /** Fields that hold the id of another record, which is shown by name. */
     private const REFERENCIAS = [
-        'cliente_id', 'marca_id', 'proveedor_id', 'user_id', 'vendedor_id', 'puc_id', 'producto_id',
+        'cliente_id', 'marca_id', 'categoria_id', 'sub_categoria_id', 'proveedor_id', 'user_id', 'vendedor_id', 'puc_id', 'producto_id',
         'bodega_id', 'bodega_donante_id', 'bodega_destino_id',
     ];
 
@@ -346,6 +350,8 @@ class HistorialController extends Controller
         return [
             'cliente_id' => Cliente::withTrashed()->whereIn('id', $ids['cliente_id'])->pluck('razon_social', 'id')->all(),
             'marca_id' => Marca::whereIn('id', $ids['marca_id'])->pluck('marca', 'id')->all(),
+            'categoria_id' => Categoria::whereIn('id', $ids['categoria_id'])->pluck('nombre_categoria', 'id')->all(),
+            'sub_categoria_id' => SubCategoria::whereIn('id', $ids['sub_categoria_id'])->pluck('nombre_sub_categoria', 'id')->all(),
             'proveedor_id' => Proveedor::withTrashed()->whereIn('id', $ids['proveedor_id'])->pluck('nombre_proveedor', 'id')->all(),
             'producto_id' => Producto::withTrashed()->whereIn('id', $ids['producto_id'])->pluck('concatenar_codigo_nombre', 'id')->all(),
             'user_id' => $usuarios,

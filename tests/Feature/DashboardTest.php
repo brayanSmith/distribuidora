@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Modules\Catalogo\Models\Categoria;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Compras\Models\DetalleCompra;
 use App\Modules\Finanzas\Models\Gasto;
@@ -27,13 +28,13 @@ test('authenticated users can visit the dashboard', function () {
     $response->assertOk();
 });
 
-test('the dashboard counts units per bodega and tipo, grouping mayorista orders apart', function () {
+test('the dashboard counts units per bodega and categoria, grouping mayorista orders apart', function () {
     $user = User::factory()->create();
     asignarRol($user);
     $bodega = Bodega::factory()->create(['nombre_bodega' => 'Central']);
 
-    $nuevo = Producto::factory()->create(['tipo' => 'NUEVO']);
-    $servicio = Producto::factory()->create(['categoria' => 'SERVICIO', 'tipo' => 'SERVICIO']);
+    $nuevo = Producto::factory()->create(['categoria_id' => Categoria::factory()->create(['nombre_categoria' => 'Llantas'])->id]);
+    $servicio = Producto::factory()->create(['categoria_id' => Categoria::factory()->create(['nombre_categoria' => 'Servicios'])->id]);
 
     $detal = Pedido::factory()->create(['bodega_id' => $bodega->id, 'tipo_precio' => 'DETAL']);
     $mayorista = Pedido::factory()->create(['bodega_id' => $bodega->id, 'tipo_precio' => 'MAYORISTA']);
@@ -52,12 +53,13 @@ test('the dashboard counts units per bodega and tipo, grouping mayorista orders 
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('cantidadPorBodega.filas.0.almacen', 'Central')
-            ->where('cantidadPorBodega.filas.0.NUEVO', 3)
-            ->where('cantidadPorBodega.filas.0.SERVICIO', 2)
+            ->where('cantidadPorBodega.categorias', ['Llantas', 'Servicios'])
+            ->where('cantidadPorBodega.filas.0.cantidades.Llantas', 3)
+            ->where('cantidadPorBodega.filas.0.cantidades.Servicios', 2)
             ->where('cantidadPorBodega.filas.0.total', 5)
             ->where('cantidadPorBodega.filas.0.valores.total', fn ($valor) => $valor > 0)
             ->where('cantidadPorBodega.filas.1.almacen', 'Mayorista')
-            ->where('cantidadPorBodega.filas.1.NUEVO', 10)
+            ->where('cantidadPorBodega.filas.1.cantidades.Llantas', 10)
             ->where('cantidadPorBodega.totales.total', 15)
         );
 });
@@ -108,8 +110,8 @@ test('the dashboard filters narrow the widgets and the table, leaving expenses o
     asignarRol($user);
     $central = Bodega::factory()->create(['nombre_bodega' => 'Central']);
     $norte = Bodega::factory()->create(['nombre_bodega' => 'Norte']);
-    $carro = Producto::factory()->create(['tipo_vehiculo' => 'CARRO']);
-    $moto = Producto::factory()->create(['tipo_vehiculo' => 'MOTO']);
+    $carro = Producto::factory()->create();
+    $moto = Producto::factory()->create();
 
     $venta = function (Bodega $bodega, Producto $producto, string $fecha, int $cantidad) {
         $pedido = Pedido::factory()->create(['bodega_id' => $bodega->id, 'fecha' => $fecha, 'total_a_pagar' => $cantidad * 100]);
@@ -145,7 +147,7 @@ test('the dashboard filters narrow the widgets and the table, leaving expenses o
         );
 
     $this->actingAs($user)
-        ->get(route('dashboard', ['tipo_vehiculo' => 'MOTO']))
+        ->get(route('dashboard', ['producto_ids' => [$moto->id]]))
         ->assertInertia(fn ($page) => $page
             ->where('resumen.productosVendidos.cantidad', 3)
             ->where('resumen.valorPedidos.valor', 300)
@@ -223,8 +225,8 @@ test('the dashboard feeds the charts with categories, best sellers and orders pe
     asignarRol($user);
     $bodega = Bodega::factory()->create();
 
-    $llanta = Producto::factory()->create(['categoria' => 'LLANTA', 'concatenar_codigo_nombre' => 'LLA-1 Llanta']);
-    $rin = Producto::factory()->create(['categoria' => 'RIN', 'concatenar_codigo_nombre' => 'RIN-1 Rin']);
+    $llanta = Producto::factory()->create(['categoria_id' => Categoria::factory()->create(['nombre_categoria' => 'LLANTA'])->id, 'concatenar_codigo_nombre' => 'LLA-1 Llanta']);
+    $rin = Producto::factory()->create(['categoria_id' => Categoria::factory()->create(['nombre_categoria' => 'RIN'])->id, 'concatenar_codigo_nombre' => 'RIN-1 Rin']);
 
     $lunes = Pedido::factory()->create(['bodega_id' => $bodega->id, 'fecha' => '2026-03-02']);
     $martes = Pedido::factory()->create(['bodega_id' => $bodega->id, 'fecha' => '2026-03-03']);
@@ -343,13 +345,13 @@ test('the hasta date keeps the orders of that whole day, also when desde is the 
         );
 });
 
-test('the out of stock alert leaves services out even when they are flagged inventariable', function () {
+test('the out of stock alert leaves out the productos that do not carry stock', function () {
     $user = User::factory()->create();
     asignarRol($user);
     $bodega = Bodega::factory()->create();
 
-    $llanta = Producto::factory()->create(['categoria' => 'LLANTA', 'tipo' => 'NUEVO', 'inventariable' => true]);
-    $servicio = Producto::factory()->create(['categoria' => 'SERVICIO', 'tipo' => 'SERVICIO', 'inventariable' => true]);
+    $llanta = Producto::factory()->create(['inventariable' => true]);
+    $servicio = Producto::factory()->create(['inventariable' => false]);
 
     $pedido = Pedido::factory()->create(['bodega_id' => $bodega->id, 'tipo_precio' => 'DETAL']);
 

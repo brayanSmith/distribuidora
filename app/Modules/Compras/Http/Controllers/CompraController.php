@@ -2,15 +2,15 @@
 
 namespace App\Modules\Compras\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\HandlesTrash;
+use App\Http\Controllers\Controller;
+use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Compras\Http\Requests\StoreCompraRequest;
 use App\Modules\Compras\Http\Requests\UpdateCompraRequest;
-use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Compras\Models\Compra;
 use App\Modules\Compras\Models\DetalleCompra;
-use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Compras\Models\Proveedor;
+use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Inventario\Models\StockBodega;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -246,7 +246,7 @@ class CompraController extends Controller
 
         // Servicios (and any producto marked as not inventariable) never carry stock.
         if (Producto::withTrashed()->whereKey($detalle->producto_id)
-            ->where(fn ($query) => $query->where('categoria', 'SERVICIO')->orWhere('inventariable', false))
+            ->where('inventariable', false)
             ->exists()) {
             return;
         }
@@ -270,8 +270,7 @@ class CompraController extends Controller
     {
         return [
             'proveedores' => Proveedor::orderBy('nombre_proveedor')->get(['id', 'nombre_proveedor']),
-            'productos' => Producto::whereIn('categoria', ['LLANTA', 'RIN', 'OTRO'])
-                ->where('inventariable', true)
+            'productos' => Producto::where('inventariable', true)
                 ->orderBy('referencia_producto')
                 ->get(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'costo_producto']),
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
