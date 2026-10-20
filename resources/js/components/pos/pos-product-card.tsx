@@ -1,5 +1,7 @@
 import { Badge } from '@/components/ui/badge';
+import type { TipoPrecioLinea } from '@/hooks/use-pos-cart';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
+import { tipoLineaDe } from '@/lib/pedido-pricing';
 import { cn } from '@/lib/utils';
 import type { PosCatalogoProducto, TipoPrecioPedido } from '@/types';
 
@@ -9,8 +11,10 @@ type Props = {
     stockDisponible: number;
     /** Units of this product already in the cart (0 when it is not). */
     enCarrito: number;
-    /** The tipo de precio being sold at; its price row is highlighted. */
+    /** The pedido's tipo de precio: the one a product not yet in the cart takes. */
     tipoPrecio: TipoPrecioPedido;
+    /** How the product is sold when it is in the cart; its price is highlighted. */
+    enCarritoComo?: { tipoPrecio?: TipoPrecioLinea; precioUnitario: number };
     onAdd: (producto: PosCatalogoProducto) => void;
 };
 
@@ -51,6 +55,7 @@ export default function PosProductCard({
     stockDisponible,
     enCarrito,
     tipoPrecio,
+    enCarritoComo,
     onAdd,
 }: Props) {
     const { puedeDetal, puedeMayorista } = useTiposPrecio();
@@ -59,6 +64,7 @@ export default function PosProductCard({
         producto.referencia_producto ??
         `Producto ${producto.id}`;
     const hasStock = stockDisponible > 0;
+    const seleccionado = enCarritoComo?.tipoPrecio ?? tipoLineaDe(tipoPrecio);
 
     return (
         <button
@@ -117,7 +123,7 @@ export default function PosProductCard({
                 {puedeDetal ? (
                     <PrecioRow
                         label="Detal"
-                        active={tipoPrecio === 'DETAL'}
+                        active={seleccionado === 'DETAL'}
                         value={producto.valor_detal}
                         colorClassName="text-emerald-600 dark:text-emerald-400"
                     />
@@ -125,9 +131,17 @@ export default function PosProductCard({
                 {puedeMayorista ? (
                     <PrecioRow
                         label="Mayorista"
-                        active={tipoPrecio === 'MAYORISTA'}
+                        active={seleccionado === 'MAYORISTA'}
                         value={producto.valor_mayorista}
                         colorClassName="text-amber-600 dark:text-amber-400"
+                    />
+                ) : null}
+                {enCarritoComo && seleccionado === 'PERSONALIZADO' ? (
+                    <PrecioRow
+                        label="Personalizado"
+                        active
+                        value={String(enCarritoComo.precioUnitario)}
+                        colorClassName="text-sky-600 dark:text-sky-400"
                     />
                 ) : null}
             </div>

@@ -1,17 +1,17 @@
 import { Head } from '@inertiajs/react';
 import {
     ArrowLeftRight,
-    Check,
-    ChevronDown,
     Download,
     Eye,
     Pencil,
     Plus,
     Trash2,
-    X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
+import CategoriaFiltro, {
+    contarCategorias,
+} from '@/components/productos/categoria-filtro';
 import CreateProductoModal from '@/components/productos/create-producto-modal';
 import CreateTrasladoModal from '@/components/traslados/create-traslado-modal';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
@@ -27,10 +27,6 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -96,27 +92,6 @@ const FORMATOS_EXPORTACION = [
 /** Each row renders many controls, so bigger pages make the table sluggish. */
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 const PAGE_SIZE_MAX = 100;
-
-/** An entry of the categoria filter menu: its name, how many productos it has and a check when it is the active one. */
-function ItemFiltro({
-    activo,
-    etiqueta,
-    cantidad,
-}: {
-    activo: boolean;
-    etiqueta: string;
-    cantidad: number;
-}) {
-    return (
-        <span className="flex w-full items-center gap-2">
-            <Check
-                className={cn('size-4 shrink-0', !activo && 'invisible')}
-            />
-            <span className="flex-1">{etiqueta}</span>
-            <span className="text-muted-foreground text-xs">{cantidad}</span>
-        </span>
-    );
-}
 
 const DEFAULT_BODEGA_WIDTH = 110;
 /** Fits the view / edit / delete / traslado buttons on one line. */
@@ -193,7 +168,9 @@ function esSinStock(producto: Producto): boolean {
 function renderCellValue(key: string, accessor: Accessor, producto: Producto) {
     const value = accessor.get(producto);
     const esColumnaDeStock =
-        key === 'pendiente' || key === 'stock_total' || key.startsWith('bodega_');
+        key === 'pendiente' ||
+        key === 'stock_total' ||
+        key.startsWith('bodega_');
 
     if (esColumnaDeStock && esSinStock(producto)) {
         return '—';
@@ -511,55 +488,21 @@ export default function ProductosIndex({
         );
     }, [productos, categoriaTab]);
 
-    const categoriaCounts = useMemo(() => {
-        const counts: Record<string, number> = {
-            [TAB_TODOS]: productos.length,
-        };
-
-        productos.forEach((producto) => {
-            const tab =
-                producto.categoria_id === null
-                    ? TAB_SIN_CATEGORIA
-                    : String(producto.categoria_id);
-            counts[tab] = (counts[tab] ?? 0) + 1;
-        });
-
-        return counts;
-    }, [productos]);
+    const conteosCategorias = useMemo(
+        () =>
+            contarCategorias(
+                productos,
+                (producto) => producto.categoria_id,
+                (producto) => producto.sub_categoria,
+            ),
+        [productos],
+    );
 
     const seleccionarCategoria = (tab: CategoriaTab, subCategoria = '') => {
         setCategoriaTab(tab);
         setSubCategoriaSel(subCategoria);
     };
 
-    // How many productos each subcategoria of each categoria has.
-    const subCategoriaCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-
-        productos.forEach((producto) => {
-            if (producto.categoria_id !== null && producto.sub_categoria) {
-                const clave = `${producto.categoria_id}|${producto.sub_categoria}`;
-                counts[clave] = (counts[clave] ?? 0) + 1;
-            }
-        });
-
-        return counts;
-    }, [productos]);
-
-    // What the filter button says: the categoria and, if any, its subcategoria.
-    const etiquetaFiltro = useMemo(() => {
-        const categoria = categoriaTabs.find(
-            (tab) => tab.value === categoriaTab,
-        );
-
-        if (!categoria || categoriaTab === TAB_TODOS) {
-            return 'Todas las categorías';
-        }
-
-        return subCategoriaSel
-            ? `${categoria.label} › ${subCategoriaSel}`
-            : categoria.label;
-    }, [categoriaTabs, categoriaTab, subCategoriaSel]);
     const filteredProductos = useMemo(
         () =>
             categoryFilteredProductos.filter(
@@ -592,186 +535,14 @@ export default function ProductosIndex({
                             visible={permissions.canViewDeleted}
                         />
 
-                        <div className="flex items-center">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        data-test="productos-filtro-categoria"
-                                    >
-                                        {etiquetaFiltro}
-                                        <ChevronDown className="opacity-60" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                    align="start"
-                                    className="min-w-56"
-                                >
-                                    <DropdownMenuItem
-                                        onSelect={() =>
-                                            seleccionarCategoria(TAB_TODOS)
-                                        }
-                                    >
-                                        <ItemFiltro
-                                            activo={
-                                                categoriaTab === TAB_TODOS
-                                            }
-                                            etiqueta="Todas las categorías"
-                                            cantidad={
-                                                categoriaCounts[TAB_TODOS] ?? 0
-                                            }
-                                        />
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-
-                                    {categorias.map((categoria) => {
-                                        const id = String(categoria.id);
-                                        const activa = categoriaTab === id;
-
-                                        if (
-                                            categoria.sub_categorias.length ===
-                                            0
-                                        ) {
-                                            return (
-                                                <DropdownMenuItem
-                                                    key={id}
-                                                    onSelect={() =>
-                                                        seleccionarCategoria(id)
-                                                    }
-                                                >
-                                                    <ItemFiltro
-                                                        activo={activa}
-                                                        etiqueta={
-                                                            categoria.nombre_categoria
-                                                        }
-                                                        cantidad={
-                                                            categoriaCounts[
-                                                                id
-                                                            ] ?? 0
-                                                        }
-                                                    />
-                                                </DropdownMenuItem>
-                                            );
-                                        }
-
-                                        return (
-                                            <DropdownMenuSub key={id}>
-                                                <DropdownMenuSubTrigger
-                                                    data-test={`productos-filtro-categoria-${id}`}
-                                                    onClick={() =>
-                                                        seleccionarCategoria(id)
-                                                    }
-                                                >
-                                                    <ItemFiltro
-                                                        activo={activa}
-                                                        etiqueta={
-                                                            categoria.nombre_categoria
-                                                        }
-                                                        cantidad={
-                                                            categoriaCounts[
-                                                                id
-                                                            ] ?? 0
-                                                        }
-                                                    />
-                                                </DropdownMenuSubTrigger>
-                                                <DropdownMenuSubContent className="min-w-52">
-                                                    <DropdownMenuItem
-                                                        onSelect={() =>
-                                                            seleccionarCategoria(
-                                                                id,
-                                                            )
-                                                        }
-                                                    >
-                                                        <ItemFiltro
-                                                            activo={
-                                                                activa &&
-                                                                subCategoriaSel ===
-                                                                    ''
-                                                            }
-                                                            etiqueta={`Todas de ${categoria.nombre_categoria}`}
-                                                            cantidad={
-                                                                categoriaCounts[
-                                                                    id
-                                                                ] ?? 0
-                                                            }
-                                                        />
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    {categoria.sub_categorias.map(
-                                                        (subCategoria) => (
-                                                            <DropdownMenuItem
-                                                                key={
-                                                                    subCategoria.id
-                                                                }
-                                                                onSelect={() =>
-                                                                    seleccionarCategoria(
-                                                                        id,
-                                                                        subCategoria.nombre_sub_categoria,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <ItemFiltro
-                                                                    activo={
-                                                                        activa &&
-                                                                        subCategoriaSel ===
-                                                                            subCategoria.nombre_sub_categoria
-                                                                    }
-                                                                    etiqueta={
-                                                                        subCategoria.nombre_sub_categoria
-                                                                    }
-                                                                    cantidad={
-                                                                        subCategoriaCounts[
-                                                                            `${id}|${subCategoria.nombre_sub_categoria}`
-                                                                        ] ?? 0
-                                                                    }
-                                                                />
-                                                            </DropdownMenuItem>
-                                                        ),
-                                                    )}
-                                                </DropdownMenuSubContent>
-                                            </DropdownMenuSub>
-                                        );
-                                    })}
-
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        onSelect={() =>
-                                            seleccionarCategoria(
-                                                TAB_SIN_CATEGORIA,
-                                            )
-                                        }
-                                    >
-                                        <ItemFiltro
-                                            activo={
-                                                categoriaTab ===
-                                                TAB_SIN_CATEGORIA
-                                            }
-                                            etiqueta={SIN_CATEGORIA}
-                                            cantidad={
-                                                categoriaCounts[
-                                                    TAB_SIN_CATEGORIA
-                                                ] ?? 0
-                                            }
-                                        />
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            {categoriaTab !== TAB_TODOS ? (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    aria-label="Quitar filtro de categoría"
-                                    onClick={() =>
-                                        seleccionarCategoria(TAB_TODOS)
-                                    }
-                                    data-test="productos-filtro-limpiar"
-                                >
-                                    <X className="size-4" />
-                                </Button>
-                            ) : null}
-                        </div>
+                        <CategoriaFiltro
+                            categorias={categorias}
+                            categoria={categoriaTab}
+                            subCategoria={subCategoriaSel}
+                            onChange={seleccionarCategoria}
+                            conteos={conteosCategorias}
+                            dataTest="productos-filtro-categoria"
+                        />
                         {permissions.canExport && !eliminados ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -807,9 +578,7 @@ export default function ProductosIndex({
                         ) : null}
 
                         {permissions.canCreate && !eliminados ? (
-                            <CreateProductoModal
-                                categorias={categorias}
-                            >
+                            <CreateProductoModal categorias={categorias}>
                                 <Button data-test="create-producto-button">
                                     <Plus /> Nuevo producto
                                 </Button>
@@ -834,7 +603,9 @@ export default function ProductosIndex({
                     pageSizeOptions={PAGE_SIZE_OPTIONS}
                     // Grouped by categoria, or by subcategoria inside a categoria tab.
                     groupBy={
-                        categoriaTab === TAB_TODOS ? categoriaDe : subCategoriaDe
+                        categoriaTab === TAB_TODOS
+                            ? categoriaDe
+                            : subCategoriaDe
                     }
                     groupLabel={(grupo) => grupo}
                     pageSizeMax={PAGE_SIZE_MAX}

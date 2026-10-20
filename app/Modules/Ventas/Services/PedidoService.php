@@ -35,7 +35,6 @@ class PedidoService
                 'user_id' => $data['user_id'],
                 'bodega_id' => $data['bodega_id'],
                 'tipo_precio' => $data['tipo_precio'],
-                'placa' => $data['placa'] ?? null,
                 'facturacion_electronica' => $data['facturacion_electronica'] ?? false,
                 'aplica_turno' => $aplicaTurno,
                 'turno' => $aplicaTurno ? $this->generarTurno((int) $data['bodega_id'], Carbon::parse($data['fecha'])) : null,
@@ -117,7 +116,9 @@ class PedidoService
     /**
      * Replace the pedido's detalles, recomputing totals and warehouse stock.
      *
-     * @param  array<int, array{producto_id: int, bodega_id?: int|null, cantidad: float|string, precio_unitario: float|string}>  $detalles
+     * A line without its own tipo de precio takes the pedido's (OTRO counts as DETAL).
+     *
+     * @param  array<int, array{producto_id: int, bodega_id?: int|null, cantidad: float|string, tipo_precio?: string|null, precio_unitario: float|string}>  $detalles
      */
     public function syncDetalles(Pedido $pedido, array $detalles): void
     {
@@ -140,6 +141,7 @@ class PedidoService
                 'producto_id' => $item['producto_id'],
                 'bodega_id' => $item['bodega_id'] ?? $pedido->bodega_id,
                 'cantidad' => $cantidad,
+                'tipo_precio' => $item['tipo_precio'] ?? ($pedido->tipo_precio === 'MAYORISTA' ? 'MAYORISTA' : 'DETAL'),
                 'precio_unitario' => $precioUnitario,
                 'subtotal' => $itemSubtotal,
                 'costo_unitario' => $costoUnitario,

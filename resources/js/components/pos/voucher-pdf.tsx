@@ -179,7 +179,6 @@ function VoucherDocument({
                 <Linea label="CIUDAD" value={cliente.ciudad} />
                 <Linea label="DIR" value={cliente.direccion} />
                 <Linea label="TEL" value={cliente.telefono} />
-                <Linea label="PLACA" value={pedido.placa} />
                 <Linea label="EMAIL" value={cliente.email} />
                 <Linea
                     label="FACTURACION ELECTRONICA"

@@ -1,15 +1,24 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
+import TipoPrecioToggle from '@/components/pos/tipo-precio-toggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { PosCartLine } from '@/hooks/use-pos-cart';
+import type { PosCartLine, TipoPrecioLinea } from '@/hooks/use-pos-cart';
 
 type Props = {
     line: PosCartLine;
     onCantidadChange: (cantidad: number) => void;
     onPrecioChange: (precio: number) => void;
+    tipoPrecio: TipoPrecioLinea;
+    onTipoPrecioChange: (tipoPrecio: TipoPrecioLinea) => void;
     onEdit: () => void;
     onRemove: () => void;
+};
+
+const ETIQUETAS: Record<TipoPrecioLinea, string> = {
+    DETAL: 'Detal',
+    MAYORISTA: 'Mayorista',
+    PERSONALIZADO: 'Personalizado',
 };
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
@@ -22,6 +31,8 @@ export default function PosCartItem({
     line,
     onCantidadChange,
     onPrecioChange,
+    tipoPrecio,
+    onTipoPrecioChange,
     onEdit,
     onRemove,
 }: Props) {
@@ -47,12 +58,18 @@ export default function PosCartItem({
                     {line.nombre}
                 </p>
                 <p className="text-muted-foreground text-xs">
-                    {line.bodegaNombre} ·
+                    {ETIQUETAS[tipoPrecio]} ·{line.bodegaNombre} ·
                     {currencyFormatter.format(
                         line.cantidad * line.precioUnitario,
                     )}
                 </p>
             </button>
+
+            <TipoPrecioToggle
+                value={tipoPrecio}
+                onChange={onTipoPrecioChange}
+                dataTest="pos-cart-item-tipo"
+            />
 
             <Input
                 type="number"

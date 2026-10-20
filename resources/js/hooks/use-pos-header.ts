@@ -14,14 +14,13 @@ export type PosHeaderState = {
     observacion: string;
     /** The observación de pago as edited by hand; null follows the abonos. */
     observacionPago: string | null;
-    placa: string;
     aplicaTurno: boolean;
     facturacionElectronica: boolean;
 };
 
 /**
  * The pedido-level fields the POS right panel edits (cliente, bodega,
- * vendedor, tipo de precio, descuento, flete, observación, placa, turno,
+ * vendedor, tipo de precio, descuento, flete, observación, turno,
  * facturación electrónica), as one state
  * object with a single patch function — keeps the panel's prop list to
  * `header` + `setField` instead of a pair of props per field.
@@ -40,7 +39,6 @@ export const defaultPosHeader = (
     tipoPago: 'CONTADO',
     observacion: '',
     observacionPago: null,
-    placa: '',
     aplicaTurno: false,
     facturacionElectronica: false,
 });

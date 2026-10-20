@@ -31,7 +31,6 @@ class PedidoVoucher
                 'id' => $pedido->id,
                 'turno' => $pedido->turno,
                 'fecha' => $pedido->fecha?->format('d/m/Y H:i'),
-                'placa' => $pedido->placa,
                 'facturacion_electronica' => (bool) $pedido->facturacion_electronica,
                 'observacion' => $pedido->observacion,
                 'observacion_pago' => $pedido->observacion_pago,

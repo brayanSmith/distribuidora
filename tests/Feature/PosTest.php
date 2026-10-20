@@ -171,7 +171,7 @@ test('the POS catalog exposes the stock of every bodega', function () {
         );
 });
 
-test('the POS stores placa, aplica_turno and facturacion_electronica on the pedido', function () {
+test('the POS stores aplica_turno and facturacion_electronica on the pedido', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
@@ -181,7 +181,6 @@ test('the POS stores placa, aplica_turno and facturacion_electronica on the pedi
         'user_id' => User::factory()->create()->id,
         'bodega_id' => Bodega::factory()->create()->id,
         'tipo_precio' => 'DETAL',
-        'placa' => 'ABC123',
         'aplica_turno' => '1',
         'facturacion_electronica' => '1',
         'detalles' => [
@@ -191,7 +190,6 @@ test('the POS stores placa, aplica_turno and facturacion_electronica on the pedi
 
     $pedido = Pedido::firstOrFail();
 
-    expect($pedido->placa)->toBe('ABC123');
     expect((bool) $pedido->aplica_turno)->toBeTrue();
     expect($pedido->facturacion_electronica)->toBeTrue();
 });
@@ -416,7 +414,6 @@ test('checking out flashes the voucher data with the turno, totals and cliente',
         'bodega_id' => $bodega->id,
         'tipo_precio' => 'DETAL',
         'aplica_turno' => '1',
-        'placa' => 'BTM568',
         'detalles' => [
             ['producto_id' => $producto->id, 'cantidad' => 4, 'precio_unitario' => 83000],
         ],
@@ -428,7 +425,6 @@ test('checking out flashes the voucher data with the turno, totals and cliente',
     expect($voucher)->not->toBeNull()
         ->and($voucher['pedido']['turno'])->toBe('OUT-0001')
         ->and($voucher['pedido']['total_a_pagar'])->toBe(332000.0)
-        ->and($voucher['pedido']['placa'])->toBe('BTM568')
         ->and($voucher['vendedor'])->toBe('SuperAdmin')
         ->and($voucher['cliente']['razon_social'])->toBe('Cecilia Gonzalez')
         ->and($voucher['detalles'][0]['nombre'])->toBe('100/80-17-HEVOS')
@@ -586,4 +582,49 @@ test('selling a servicio through the POS does not move any stock', function () {
 
     expect(Pedido::firstOrFail()->detalles)->toHaveCount(1)
         ->and(StockBodega::where('producto_id', $servicio->id)->exists())->toBeFalse();
+});
+
+test('each POS line keeps the price it is sold at, retail, wholesale or personalizado, defaulting to the pedido one', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    [$detal, $mayoreo, $personalizado, $sinTipo] = Producto::factory()->count(4)->create();
+
+    $this->actingAs($owner)->post(route('pos.store'), [
+        'cliente_id' => Cliente::factory()->create()->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'user_id' => $owner->id,
+        'bodega_id' => Bodega::factory()->create()->id,
+        'tipo_precio' => 'DETAL',
+        'detalles' => [
+            ['producto_id' => $detal->id, 'cantidad' => 1, 'precio_unitario' => 100, 'tipo_precio' => 'DETAL'],
+            ['producto_id' => $mayoreo->id, 'cantidad' => 5, 'precio_unitario' => 80, 'tipo_precio' => 'MAYORISTA'],
+            ['producto_id' => $personalizado->id, 'cantidad' => 1, 'precio_unitario' => 77, 'tipo_precio' => 'PERSONALIZADO'],
+            ['producto_id' => $sinTipo->id, 'cantidad' => 2, 'precio_unitario' => 90],
+        ],
+    ])->assertSessionHasNoErrors()->assertRedirect(route('pos.index'));
+
+    $detalles = Pedido::firstOrFail()->detalles->keyBy('producto_id');
+    $tipos = $detalles->map->tipo_precio;
+
+    expect($tipos[$detal->id])->toBe('DETAL')
+        ->and($tipos[$mayoreo->id])->toBe('MAYORISTA')
+        ->and($tipos[$personalizado->id])->toBe('PERSONALIZADO')
+        ->and((float) $detalles[$personalizado->id]->precio_unitario)->toBe(77.0)
+        ->and($tipos[$sinTipo->id])->toBe('DETAL');
+});
+
+test('a POS line only accepts DETAL, MAYORISTA or PERSONALIZADO as its tipo de precio', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $this->actingAs($owner)->post(route('pos.store'), [
+        'cliente_id' => Cliente::factory()->create()->id,
+        'fecha' => '2026-01-10 10:00:00',
+        'user_id' => $owner->id,
+        'bodega_id' => Bodega::factory()->create()->id,
+        'tipo_precio' => 'DETAL',
+        'detalles' => [
+            ['producto_id' => Producto::factory()->create()->id, 'cantidad' => 1, 'precio_unitario' => 100, 'tipo_precio' => 'OTRO'],
+        ],
+    ])->assertSessionHasErrors('detalles.0.tipo_precio');
 });

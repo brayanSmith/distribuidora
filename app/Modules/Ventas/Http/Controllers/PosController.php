@@ -176,21 +176,24 @@ class PosController extends Controller
 
         // Servicios are not inventariable but are sold like any other producto.
         return Producto::query()
-            ->select(['id', 'categoria_id', 'referencia_producto', 'descripcion_producto', 'marca', 'inventariable', 'sku', 'valor_detal', 'valor_mayorista', 'costo_producto'])
-            ->with(['stockBodegas:id,producto_id,bodega_id,stock', 'categoria:id,nombre_categoria', 'imagenes:id,producto_id,imagen_producto'])
+            ->select(['id', 'categoria_id', 'sub_categoria_id', 'referencia_producto', 'descripcion_producto', 'marca', 'inventariable', 'sku', 'valor_detal', 'valor_mayorista', 'costo_producto'])
+            ->with(['stockBodegas:id,producto_id,bodega_id,stock', 'categoria:id,nombre_categoria', 'subCategoria:id,nombre_sub_categoria', 'imagenes:id,producto_id,imagen_producto'])
             ->orderBy('referencia_producto')
             ->get()
             ->map(fn (Producto $producto): array => [
                 'id' => $producto->id,
                 'referencia_producto' => $producto->referencia_producto,
                 'concatenar_codigo_nombre' => $producto->concatenar_codigo_nombre,
+                'categoria_id' => $producto->categoria_id,
                 'categoria' => $producto->categoria?->nombre_categoria,
+                'sub_categoria' => $producto->subCategoria?->nombre_sub_categoria,
                 'inventariable' => (bool) $producto->inventariable,
                 'sku' => $producto->sku,
                 'valor_detal' => $usuario->puedeVerPrecio('valor_detal') ? $producto->valor_detal : null,
                 'valor_mayorista' => $usuario->puedeVerPrecio('valor_mayorista') ? $producto->valor_mayorista : null,
                 'costo_producto' => $usuario->puedeVerPrecio('costo') ? $producto->costo_producto : null,
                 'imagen_producto_url' => $producto->imagenes->first()?->url,
+                'imagenes' => $producto->imagenes->map->url->values()->all(),
                 'stock_total' => (float) $producto->stockBodegas->sum('stock'),
                 'stock_por_bodega' => $producto->stockBodegas->mapWithKeys(fn ($stock): array => [$stock->bodega_id => (float) $stock->stock])->all(),
             ])

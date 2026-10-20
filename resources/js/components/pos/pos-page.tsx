@@ -15,13 +15,17 @@ import PosPedidosHistorialModal from '@/components/pos/pos-pedidos-historial-mod
 import PosVentasTabs from '@/components/pos/pos-ventas-tabs';
 import PosCartPanel from '@/components/pos/pos-cart-panel';
 import PosCatalog from '@/components/pos/pos-catalog';
-import type { PosCartLine } from '@/hooks/use-pos-cart';
+import type { PosCartLine, TipoPrecioLinea } from '@/hooks/use-pos-cart';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 import { usePosAbonos } from '@/hooks/use-pos-abonos';
 import { usePosCart } from '@/hooks/use-pos-cart';
 import { usePosHeader } from '@/hooks/use-pos-header';
 import { usePosVentas } from '@/hooks/use-pos-ventas';
-import { precioParaTipo } from '@/lib/pedido-pricing';
+import {
+    precioDeLinea,
+    precioParaTipo,
+    tipoLineaDe,
+} from '@/lib/pedido-pricing';
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
@@ -121,6 +125,16 @@ export default function PosPage({
         bodegaId: string;
     } | null>(null);
 
+    // The price a line is sold at: the line's own, or the pedido's.
+    const precioLinea = (
+        productoId: number,
+        tipoPrecio: TipoPrecioLinea,
+    ): number | undefined => {
+        const producto = productoPorId.get(productoId);
+
+        return producto ? precioDeLinea(producto, tipoPrecio) : undefined;
+    };
+
     const productoPorId = useMemo(
         () => new Map(productos.map((producto) => [producto.id, producto])),
         [productos],
@@ -132,13 +146,16 @@ export default function PosPage({
         setField(key, value);
 
         if (key === 'tipoPrecio') {
-            cart.reprice((productoId) => {
-                const producto = productoPorId.get(productoId);
+            cart.reprice(
+                (productoId) => {
+                    const producto = productoPorId.get(productoId);
 
-                return producto
-                    ? precioParaTipo(producto, value as TipoPrecioPedido)
-                    : undefined;
-            });
+                    return producto
+                        ? precioParaTipo(producto, value as TipoPrecioPedido)
+                        : undefined;
+                },
+                tipoLineaDe(value as TipoPrecioPedido),
+            );
         }
     };
 
@@ -302,6 +319,7 @@ export default function PosPage({
     const cartPanel = (
         <PosCartPanel
             key={ventas.activa.id}
+            precioDeLinea={precioLinea}
             cliente={cliente}
             onOpenClientePicker={() => setClienteModalOpen(true)}
             onOpenHistorial={() => setHistorialOpen(true)}
@@ -339,6 +357,7 @@ export default function PosPage({
                         productos={productos}
                         stockDisponibleDe={stockDisponibleDe}
                         reservedByProducto={cart.reservedByProducto}
+                        precioPorProducto={cart.precioPorProducto}
                         tipoPrecio={header.tipoPrecio}
                         onAdd={handleSelect}
                         categorias={categorias}
@@ -511,7 +530,6 @@ export default function PosPage({
                             />
                         </Fragment>
                     ))}
-                    <input type="hidden" name="placa" value={header.placa} />
                     <input
                         type="hidden"
                         name="aplica_turno"
@@ -549,6 +567,14 @@ export default function PosPage({
                                 type="hidden"
                                 name={`detalles[${index}][precio_unitario]`}
                                 value={line.precioUnitario}
+                            />
+                            <input
+                                type="hidden"
+                                name={`detalles[${index}][tipo_precio]`}
+                                value={
+                                    line.tipoPrecio ??
+                                    tipoLineaDe(header.tipoPrecio)
+                                }
                             />
                         </Fragment>
                     ))}

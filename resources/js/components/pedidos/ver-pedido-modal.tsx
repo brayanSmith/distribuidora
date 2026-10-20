@@ -171,7 +171,6 @@ export default function VerPedidoModal({ pedido, routes, onClose }: Props) {
                             <Field label="Facturación electrónica">
                                 {record.facturacion_electronica ? 'Sí' : 'No'}
                             </Field>
-                            <Field label="Placa">{record.placa}</Field>
                             <Field label="Turno">
                                 {record.turno ??
                                     (record.aplica_turno ? 'Aplica' : null)}

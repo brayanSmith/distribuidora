@@ -20,7 +20,6 @@ class UpdatePedidoRequest extends FormRequest
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'bodega_id' => ['required', 'integer', 'exists:bodegas,id'],
             'tipo_precio' => ['required', 'string', 'in:DETAL,MAYORISTA,OTRO'],
-            'placa' => ['nullable', 'string', 'max:255'],
             'facturacion_electronica' => ['nullable', 'boolean'],
             'observacion' => ['nullable', 'string'],
             'observacion_pago' => ['nullable', 'string'],
@@ -32,6 +31,7 @@ class UpdatePedidoRequest extends FormRequest
             'detalles.*.producto_id' => ['required', 'integer', 'exists:productos,id'],
             'detalles.*.bodega_id' => ['nullable', 'integer', 'exists:bodegas,id'],
             'detalles.*.cantidad' => ['required', 'numeric', 'min:0.01'],
+            'detalles.*.tipo_precio' => ['nullable', 'in:DETAL,MAYORISTA,PERSONALIZADO'],
             'detalles.*.precio_unitario' => ['required', 'numeric', 'min:0'],
         ];
     }

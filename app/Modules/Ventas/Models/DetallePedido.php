@@ -2,10 +2,10 @@
 
 namespace App\Modules\Ventas\Models;
 
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Inventario\Models\Bodega;
 use Database\Factories\DetallePedidoFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Catalogo\Models\Producto;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -24,6 +24,7 @@ class DetallePedido extends Model
         'producto_id',
         'bodega_id',
         'cantidad',
+        'tipo_precio',
         'precio_unitario',
         'costo_unitario',
         'costo_total',

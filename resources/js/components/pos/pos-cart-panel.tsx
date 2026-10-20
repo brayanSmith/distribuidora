@@ -24,7 +24,8 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import type { PosCartLine } from '@/hooks/use-pos-cart';
+import type { PosCartLine, TipoPrecioLinea } from '@/hooks/use-pos-cart';
+import { tipoLineaDe } from '@/lib/pedido-pricing';
 import type { PosHeaderState } from '@/hooks/use-pos-header';
 import { calcularTotales } from '@/lib/pos-totals';
 import type {
@@ -38,12 +39,22 @@ type CartApi = {
     lines: PosCartLine[];
     setCantidad: (key: string, cantidad: number) => void;
     setPrecioUnitario: (key: string, precio: number) => void;
+    setTipoPrecio: (
+        key: string,
+        tipoPrecio: TipoPrecioLinea,
+        precio: number,
+    ) => void;
     removeLine: (key: string) => void;
     clear: () => void;
     totalBruto: number;
 };
 
 type Props = {
+    /** The unit price of a product sold at a tipo de precio. */
+    precioDeLinea: (
+        productoId: number,
+        tipoPrecio: TipoPrecioLinea,
+    ) => number | undefined;
     cliente: ClienteOption | null;
     onOpenClientePicker: () => void;
     onOpenHistorial: () => void;
@@ -76,6 +87,7 @@ const currencyFormatter = new Intl.NumberFormat('es-CO', {
  * always in reach however long the cart gets.
  */
 export default function PosCartPanel({
+    precioDeLinea,
     cliente,
     onOpenClientePicker,
     onOpenHistorial,
@@ -258,6 +270,20 @@ export default function PosCartPanel({
                                     onPrecioChange={(precio) =>
                                         cart.setPrecioUnitario(line.key, precio)
                                     }
+                                    tipoPrecio={
+                                        line.tipoPrecio ??
+                                        tipoLineaDe(header.tipoPrecio)
+                                    }
+                                    onTipoPrecioChange={(tipo) =>
+                                        cart.setTipoPrecio(
+                                            line.key,
+                                            tipo,
+                                            precioDeLinea(
+                                                line.productoId,
+                                                tipo,
+                                            ) ?? line.precioUnitario,
+                                        )
+                                    }
                                     onEdit={() => onEditLine(line)}
                                     onRemove={() => cart.removeLine(line.key)}
                                 />
@@ -265,19 +291,6 @@ export default function PosCartPanel({
                         </div>
                     )}
                     <InputError message={errors.detalles} />
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="pos-placa">Placa</Label>
-                    <Input
-                        id="pos-placa"
-                        value={header.placa}
-                        onChange={(event) =>
-                            onFieldChange('placa', event.target.value)
-                        }
-                        data-test="pos-placa"
-                    />
-                    <InputError message={errors.placa} />
                 </div>
 
                 <div className="flex items-center justify-between gap-4">

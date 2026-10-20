@@ -17,6 +17,9 @@ return new class extends Migration
             $table->foreignId('producto_id')->constrained('productos');
             $table->foreignId('bodega_id')->nullable()->constrained('bodegas')->nullOnDelete();
             $table->integer('cantidad');
+            // Each line is sold at the retail or the wholesale price, or at one
+            // typed by hand (PERSONALIZADO).
+            $table->enum('tipo_precio', ['DETAL', 'MAYORISTA', 'PERSONALIZADO'])->default('DETAL');
             $table->decimal('precio_unitario', 12, 2); // snapshot del precio
             $table->decimal('subtotal', 12, 2);
             $table->decimal('costo_unitario', 12, 2)->nullable(); // Para control de inventario

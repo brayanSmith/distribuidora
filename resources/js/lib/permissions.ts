@@ -77,7 +77,7 @@ const ACTION_HINTS: Record<string, string> = {
     'view-all-pedidos':
         'Desmarcado, en el POS solo se ve el historial de los pedidos del vendedor autenticado.',
     'update-datos':
-        'Cliente, fecha, vendedor, bodega, tipo de precio, placa, facturación, flete, descuento y retenciones. La observación y la observación de pago siempre se pueden editar con "Editar".',
+        'Cliente, fecha, vendedor, bodega, tipo de precio, facturación, flete, descuento y retenciones. La observación y la observación de pago siempre se pueden editar con "Editar".',
     'create-abono':
         'Desde el formulario de edición y desde la tabla de pedidos. También requiere "Editar".',
     'create-detalle': 'Solo aplica en el formulario de edición del pedido.',

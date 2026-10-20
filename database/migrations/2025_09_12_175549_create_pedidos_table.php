@@ -35,7 +35,6 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->boolean('aplica_turno')->default(false);
             $table->string('turno')->nullable();
-            $table->string('placa')->nullable();
             $table->decimal('reteica', 12, 2)->default(0)->nullable();
             $table->decimal('retefuente', 12, 2)->default(0)->nullable();
             $table->boolean('facturacion_electronica')->default(false);

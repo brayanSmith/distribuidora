@@ -48,7 +48,6 @@ class Pedido extends Model
         'user_id',
         'aplica_turno',
         'turno',
-        'placa',
         'reteica',
         'retefuente',
         'facturacion_electronica',
@@ -93,7 +92,7 @@ class Pedido extends Model
             ->useLogName('pedidos')
             ->logOnly([
                 'cliente_id', 'fecha', 'user_id', 'bodega_id', 'tipo_precio', 'tipo_pago', 'turno',
-                'placa', 'facturacion_electronica', 'observacion', 'observacion_pago',
+                'facturacion_electronica', 'observacion', 'observacion_pago',
                 'flete', 'descuento', 'reteica', 'retefuente',
             ])
             ->logOnlyDirty()

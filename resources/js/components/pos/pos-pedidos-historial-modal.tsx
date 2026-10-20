@@ -343,7 +343,8 @@ export default function PosPedidosHistorialModal({
                                             onClick={() => descargar(pedido.id)}
                                             data-test="pos-historial-voucher"
                                         >
-                                            {descargando === pedido.id ? null : (
+                                            {descargando ===
+                                            pedido.id ? null : (
                                                 <Download className="size-4" />
                                             )}
                                         </Button>

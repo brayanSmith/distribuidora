@@ -281,7 +281,6 @@ class PedidoController extends Controller
                 'user_id' => $data['user_id'],
                 'bodega_id' => $data['bodega_id'],
                 'tipo_precio' => $data['tipo_precio'],
-                'placa' => $data['placa'] ?? null,
                 'facturacion_electronica' => $data['facturacion_electronica'] ?? false,
                 'observacion' => $data['observacion'] ?? null,
                 'observacion_pago' => $data['observacion_pago'] ?? null,

@@ -2,8 +2,8 @@
 
 namespace App\Modules\Ventas\Services;
 
-use App\Modules\Ventas\Models\Pedido;
 use App\Models\User;
+use App\Modules\Ventas\Models\Pedido;
 
 /**
  * What a user may change when editing a pedido. Changing the general data,
@@ -16,7 +16,7 @@ class PedidoEdicion
     /** The header fields covered by `{module}.update-datos` (observaciones are always editable). */
     private const CAMPOS_DATOS = [
         'cliente_id', 'fecha', 'user_id', 'bodega_id', 'tipo_precio',
-        'placa', 'facturacion_electronica', 'flete', 'descuento', 'reteica', 'retefuente',
+        'facturacion_electronica', 'flete', 'descuento', 'reteica', 'retefuente',
     ];
 
     /**

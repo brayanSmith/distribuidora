@@ -1,6 +1,12 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useMemo } from 'react';
 
+/**
+ * The price a cart line is sold at: retail, wholesale, or one typed by hand
+ * (PERSONALIZADO), which the pedido's tipo de precio never overwrites.
+ */
+export type TipoPrecioLinea = 'DETAL' | 'MAYORISTA' | 'PERSONALIZADO';
+
 export type PosCartLine = {
     /** Unique per producto + bodega: the same product can be sold from several bodegas. */
     key: string;
@@ -10,6 +16,8 @@ export type PosCartLine = {
     bodegaNombre: string;
     cantidad: number;
     precioUnitario: number;
+    /** Missing in carts saved before lines had their own tipo de precio. */
+    tipoPrecio?: TipoPrecioLinea;
 };
 
 export type PosCartNewLine = Omit<PosCartLine, 'key'>;
@@ -64,14 +72,40 @@ export function usePosCart(
         );
     };
 
-    /** Re-prices every line (e.g. when the tipo de precio changes). */
-    const reprice = (precioDe: (productoId: number) => number | undefined) => {
+    /**
+     * Re-prices every line (e.g. when the pedido's tipo de precio changes),
+     * moving them to `tipoPrecio` when given.
+     */
+    const reprice = (
+        precioDe: (productoId: number) => number | undefined,
+        tipoPrecio?: TipoPrecioLinea,
+    ) => {
         setLines((prev) =>
-            prev.map((line) => ({
-                ...line,
-                precioUnitario:
-                    precioDe(line.productoId) ?? line.precioUnitario,
-            })),
+            prev.map((line) =>
+                line.tipoPrecio === 'PERSONALIZADO'
+                    ? line
+                    : {
+                          ...line,
+                          tipoPrecio: tipoPrecio ?? line.tipoPrecio,
+                          precioUnitario:
+                              precioDe(line.productoId) ?? line.precioUnitario,
+                      },
+            ),
+        );
+    };
+
+    /** Sells one line at another price (Detal / Mayorista / Personalizado). */
+    const setTipoPrecio = (
+        key: string,
+        tipoPrecio: TipoPrecioLinea,
+        precioUnitario: number,
+    ) => {
+        setLines((prev) =>
+            prev.map((line) =>
+                line.key === key
+                    ? { ...line, tipoPrecio, precioUnitario }
+                    : line,
+            ),
         );
     };
 
@@ -85,10 +119,17 @@ export function usePosCart(
         );
     };
 
+    /** A price typed by hand turns the line into PERSONALIZADO. */
     const setPrecioUnitario = (key: string, precioUnitario: number) => {
         setLines((prev) =>
             prev.map((line) =>
-                line.key === key ? { ...line, precioUnitario } : line,
+                line.key === key
+                    ? {
+                          ...line,
+                          precioUnitario,
+                          tipoPrecio: 'PERSONALIZADO',
+                      }
+                    : line,
             ),
         );
     };
@@ -121,6 +162,25 @@ export function usePosCart(
         return { porProducto };
     }, [lines]);
 
+    /** How each product in the cart is sold (its first line), for the catalog. */
+    const precioPorProducto = useMemo(() => {
+        const porProducto = new Map<
+            number,
+            { tipoPrecio?: TipoPrecioLinea; precioUnitario: number }
+        >();
+
+        lines.forEach((line) => {
+            if (!porProducto.has(line.productoId)) {
+                porProducto.set(line.productoId, {
+                    tipoPrecio: line.tipoPrecio,
+                    precioUnitario: line.precioUnitario,
+                });
+            }
+        });
+
+        return porProducto;
+    }, [lines]);
+
     const lineFor = (productoId: number, bodegaId: number) =>
         lines.find((line) => line.key === cartLineKey(productoId, bodegaId));
 
@@ -129,12 +189,14 @@ export function usePosCart(
         addLine,
         upsertLine,
         reprice,
+        setTipoPrecio,
         setCantidad,
         setPrecioUnitario,
         removeLine,
         clear,
         totalBruto,
         reservedByProducto: reserved.porProducto,
+        precioPorProducto,
         lineFor,
     };
 }

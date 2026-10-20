@@ -5,7 +5,9 @@ export type PosCatalogoProducto = {
     id: number;
     referencia_producto: string | null;
     concatenar_codigo_nombre: string | null;
+    categoria_id: number | null;
     categoria: string | null;
+    sub_categoria: string | null;
     /** False for servicios: they have no stock. */
     inventariable: boolean;
     sku: string | null;
@@ -13,6 +15,8 @@ export type PosCatalogoProducto = {
     valor_mayorista: string | null;
     costo_producto: string | null;
     imagen_producto_url: string | null;
+    /** Every image of the product, the cover first. */
+    imagenes: string[];
     stock_total: number;
     /** Stock per bodega id (as returned by the backend, keys are bodega ids). */
     stock_por_bodega: Record<string, number>;
@@ -48,7 +52,6 @@ export type PosVoucher = {
         id: number;
         turno: string | null;
         fecha: string | null;
-        placa: string | null;
         facturacion_electronica: boolean;
         observacion: string | null;
         observacion_pago: string | null;

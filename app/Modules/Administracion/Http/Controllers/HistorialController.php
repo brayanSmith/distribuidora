@@ -60,7 +60,6 @@ class HistorialController extends Controller
         'tipo_precio' => 'Tipo de precio',
         'tipo_pago' => 'Tipo de pago',
         'turno' => 'Turno',
-        'placa' => 'Placa',
         'facturacion_electronica' => 'Facturación electrónica',
         'observacion' => 'Observación',
         'observacion_pago' => 'Observación de pago',

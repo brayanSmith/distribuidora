@@ -67,6 +67,7 @@ export type PedidoDetalle = {
     producto_id: number;
     bodega_id: number | null;
     cantidad: string;
+    tipo_precio?: 'DETAL' | 'MAYORISTA' | 'PERSONALIZADO';
     precio_unitario: string;
     costo_unitario: string | null;
     costo_total: string | null;
@@ -106,7 +107,6 @@ export type Pedido = {
     abono: string;
     saldo_pendiente: string;
     user_id: number;
-    placa: string | null;
     reteica: string;
     retefuente: string;
     facturacion_electronica: boolean;

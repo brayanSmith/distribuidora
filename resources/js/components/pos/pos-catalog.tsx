@@ -4,15 +4,14 @@ import { useEffect, useMemo, useState } from 'react';
 import CreateProductoModal from '@/components/productos/create-producto-modal';
 import Pagination from '@/components/pagination';
 import PosProductCard from '@/components/pos/pos-product-card';
+import CategoriaFiltro, {
+    contarCategorias,
+    pasaFiltroCategoria,
+    TODAS_LAS_CATEGORIAS,
+} from '@/components/productos/categoria-filtro';
+import type { TipoPrecioLinea } from '@/hooks/use-pos-cart';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import type {
     CategoriaOption,
     PosCatalogoProducto,
@@ -26,6 +25,11 @@ type Props = {
     stockDisponibleDe: (producto: PosCatalogoProducto) => number;
     /** Units of each product (by id) already in the cart of the active venta. */
     reservedByProducto: Map<number, number>;
+    /** How each product already in the cart is sold. */
+    precioPorProducto: Map<
+        number,
+        { tipoPrecio?: TipoPrecioLinea; precioUnitario: number }
+    >;
     tipoPrecio: TipoPrecioPedido;
     onAdd: (producto: PosCatalogoProducto) => void;
     /** Lets the screen focus the search box (F2). */
@@ -41,7 +45,6 @@ type Props = {
 };
 
 const PAGE_SIZE = 50;
-const TODAS_CATEGORIAS = 'TODAS';
 
 function productoSearchText(producto: PosCatalogoProducto): string {
     return [
@@ -58,6 +61,7 @@ export default function PosCatalog({
     productos,
     stockDisponibleDe,
     reservedByProducto,
+    precioPorProducto,
     tipoPrecio,
     onAdd,
     categorias: categoriasForm,
@@ -68,18 +72,17 @@ export default function PosCatalog({
     refreshing,
 }: Props) {
     const [search, setSearch] = useState('');
-    const [categoria, setCategoria] = useState(TODAS_CATEGORIAS);
+    const [categoria, setCategoria] = useState(TODAS_LAS_CATEGORIAS);
+    const [subCategoria, setSubCategoria] = useState('');
     const [page, setPage] = useState(1);
 
-    const categorias = useMemo(
+    const conteosCategorias = useMemo(
         () =>
-            Array.from(
-                new Set(
-                    productos
-                        .map((producto) => producto.categoria)
-                        .filter((value): value is string => Boolean(value)),
-                ),
-            ).sort(),
+            contarCategorias(
+                productos,
+                (producto) => producto.categoria_id,
+                (producto) => producto.sub_categoria,
+            ),
         [productos],
     );
 
@@ -88,19 +91,23 @@ export default function PosCatalog({
 
         return productos.filter((producto) => {
             if (
-                categoria !== TODAS_CATEGORIAS &&
-                producto.categoria !== categoria
+                !pasaFiltroCategoria(
+                    categoria,
+                    subCategoria,
+                    producto.categoria_id,
+                    producto.sub_categoria,
+                )
             ) {
                 return false;
             }
 
             return !term || productoSearchText(producto).includes(term);
         });
-    }, [productos, search, categoria]);
+    }, [productos, search, categoria, subCategoria]);
 
     useEffect(() => {
         setPage(1);
-    }, [search, categoria]);
+    }, [search, categoria, subCategoria]);
 
     const totalPages = Math.max(Math.ceil(filtrados.length / PAGE_SIZE), 1);
     const currentPage = Math.min(page, totalPages);
@@ -125,10 +132,7 @@ export default function PosCatalog({
                 </div>
 
                 {canCreateProducto ? (
-                    <CreateProductoModal
-                        categorias={categoriasForm}
-                        stayOnPage
-                    >
+                    <CreateProductoModal categorias={categoriasForm} stayOnPage>
                         <Button
                             ref={nuevoProductoRef}
                             type="button"
@@ -166,24 +170,17 @@ export default function PosCatalog({
                     </kbd>
                 </Button>
 
-                <Select value={categoria} onValueChange={setCategoria}>
-                    <SelectTrigger
-                        className="w-48"
-                        data-test="pos-catalog-categoria"
-                    >
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value={TODAS_CATEGORIAS}>
-                            Todas las categorías
-                        </SelectItem>
-                        {categorias.map((value) => (
-                            <SelectItem key={value} value={value}>
-                                {value}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <CategoriaFiltro
+                    categorias={categoriasForm}
+                    categoria={categoria}
+                    subCategoria={subCategoria}
+                    onChange={(nuevaCategoria, nuevaSubCategoria) => {
+                        setCategoria(nuevaCategoria);
+                        setSubCategoria(nuevaSubCategoria);
+                    }}
+                    conteos={conteosCategorias}
+                    dataTest="pos-catalog-categoria"
+                />
             </div>
 
             {pageItems.length > 0 ? (
@@ -195,6 +192,7 @@ export default function PosCatalog({
                             stockDisponible={stockDisponibleDe(producto)}
                             enCarrito={reservedByProducto.get(producto.id) ?? 0}
                             tipoPrecio={tipoPrecio}
+                            enCarritoComo={precioPorProducto.get(producto.id)}
                             onAdd={onAdd}
                         />
                     ))}

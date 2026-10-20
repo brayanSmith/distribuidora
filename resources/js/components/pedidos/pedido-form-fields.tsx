@@ -59,6 +59,8 @@ type DetalleRow = {
     bodega_id: number;
     cantidad: number;
     precio_unitario: number;
+    /** Kept from the saved line (it may have been sold at another price in the POS). */
+    tipo_precio?: 'DETAL' | 'MAYORISTA' | 'PERSONALIZADO';
 };
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
@@ -187,6 +189,7 @@ export default function PedidoFormFields({
             bodega_id: detalle.bodega_id ?? (Number(pedido?.bodega_id) || 0),
             cantidad: Number(detalle.cantidad),
             precio_unitario: Number(detalle.precio_unitario),
+            tipo_precio: detalle.tipo_precio,
         })),
     );
 
@@ -196,12 +199,16 @@ export default function PedidoFormFields({
     const [detalleBodegaId, setDetalleBodegaId] = useState<string>('');
     const [cantidad, setCantidad] = useState<string>('');
     const [precioUnitario, setPrecioUnitario] = useState<string>('');
+    // The tipo de precio of a line taken back to be edited, so it is not lost.
+    const [tipoPrecioFila, setTipoPrecioFila] =
+        useState<DetalleRow['tipo_precio']>(undefined);
 
     const resetAddRow = () => {
         setSelectedProductoId('');
         setDetalleBodegaId('');
         setCantidad('');
         setPrecioUnitario('');
+        setTipoPrecioFila(undefined);
     };
 
     const handleSelectProducto = (value: string) => {
@@ -247,6 +254,7 @@ export default function PedidoFormFields({
                 bodega_id: Number(detalleBodegaId || bodegaId),
                 cantidad: Number(cantidad),
                 precio_unitario: Number(precioUnitario) || 0,
+                tipo_precio: tipoPrecioFila,
             },
         ]);
         resetAddRow();
@@ -257,6 +265,7 @@ export default function PedidoFormFields({
         setDetalleBodegaId(String(row.bodega_id));
         setCantidad(String(row.cantidad));
         setPrecioUnitario(String(row.precio_unitario));
+        setTipoPrecioFila(row.tipo_precio);
         setRows((prev) =>
             prev.filter((r) => r.producto_id !== row.producto_id),
         );
@@ -454,17 +463,6 @@ export default function PedidoFormFields({
                     ) : null}
 
                     <div className="grid gap-4 sm:grid-cols-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="placa">Placa</Label>
-                            <Input
-                                id="placa"
-                                name="placa"
-                                data-test="pedido-placa"
-                                defaultValue={pedido?.placa ?? ''}
-                            />
-                            <InputError message={errors.placa} />
-                        </div>
-
                         <div className="grid gap-2">
                             <Label required>Tipo Precio</Label>
                             <Select
@@ -820,6 +818,13 @@ export default function PedidoFormFields({
                         name={`detalles[${index}][precio_unitario]`}
                         value={row.precio_unitario}
                     />
+                    {row.tipo_precio ? (
+                        <input
+                            type="hidden"
+                            name={`detalles[${index}][tipo_precio]`}
+                            value={row.tipo_precio}
+                        />
+                    ) : null}
                 </Fragment>
             ))}
 
