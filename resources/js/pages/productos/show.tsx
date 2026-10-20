@@ -76,7 +76,7 @@ export default function ProductoShow({ producto }: Props) {
                             />
                             <Field
                                 label="Marca"
-                                value={producto.marca?.marca}
+                                value={producto.marca}
                             />
                             <Field
                                 label="Descripción"

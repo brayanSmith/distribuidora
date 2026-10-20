@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('producto_id')->nullable()->constrained('productos')->onDelete('cascade');
             $table->string('imagen_producto')->nullable();
+            // Position among the producto's imagenes: the first one is the cover.
+            $table->unsignedInteger('orden')->default(0);
             $table->timestamps();
         });
     }

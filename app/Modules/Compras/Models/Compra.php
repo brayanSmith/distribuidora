@@ -2,10 +2,10 @@
 
 namespace App\Modules\Compras\Models;
 
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use App\Modules\Catalogo\Models\Producto;
 use App\Models\Concerns\LogsDetalles;
+use App\Modules\Catalogo\Models\Producto;
 use Database\Factories\CompraFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -72,7 +72,7 @@ class Compra extends Model
     public function resumenDetalles(): array
     {
         return $this->detallesCompra()
-            ->with(['producto:id,concatenar_codigo_nombre,referencia_producto', 'bodega:id,nombre_bodega'])
+            ->with(['producto:id,referencia_producto,descripcion_producto,marca', 'bodega:id,nombre_bodega'])
             ->orderBy('id')
             ->get()
             ->map(fn (DetalleCompra $detalle): array => [

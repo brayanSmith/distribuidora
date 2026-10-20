@@ -2,14 +2,14 @@
 
 namespace App\Modules\Ventas\Models;
 
+use App\Models\Concerns\LogsDetalles;
+use App\Models\User;
+use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Finanzas\Models\Puc;
+use App\Modules\Inventario\Models\Bodega;
+use Carbon\Carbon;
 use Database\Factories\PedidoFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use App\Models\User;
-use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Catalogo\Models\Producto;
-use App\Models\Concerns\LogsDetalles;
-use App\Modules\Finanzas\Models\Puc;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -116,7 +116,7 @@ class Pedido extends Model
     public function resumenDetalles(): array
     {
         return $this->detalles()
-            ->with('producto:id,concatenar_codigo_nombre,referencia_producto')
+            ->with('producto:id,referencia_producto,descripcion_producto,marca')
             ->orderBy('id')
             ->get()
             ->map(fn (DetallePedido $detalle): array => [

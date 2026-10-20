@@ -18,7 +18,6 @@ import {
     ShoppingCart,
     Layers,
     Shapes,
-    Tags,
     Truck,
     UserCog,
     Users,
@@ -48,7 +47,6 @@ import { index as gastosIndex } from '@/routes/gastos';
 import { index as historialIndex } from '@/routes/historial';
 import { index as iniciosSesionIndex } from '@/routes/inicios-sesion';
 import { index as categoriasIndex } from '@/routes/categorias';
-import { index as marcasIndex } from '@/routes/marcas';
 import { index as subCategoriasIndex } from '@/routes/sub-categorias';
 import { index as pedidosIndex } from '@/routes/pedidos';
 import { index as pedidosMayoristasIndex } from '@/routes/pedidos-mayoristas';
@@ -158,7 +156,6 @@ export function AppSidebar() {
                     bodegasIndex,
                     Warehouse,
                 ),
-                ...entry(page.props.canViewMarcas, 'Marcas', marcasIndex, Tags),
                 ...entry(
                     page.props.canViewCategorias,
                     'Categorías',

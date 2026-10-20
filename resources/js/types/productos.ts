@@ -15,11 +15,6 @@ export type ProductoImagen = {
     url: string;
 };
 
-export type MarcaOption = {
-    id: number;
-    marca: string;
-};
-
 export type Producto = {
     id: number;
     categoria_id: number | null;
@@ -28,8 +23,7 @@ export type Producto = {
     sub_categoria: string | null;
     inventariable: boolean;
     sku: string | null;
-    marca_id: number | null;
-    marca: MarcaOption | null;
+    marca: string | null;
     referencia_producto: string | null;
     descripcion_producto: string | null;
     costo_producto: string;
@@ -54,6 +48,8 @@ export type ProductoPermissions = {
     canViewPendiente: boolean;
     canViewAlmacenP: boolean;
     canViewStockBodegas: boolean;
+    canImport: boolean;
+    canExport: boolean;
     canCreateTraslado: boolean;
 };
 

@@ -2,14 +2,13 @@ import { Form, Head, Link } from '@inertiajs/react';
 import ProductoFormFields from '@/components/productos/producto-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, store } from '@/routes/productos';
-import type { CategoriaOption, MarcaOption } from '@/types';
+import type { CategoriaOption } from '@/types';
 
 type Props = {
-    marcas: MarcaOption[];
     categorias: CategoriaOption[];
 };
 
-export default function ProductoCreate({ marcas, categorias }: Props) {
+export default function ProductoCreate({ categorias }: Props) {
     return (
         <>
             <Head title="Nuevo producto" />
@@ -27,7 +26,6 @@ export default function ProductoCreate({ marcas, categorias }: Props) {
                 {({ errors, processing }) => (
                     <>
                         <ProductoFormFields
-                            marcas={marcas}
                             categorias={categorias}
                             errors={errors}
                         />

@@ -4,18 +4,16 @@ import DeleteProductoModal from '@/components/productos/delete-producto-modal';
 import ProductoFormFields from '@/components/productos/producto-form-fields';
 import { Button } from '@/components/ui/button';
 import { index, show, update } from '@/routes/productos';
-import type { CategoriaOption, MarcaOption, Producto } from '@/types';
+import type { CategoriaOption, Producto } from '@/types';
 
 type Props = {
     producto: Producto;
-    marcas: MarcaOption[];
     categorias: CategoriaOption[];
     permissions: { canDelete: boolean };
 };
 
 export default function ProductoEdit({
     producto,
-    marcas,
     categorias,
     permissions,
 }: Props) {
@@ -57,7 +55,6 @@ export default function ProductoEdit({
                     <>
                         <ProductoFormFields
                             producto={producto}
-                            marcas={marcas}
                             categorias={categorias}
                             errors={errors}
                         />

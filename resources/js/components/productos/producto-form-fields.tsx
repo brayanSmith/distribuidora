@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import Combobox from '@/components/combobox';
 import InputError from '@/components/input-error';
 import ProductoImageUpload from '@/components/productos/producto-image-upload';
 import { Input } from '@/components/ui/input';
@@ -13,13 +12,12 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
-import type { CategoriaOption, MarcaOption, Producto } from '@/types';
+import type { CategoriaOption, Producto } from '@/types';
 
 type FormErrors = Partial<Record<string, string>>;
 
 type Props = {
     producto?: Producto | null;
-    marcas: MarcaOption[];
     categorias: CategoriaOption[];
     errors: FormErrors;
 };
@@ -28,7 +26,6 @@ const SIN_SELECCION = 'ninguna';
 
 export default function ProductoFormFields({
     producto,
-    marcas,
     categorias,
     errors,
 }: Props) {
@@ -42,57 +39,12 @@ export default function ProductoFormFields({
     const [subCategoriaId, setSubCategoriaId] = useState<string>(
         producto?.sub_categoria_id ? String(producto.sub_categoria_id) : '',
     );
-    const [marcaId, setMarcaId] = useState<string>(
-        producto?.marca_id ? String(producto.marca_id) : '',
-    );
-    const marcaOptions = useMemo(
-        () =>
-            marcas.map((marca) => ({
-                value: String(marca.id),
-                label: marca.marca,
-            })),
-        [marcas],
-    );
     const subCategorias = useMemo(
         () =>
             categorias.find((c) => String(c.id) === categoriaId)
                 ?.sub_categorias ?? [],
         [categorias, categoriaId],
     );
-    const [referencia, setReferencia] = useState(
-        producto?.referencia_producto ?? '',
-    );
-    const [descripcionProducto, setDescripcionProducto] = useState(
-        producto?.descripcion_producto ?? '',
-    );
-    const [concatenacion, setConcatenacion] = useState(
-        producto?.concatenar_codigo_nombre ?? '',
-    );
-
-    const updateConcatenacion = (
-        next: Partial<{
-            referencia: string;
-            marcaId: string;
-            descripcionProducto: string;
-        }>,
-    ) => {
-        const values = {
-            referencia,
-            marcaId,
-            descripcionProducto,
-            ...next,
-        };
-
-        const marcaNombre = marcas.find(
-            (marca) => String(marca.id) === values.marcaId,
-        )?.marca;
-
-        setConcatenacion(
-            [values.referencia, marcaNombre, values.descripcionProducto]
-                .filter(Boolean)
-                .join('-'),
-        );
-    };
 
     const handleCategoriaChange = (value: string) => {
         setCategoriaId(value === SIN_SELECCION ? '' : value);
@@ -200,6 +152,28 @@ export default function ProductoFormFields({
 
                     <div className="grid gap-4 sm:grid-cols-4">
                         <div className="grid gap-2">
+                            <Label htmlFor="sku">SKU</Label>
+                            <Input
+                                id="sku"
+                                name="sku"
+                                data-test="producto-sku"
+                                defaultValue={producto?.sku ?? ''}
+                            />
+                            <InputError message={errors.sku} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="marca">Marca</Label>
+                            <Input
+                                id="marca"
+                                name="marca"
+                                data-test="producto-marca"
+                                defaultValue={producto?.marca ?? ''}
+                            />
+                            <InputError message={errors.marca} />
+                        </div>
+
+                        <div className="grid gap-2">
                             <Label htmlFor="referencia_producto">
                                 Referencia
                             </Label>
@@ -207,37 +181,11 @@ export default function ProductoFormFields({
                                 id="referencia_producto"
                                 name="referencia_producto"
                                 data-test="producto-referencia"
-                                value={referencia}
-                                onChange={(event) => {
-                                    setReferencia(event.target.value);
-                                    updateConcatenacion({
-                                        referencia: event.target.value,
-                                    });
-                                }}
+                                defaultValue={
+                                    producto?.referencia_producto ?? ''
+                                }
                             />
                             <InputError message={errors.referencia_producto} />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label>Marca</Label>
-                            <Combobox
-                                options={marcaOptions}
-                                value={marcaId}
-                                onValueChange={(value) => {
-                                    setMarcaId(value);
-                                    updateConcatenacion({ marcaId: value });
-                                }}
-                                placeholder="Sin marca"
-                                searchPlaceholder="Buscar marca..."
-                                emptyText="No se encontraron marcas."
-                                dataTest="producto-marca"
-                            />
-                            <input
-                                type="hidden"
-                                name="marca_id"
-                                value={marcaId}
-                            />
-                            <InputError message={errors.marca_id} />
                         </div>
 
                         <div className="grid gap-2">
@@ -248,41 +196,11 @@ export default function ProductoFormFields({
                                 id="descripcion_producto"
                                 name="descripcion_producto"
                                 data-test="producto-descripcion"
-                                value={descripcionProducto}
-                                onChange={(event) => {
-                                    setDescripcionProducto(event.target.value);
-                                    updateConcatenacion({
-                                        descripcionProducto: event.target.value,
-                                    });
-                                }}
+                                defaultValue={
+                                    producto?.descripcion_producto ?? ''
+                                }
                             />
                             <InputError message={errors.descripcion_producto} />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="concatenar_codigo_nombre">
-                                Concatenación
-                            </Label>
-                            <Input
-                                id="concatenar_codigo_nombre"
-                                data-test="producto-concatenacion"
-                                value={concatenacion}
-                                disabled
-                                readOnly
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="sku">SKU</Label>
-                            <Input
-                                id="sku"
-                                name="sku"
-                                data-test="producto-sku"
-                                defaultValue={producto?.sku ?? ''}
-                            />
-                            <InputError message={errors.sku} />
                         </div>
                     </div>
                 </div>

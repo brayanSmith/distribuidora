@@ -29,7 +29,7 @@ class StockInicialController extends Controller
             'stockIniciales' => StockInicial::with(['producto', 'bodega'])->latest()->get(),
             'productos' => Producto::where('inventariable', true)
                 ->orderBy('referencia_producto')
-                ->get(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'costo_producto']),
+                ->get(['id', 'referencia_producto', 'descripcion_producto', 'marca', 'costo_producto']),
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
             'permissions' => [
                 'canCreate' => $request->user()->can('stock-iniciales.create'),

@@ -14,17 +14,15 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { store } from '@/routes/productos';
-import type { CategoriaOption, MarcaOption } from '@/types';
+import type { CategoriaOption } from '@/types';
 
 type Props = PropsWithChildren<{
-    marcas: MarcaOption[];
     categorias: CategoriaOption[];
     /** Keep the user on the current screen after saving (e.g. the POS). */
     stayOnPage?: boolean;
 }>;
 
 export default function CreateProductoModal({
-    marcas,
     categorias,
     stayOnPage = false,
     children,
@@ -59,7 +57,6 @@ export default function CreateProductoModal({
                             ) : null}
 
                             <ProductoFormFields
-                                marcas={marcas}
                                 categorias={categorias}
                                 errors={errors}
                             />

@@ -451,7 +451,7 @@ export default function ProductoDetalleModal({
                                                 Marca
                                             </span>
                                             <Badge variant="secondary">
-                                                {producto.marca.marca}
+                                                {producto.marca}
                                             </Badge>
                                         </div>
                                     ) : null}

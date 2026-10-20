@@ -3,7 +3,6 @@
 use App\Models\User;
 use App\Modules\Catalogo\Models\Categoria;
 use App\Modules\Catalogo\Models\ImagenProducto;
-use App\Modules\Catalogo\Models\Marca;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Catalogo\Models\SubCategoria;
 use App\Modules\Compras\Models\Compra;
@@ -26,14 +25,13 @@ beforeEach(function () {
 test('owners can view, create, update and delete productos without a custom role', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
-    $marca = Marca::factory()->create(['marca' => 'WANDA']);
 
     $this->actingAs($owner)->get(route('productos.index'))->assertOk();
     $this->actingAs($owner)->get(route('productos.create'))->assertOk();
 
     $response = $this->actingAs($owner)->post(route('productos.store'), [
         'inventariable' => true,
-        'marca_id' => $marca->id,
+        'marca' => 'WANDA',
         'referencia_producto' => '155R13',
         'descripcion_producto' => '8PR/WR082/90/88N',
         'costo_producto' => 115000,
@@ -50,7 +48,7 @@ test('owners can view, create, update and delete productos without a custom role
     $this->actingAs($owner)->get(route('productos.edit', [$producto]))->assertOk();
 
     $this->actingAs($owner)->patch(route('productos.update', [$producto]), [
-        'marca_id' => $marca->id,
+        'marca' => 'WANDA',
         'referencia_producto' => '155R13',
         'descripcion_producto' => 'Actualizada',
     ])->assertRedirect(route('productos.index'));
@@ -194,4 +192,32 @@ test('imagenes of another producto cannot be removed', function () {
     ])->assertSessionHasErrors('remove_imagen_ids.0');
 
     expect(ImagenProducto::find($ajena->id))->not->toBeNull();
+});
+
+test('the imagenes follow the order the user chose and the first one is the cover', function () {
+    Storage::fake('public');
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $this->actingAs($owner)->post(route('productos.store'), [
+        'referencia_producto' => 'ORD-1',
+        'imagenes' => [UploadedFile::fake()->image('a.jpg', 10, 10), UploadedFile::fake()->image('b.jpg', 200, 200)],
+        'orden_imagenes' => ['n1', 'n0'],
+    ])->assertSessionHasNoErrors();
+
+    $producto = Producto::where('referencia_producto', 'ORD-1')->firstOrFail();
+    [$primera, $segunda] = $producto->imagenes->all();
+
+    // b.jpg (the bigger one) was uploaded second but chosen first.
+    expect(Storage::disk('public')->size($primera->imagen_producto))->toBeGreaterThan(Storage::disk('public')->size($segunda->imagen_producto));
+
+    $this->actingAs($owner)->patch(route('productos.update', [$producto]), [
+        'referencia_producto' => 'ORD-1',
+        'imagenes' => [UploadedFile::fake()->image('c.jpg')],
+        'orden_imagenes' => ['n0', 'e'.$primera->id, 'e'.$segunda->id],
+    ])->assertSessionHasNoErrors();
+
+    $ids = $producto->fresh()->imagenes->pluck('id')->all();
+    expect($ids)->toHaveCount(3)
+        ->and(array_slice($ids, 1))->toBe([$primera->id, $segunda->id]);
 });

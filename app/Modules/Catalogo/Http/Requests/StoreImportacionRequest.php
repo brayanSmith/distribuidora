@@ -5,7 +5,7 @@ namespace App\Modules\Catalogo\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreMarcaRequest extends FormRequest
+class StoreImportacionRequest extends FormRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -15,8 +15,7 @@ class StoreMarcaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'marca' => ['required', 'string', 'max:255', 'unique:marcas,marca'],
-            'descripcion_marca' => ['nullable', 'string', 'max:255'],
+            'archivo' => ['required', 'file', 'extensions:csv,txt,xlsx', 'max:51200'],
         ];
     }
 }

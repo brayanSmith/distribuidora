@@ -225,8 +225,8 @@ test('the dashboard feeds the charts with categories, best sellers and orders pe
     asignarRol($user);
     $bodega = Bodega::factory()->create();
 
-    $llanta = Producto::factory()->create(['categoria_id' => Categoria::factory()->create(['nombre_categoria' => 'LLANTA'])->id, 'concatenar_codigo_nombre' => 'LLA-1 Llanta']);
-    $rin = Producto::factory()->create(['categoria_id' => Categoria::factory()->create(['nombre_categoria' => 'RIN'])->id, 'concatenar_codigo_nombre' => 'RIN-1 Rin']);
+    $llanta = Producto::factory()->create(['categoria_id' => Categoria::factory()->create(['nombre_categoria' => 'LLANTA'])->id, 'referencia_producto' => 'LLA-1 Llanta', 'descripcion_producto' => null]);
+    $rin = Producto::factory()->create(['categoria_id' => Categoria::factory()->create(['nombre_categoria' => 'RIN'])->id, 'referencia_producto' => 'RIN-1 Rin', 'descripcion_producto' => null]);
 
     $lunes = Pedido::factory()->create(['bodega_id' => $bodega->id, 'fecha' => '2026-03-02']);
     $martes = Pedido::factory()->create(['bodega_id' => $bodega->id, 'fecha' => '2026-03-03']);

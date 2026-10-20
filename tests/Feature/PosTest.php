@@ -360,14 +360,13 @@ test('members without pos.view cannot read the POS history', function () {
     $this->actingAs($member)->getJson(route('pos.pedidos'))->assertForbidden();
 });
 
-test('the POS exposes the marcas and whether the user can create productos', function () {
+test('the POS exposes whether the user can create productos', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 
     $this->actingAs($owner)
         ->get(route('pos.index'))
         ->assertInertia(fn ($page) => $page
-            ->has('marcas')
             ->where('canCreateProducto', true)
         );
 });
@@ -408,7 +407,7 @@ test('checking out flashes the voucher data with the turno, totals and cliente',
 
     $bodega = Bodega::factory()->create(['nombre_bodega' => 'Outlet Norte']);
     $cliente = Cliente::factory()->create(['razon_social' => 'Cecilia Gonzalez']);
-    $producto = Producto::factory()->create(['concatenar_codigo_nombre' => '100/80-17-HEVOS']);
+    $producto = Producto::factory()->create(['referencia_producto' => '100/80-17-HEVOS', 'descripcion_producto' => null]);
 
     $response = $this->actingAs($owner)->post(route('pos.store'), [
         'cliente_id' => $cliente->id,

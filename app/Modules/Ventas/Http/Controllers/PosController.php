@@ -5,7 +5,6 @@ namespace App\Modules\Ventas\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\Catalogo\Models\Categoria;
-use App\Modules\Catalogo\Models\Marca;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Finanzas\Models\Puc;
 use App\Modules\Inventario\Models\Bodega;
@@ -46,7 +45,6 @@ class PosController extends Controller
             'bodegas' => Bodega::permitidas()->orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
             'vendedores' => User::orderBy('name')->get(['id', 'name']),
             'pucs' => Puc::orderBy('concatenar_subcuenta_concepto')->get(['id', 'concatenar_subcuenta_concepto']),
-            'marcas' => Marca::orderBy('marca')->get(['id', 'marca']),
             'categorias' => Categoria::with('subCategorias:id,categoria_id,nombre_sub_categoria')->orderBy('nombre_categoria')->get(['id', 'nombre_categoria']),
             'canCreateProducto' => $request->user()->can('pos.create-producto'),
             'canCreateCliente' => $request->user()->can('pos.create-cliente'),
@@ -142,7 +140,7 @@ class PosController extends Controller
             ->with([
                 'cliente:id,razon_social',
                 'user:id,name',
-                'detalles.producto:id,concatenar_codigo_nombre,referencia_producto',
+                'detalles.producto:id,referencia_producto,descripcion_producto,marca',
             ])
             ->orderByDesc('fecha')
             ->orderByDesc('id')
@@ -178,7 +176,7 @@ class PosController extends Controller
 
         // Servicios are not inventariable but are sold like any other producto.
         return Producto::query()
-            ->select(['id', 'categoria_id', 'referencia_producto', 'concatenar_codigo_nombre', 'inventariable', 'sku', 'valor_detal', 'valor_mayorista', 'costo_producto'])
+            ->select(['id', 'categoria_id', 'referencia_producto', 'descripcion_producto', 'marca', 'inventariable', 'sku', 'valor_detal', 'valor_mayorista', 'costo_producto'])
             ->with(['stockBodegas:id,producto_id,bodega_id,stock', 'categoria:id,nombre_categoria', 'imagenes:id,producto_id,imagen_producto'])
             ->orderBy('referencia_producto')
             ->get()

@@ -38,7 +38,6 @@ import type {
     BodegaOption,
     ClienteOption,
     CategoriaOption,
-    MarcaOption,
     PosCatalogoProducto,
     PosVoucher,
     PucOption,
@@ -52,7 +51,6 @@ type Props = {
     bodegas: BodegaOption[];
     vendedores: VendedorOption[];
     pucs: PucOption[];
-    marcas: MarcaOption[];
     categorias: CategoriaOption[];
     canCreateProducto: boolean;
     canCreateCliente: boolean;
@@ -72,7 +70,6 @@ export default function PosPage({
     bodegas,
     vendedores,
     pucs,
-    marcas,
     categorias,
     canCreateProducto,
     canCreateCliente,
@@ -344,7 +341,6 @@ export default function PosPage({
                         reservedByProducto={cart.reservedByProducto}
                         tipoPrecio={header.tipoPrecio}
                         onAdd={handleSelect}
-                        marcas={marcas}
                         categorias={categorias}
                         canCreateProducto={canCreateProducto}
                         searchRef={searchRef}

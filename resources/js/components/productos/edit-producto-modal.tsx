@@ -11,10 +11,9 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { update } from '@/routes/productos';
-import type { CategoriaOption, MarcaOption, Producto } from '@/types';
+import type { CategoriaOption, Producto } from '@/types';
 
 type Props = {
-    marcas: MarcaOption[];
     categorias: CategoriaOption[];
     producto: Producto | null;
     open: boolean;
@@ -22,7 +21,6 @@ type Props = {
 };
 
 export default function EditProductoModal({
-    marcas,
     categorias,
     producto,
     open,
@@ -52,7 +50,6 @@ export default function EditProductoModal({
 
                             <ProductoFormFields
                                 producto={producto}
-                                marcas={marcas}
                                 categorias={categorias}
                                 errors={errors}
                             />

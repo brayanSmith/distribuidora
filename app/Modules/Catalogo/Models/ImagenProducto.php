@@ -16,7 +16,7 @@ class ImagenProducto extends Model
     /** @use HasFactory<ImagenProductoFactory> */
     use HasFactory;
 
-    protected $fillable = ['producto_id', 'imagen_producto'];
+    protected $fillable = ['producto_id', 'imagen_producto', 'orden'];
 
     protected $appends = ['url'];
 

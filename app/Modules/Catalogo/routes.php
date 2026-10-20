@@ -2,7 +2,8 @@
 
 use App\Modules\Catalogo\Http\Controllers\CategoriaController;
 use App\Modules\Catalogo\Http\Controllers\CotizadorController;
-use App\Modules\Catalogo\Http\Controllers\MarcaController;
+use App\Modules\Catalogo\Http\Controllers\ExportacionProductosController;
+use App\Modules\Catalogo\Http\Controllers\ImportacionController;
 use App\Modules\Catalogo\Http\Controllers\ProductoController;
 use App\Modules\Catalogo\Http\Controllers\SubCategoriaController;
 use Illuminate\Support\Facades\Route;
@@ -17,12 +18,11 @@ Route::post('sub-categorias', [SubCategoriaController::class, 'store'])->name('s
 Route::patch('sub-categorias/{sub_categoria}', [SubCategoriaController::class, 'update'])->name('sub-categorias.update');
 Route::delete('sub-categorias/{sub_categoria}', [SubCategoriaController::class, 'destroy'])->name('sub-categorias.destroy');
 
-Route::get('marcas', [MarcaController::class, 'index'])->name('marcas.index');
-Route::post('marcas', [MarcaController::class, 'store'])->name('marcas.store');
-Route::patch('marcas/{marca}', [MarcaController::class, 'update'])->name('marcas.update');
-Route::delete('marcas/{marca}', [MarcaController::class, 'destroy'])->name('marcas.destroy');
-
 Route::get('cotizador', [CotizadorController::class, 'index'])->name('cotizador.index');
+
+Route::post('productos/importaciones', [ImportacionController::class, 'store'])->name('importaciones.store');
+Route::get('productos/importaciones/plantilla', [ImportacionController::class, 'plantilla'])->name('importaciones.plantilla');
+Route::get('productos/exportar', ExportacionProductosController::class)->name('productos.exportar');
 
 Route::get('productos', [ProductoController::class, 'index'])->name('productos.index');
 Route::get('productos/crear', [ProductoController::class, 'create'])->name('productos.create');

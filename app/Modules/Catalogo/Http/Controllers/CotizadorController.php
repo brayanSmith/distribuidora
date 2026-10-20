@@ -37,7 +37,7 @@ class CotizadorController extends Controller
     {
         return Cache::remember('cotizador.productos', now()->addMinutes(5), function (): array {
             return Producto::query()
-                ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'valor_detal', 'valor_mayorista'])
+                ->select(['id', 'referencia_producto', 'descripcion_producto', 'marca', 'valor_detal', 'valor_mayorista'])
                 ->with('imagenes:id,producto_id,imagen_producto')
                 ->withSum('stockBodegas as stock_total', 'stock')
                 ->whereRaw('(select coalesce(sum(stock), 0) from stock_bodegas where stock_bodegas.producto_id = productos.id) > 0')

@@ -52,8 +52,8 @@ class StockBodegaController extends Controller
             // Costs and prices are only sent to whoever may see the "Inversión" view.
             'productos' => Producto::whereIn('id', $productoIds)
                 ->get($puedeVerInversion
-                    ? ['id', 'referencia_producto', 'concatenar_codigo_nombre', 'costo_producto', 'valor_detal', 'valor_mayorista']
-                    : ['id', 'referencia_producto', 'concatenar_codigo_nombre']),
+                    ? ['id', 'referencia_producto', 'descripcion_producto', 'marca', 'costo_producto', 'valor_detal', 'valor_mayorista']
+                    : ['id', 'referencia_producto', 'descripcion_producto', 'marca']),
             'canViewInversion' => $puedeVerInversion,
             'bodegas' => Bodega::whereIn('id', $bodegaIds)->get(['id', 'nombre_bodega']),
             'canCreateTraslado' => $puedeTrasladar,

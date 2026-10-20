@@ -9,6 +9,7 @@ use App\Modules\Inventario\Models\Traslado;
 use App\Modules\Ventas\Models\DetallePedido;
 use Database\Factories\ProductoFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,10 @@ class Producto extends Model
     use LogsActivity;
     use SoftDeletes;
 
+    protected $appends = [
+        'concatenar_codigo_nombre',
+    ];
+
     protected $casts = [
         'inventariable' => 'boolean',
         'costo_producto' => 'decimal:2',
@@ -37,13 +42,12 @@ class Producto extends Model
         'categoria_id',
         'sub_categoria_id',
         'inventariable',
-        'marca_id',
+        'marca',
         'referencia_producto',
         'descripcion_producto',
         'costo_producto',
         'valor_detal',
         'valor_mayorista',
-        'concatenar_codigo_nombre',
         'codigo_appsheet',
         'sku',
     ];
@@ -57,7 +61,7 @@ class Producto extends Model
         return LogOptions::defaults()
             ->useLogName('productos')
             ->logOnly([
-                'categoria_id', 'sub_categoria_id', 'inventariable', 'sku', 'referencia_producto', 'descripcion_producto', 'marca_id',
+                'categoria_id', 'sub_categoria_id', 'inventariable', 'sku', 'referencia_producto', 'descripcion_producto', 'marca',
                 'costo_producto', 'valor_detal', 'valor_mayorista',
             ])
             ->logOnlyDirty()
@@ -72,11 +76,26 @@ class Producto extends Model
     }
 
     /**
-     * @return BelongsTo<Marca, $this>
+     * The display name: reference, brand and description joined by dashes.
+     * Queries that select columns must include `referencia_producto`,
+     * `descripcion_producto` and `marca`.
+     *
+     * @return Attribute<string, never>
      */
-    public function marca(): BelongsTo
+    protected function concatenarCodigoNombre(): Attribute
     {
-        return $this->belongsTo(Marca::class, 'marca_id');
+        return Attribute::make(
+            get: fn (): string => self::nombreDe(
+                $this->referencia_producto,
+                $this->marca,
+                $this->descripcion_producto,
+            ),
+        );
+    }
+
+    public static function nombreDe(?string $referencia, ?string $marca, ?string $descripcion): string
+    {
+        return implode('-', array_filter([$referencia, $marca, $descripcion]));
     }
 
     /**
@@ -100,7 +119,7 @@ class Producto extends Model
      */
     public function imagenes(): HasMany
     {
-        return $this->hasMany(ImagenProducto::class);
+        return $this->hasMany(ImagenProducto::class)->orderBy('orden')->orderBy('id');
     }
 
     public function detalleCompras()

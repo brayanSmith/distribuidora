@@ -8,7 +8,7 @@ use App\Modules\Catalogo\Http\Requests\StoreProductoRequest;
 use App\Modules\Catalogo\Http\Requests\UpdateProductoRequest;
 use App\Modules\Catalogo\Models\Categoria;
 use App\Modules\Catalogo\Models\ImagenProducto;
-use App\Modules\Catalogo\Models\Marca;
+use App\Modules\Catalogo\Models\Importacion;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Catalogo\Models\SubCategoria;
 use App\Modules\Compras\Models\DetalleCompra;
@@ -44,8 +44,9 @@ class ProductoController extends Controller
             'productos' => $this->listado($eliminados),
             'eliminados' => $eliminados,
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
-            'marcas' => Marca::orderBy('marca')->get(['id', 'marca']),
             'categorias' => $this->categorias(),
+            // Only sent when asked for (the import dialog opens and polls it).
+            'importaciones' => Inertia::optional(fn () => Importacion::with('user:id,name')->latest('id')->limit(10)->get()),
             'permissions' => $this->permissions($request),
         ]);
     }
@@ -58,7 +59,6 @@ class ProductoController extends Controller
         Gate::authorize('productos.create');
 
         return Inertia::render('productos/create', [
-            'marcas' => Marca::orderBy('marca')->get(['id', 'marca']),
             'categorias' => $this->categorias(),
             'permissions' => $this->permissions($request),
         ]);
@@ -77,13 +77,12 @@ class ProductoController extends Controller
         );
 
         // A price the user cannot see is left at its default.
-        $data = $request->safe()->except(['imagenes', ...$this->preciosOcultos($request)]);
-
-        $data['concatenar_codigo_nombre'] = $this->buildConcatenacion($data);
+        $data = $request->safe()->except(['imagenes', 'orden_imagenes', ...$this->preciosOcultos($request)]);
 
         $producto = Producto::create($data);
 
-        $this->guardarImagenes($producto, $request->file('imagenes', []));
+        $nuevas = $this->guardarImagenes($producto, $request->file('imagenes', []));
+        $this->ordenarImagenes($producto, $request->input('orden_imagenes', []), $nuevas);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Producto created.')]);
 
@@ -105,7 +104,7 @@ class ProductoController extends Controller
         $producto->makeHidden($this->preciosOcultos($request));
 
         return Inertia::render('productos/show', [
-            'producto' => $producto->load(['marca', 'categoria', 'subCategoria', 'imagenes']),
+            'producto' => $producto->load(['categoria', 'subCategoria', 'imagenes']),
             'permissions' => $this->permissions($request),
         ]);
     }
@@ -160,8 +159,7 @@ class ProductoController extends Controller
         $producto->makeHidden($this->preciosOcultos($request));
 
         return Inertia::render('productos/edit', [
-            'producto' => $producto->load(['marca', 'imagenes']),
-            'marcas' => Marca::orderBy('marca')->get(['id', 'marca']),
+            'producto' => $producto->load('imagenes'),
             'categorias' => $this->categorias(),
             'permissions' => $this->permissions($request),
         ]);
@@ -175,9 +173,7 @@ class ProductoController extends Controller
         Gate::authorize('productos.update');
 
         // A price the user cannot see is not overwritten from the form.
-        $data = $request->safe()->except(['imagenes', 'remove_imagen_ids', ...$this->preciosOcultos($request)]);
-
-        $data['concatenar_codigo_nombre'] = $this->buildConcatenacion($data);
+        $data = $request->safe()->except(['imagenes', 'orden_imagenes', 'remove_imagen_ids', ...$this->preciosOcultos($request)]);
 
         $producto->update($data);
 
@@ -186,7 +182,8 @@ class ProductoController extends Controller
             $imagen->delete();
         });
 
-        $this->guardarImagenes($producto, $request->file('imagenes', []));
+        $nuevas = $this->guardarImagenes($producto, $request->file('imagenes', []));
+        $this->ordenarImagenes($producto, $request->input('orden_imagenes', []), $nuevas);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Producto updated.')]);
 
@@ -242,28 +239,53 @@ class ProductoController extends Controller
     }
 
     /**
-     * Store the uploaded files as imagenes of the producto.
+     * Store the uploaded files as imagenes of the producto, after the ones it has.
      *
      * @param  list<UploadedFile>  $archivos
+     * @return list<ImagenProducto> In the order of the files.
      */
-    private function guardarImagenes(Producto $producto, array $archivos): void
+    private function guardarImagenes(Producto $producto, array $archivos): array
     {
+        $orden = (int) $producto->imagenes()->max('orden');
+        $creadas = [];
+
         foreach ($archivos as $archivo) {
-            $producto->imagenes()->create([
+            $creadas[] = $producto->imagenes()->create([
                 'imagen_producto' => $archivo->store('productos', 'public'),
+                'orden' => ++$orden,
             ]);
         }
+
+        return $creadas;
     }
 
-    private function buildConcatenacion(array $data): string
+    /**
+     * Apply the order the user chose to the imagenes (the first one is the cover).
+     * Imagenes left out of the list keep their place after the listed ones.
+     *
+     * @param  list<string>  $orden  `e<id>` for a saved imagen, `n<index>` for the n-th uploaded one.
+     * @param  list<ImagenProducto>  $nuevas
+     */
+    private function ordenarImagenes(Producto $producto, array $orden, array $nuevas): void
     {
-        $marca = Marca::whereKey($data['marca_id'] ?? null)->first();
+        if ($orden === []) {
+            return;
+        }
 
-        return implode('-', array_filter([
-            $data['referencia_producto'] ?? null,
-            $marca?->marca,
-            $data['descripcion_producto'] ?? null,
-        ]));
+        $propias = $producto->imagenes()->pluck('id')->all();
+
+        $ids = collect($orden)
+            ->map(fn (string $ficha): ?int => str_starts_with($ficha, 'e')
+                ? (int) substr($ficha, 1)
+                : ($nuevas[(int) substr($ficha, 1)]->id ?? null))
+            ->filter(fn (?int $id): bool => $id !== null && in_array($id, $propias, true))
+            ->unique();
+
+        $ids = $ids->merge(array_diff($propias, $ids->all()))->values();
+
+        foreach ($ids as $posicion => $id) {
+            ImagenProducto::whereKey($id)->update(['orden' => $posicion + 1]);
+        }
     }
 
     /**
@@ -283,15 +305,15 @@ class ProductoController extends Controller
             ->orderBy('referencia_producto')
             ->toBase()
             ->get([
-                'id', 'categoria_id', 'sub_categoria_id', 'inventariable', 'sku', 'marca_id', 'referencia_producto',
-                'descripcion_producto', 'costo_producto', 'valor_detal', 'valor_mayorista', 'concatenar_codigo_nombre',
+                'id', 'categoria_id', 'sub_categoria_id', 'inventariable', 'sku', 'marca', 'referencia_producto',
+                'descripcion_producto', 'costo_producto', 'valor_detal', 'valor_mayorista',
             ]);
 
-        $marcas = Marca::pluck('marca', 'id');
         $categorias = Categoria::pluck('nombre_categoria', 'id');
         $subCategorias = SubCategoria::pluck('nombre_sub_categoria', 'id');
         $imagenes = ImagenProducto::query()
             ->whereIn('producto_id', $productos->pluck('id'))
+            ->orderBy('orden')
             ->orderBy('id')
             ->get(['id', 'producto_id', 'imagen_producto'])
             ->groupBy('producto_id');
@@ -330,7 +352,7 @@ class ProductoController extends Controller
                 && ! $pendientes->has($producto->id))->values();
         }
 
-        return $productos->map(function (object $producto) use ($marcas, $stock, $pendientes, $dinero, $usuario, $verStockTotal, $verPendiente, $verAlmacenP, $verStockBodegas, $categorias, $subCategorias, $imagenes): array {
+        return $productos->map(function (object $producto) use ($stock, $pendientes, $dinero, $usuario, $verStockTotal, $verPendiente, $verAlmacenP, $verStockBodegas, $categorias, $subCategorias, $imagenes): array {
             $filasStock = $stock->get($producto->id, collect());
             $filasImagenes = $imagenes->get($producto->id, collect());
             $filasPendientes = $pendientes->get($producto->id, collect());
@@ -344,10 +366,7 @@ class ProductoController extends Controller
                 'sub_categoria' => $subCategorias[$producto->sub_categoria_id] ?? null,
                 'inventariable' => (bool) $producto->inventariable,
                 'sku' => $producto->sku,
-                'marca_id' => $producto->marca_id,
-                'marca' => isset($marcas[$producto->marca_id])
-                    ? ['id' => $producto->marca_id, 'marca' => $marcas[$producto->marca_id]]
-                    : null,
+                'marca' => $producto->marca,
                 'referencia_producto' => $producto->referencia_producto,
                 'descripcion_producto' => $producto->descripcion_producto,
                 'costo_producto' => $usuario->puedeVerPrecio('costo') ? $dinero($producto->costo_producto) : null,
@@ -355,7 +374,7 @@ class ProductoController extends Controller
                 'valor_mayorista' => $usuario->puedeVerPrecio('valor_mayorista') ? $dinero($producto->valor_mayorista) : null,
                 'imagenes' => $filasImagenes->map(fn (ImagenProducto $imagen): array => ['id' => $imagen->id, 'url' => $imagen->url])->values()->all(),
                 'imagen_producto_url' => $filasImagenes->first()?->url,
-                'concatenar_codigo_nombre' => $producto->concatenar_codigo_nombre,
+                'concatenar_codigo_nombre' => Producto::nombreDe($producto->referencia_producto, $producto->marca, $producto->descripcion_producto),
                 'stock_total' => $verStockTotal ? (float) $filasStock->sum('stock') : null,
                 // Units still to arrive: the quantity of every pending purchase line.
                 'pendiente' => $verPendiente ? (float) $filasPendientes->sum('cantidad') : null,
@@ -380,6 +399,8 @@ class ProductoController extends Controller
             'canViewPendiente' => $request->user()->can('productos.view-pendiente'),
             'canViewAlmacenP' => $request->user()->can('productos.view-almacen-p'),
             'canViewStockBodegas' => $request->user()->can('productos.view-stock-bodegas'),
+            'canImport' => $request->user()->can('productos.import'),
+            'canExport' => $request->user()->can('productos.export'),
             // The same permissions the traslado store accepts.
             'canCreateTraslado' => $request->user()->canAny(['traslados.create', 'stock-bodegas.create-traslado']),
         ];

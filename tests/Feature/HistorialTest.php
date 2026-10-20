@@ -3,7 +3,6 @@
 use App\Models\User;
 use App\Modules\Administracion\Models\Empresa;
 use App\Modules\Administracion\Models\Role;
-use App\Modules\Catalogo\Models\Marca;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Compras\Models\Compra;
 use App\Modules\Compras\Models\Proveedor;
@@ -21,7 +20,7 @@ beforeEach(function () {
     $this->owner = User::factory()->create();
     asignarRol($this->owner, 'Owner');
     $this->bodega = Bodega::factory()->create();
-    $this->producto = Producto::factory()->create(['concatenar_codigo_nombre' => 'LLANTA 175/70']);
+    $this->producto = Producto::factory()->create(['referencia_producto' => 'LLANTA 175/70', 'descripcion_producto' => null]);
     StockBodega::create(['bodega_id' => $this->bodega->id, 'producto_id' => $this->producto->id, 'stock_inicial' => 50, 'entradas' => 0, 'salidas' => 0, 'stock' => 50]);
     $this->cliente = Cliente::factory()->create();
 
@@ -138,10 +137,9 @@ test('the history records who created, edited, received, deleted and restored a 
 });
 
 test('the history records the changes of a producto and hides the prices its reader may not see', function () {
-    $marca = Marca::factory()->create(['marca' => 'WANDA']);
     $this->actingAs($this->owner)->post(route('productos.store'), [
         'referencia_producto' => 'REF-1',
-        'marca_id' => $marca->id,
+        'marca' => 'WANDA',
         'costo_producto' => 50000,
         'valor_detal' => 80000,
     ])->assertRedirect();
@@ -151,7 +149,7 @@ test('the history records the changes of a producto and hides the prices its rea
 
     $this->actingAs($this->owner)->patch(route('productos.update', [$producto]), [
         'referencia_producto' => 'REF-1',
-        'marca_id' => $marca->id,
+        'marca' => 'WANDA',
         'costo_producto' => 50000,
         'valor_detal' => 90000,
     ])->assertRedirect();
@@ -212,7 +210,6 @@ test('the history records the changes of a cliente', function () {
 dataset('registros simples', [
     'gastos' => ['Gastos', 'Gasto', 'descripcion', fn () => Gasto::factory()->create(['descripcion' => 'Uno']), 'Dos', false],
     'proveedores' => ['Proveedores', 'Proveedor', 'nombre_proveedor', fn () => Proveedor::factory()->create(['nombre_proveedor' => 'Uno']), 'Dos', false],
-    'marcas' => ['Marcas', 'Marca', 'marca', fn () => Marca::factory()->create(['marca' => 'Uno']), 'Dos', true],
     'bodegas' => ['Bodegas', 'Bodega', 'nombre_bodega', fn () => Bodega::factory()->create(['nombre_bodega' => 'Uno']), 'Dos', true],
     'stock inicial' => ['Stock inicial', 'Stock inicial', 'cantidad', fn () => StockInicial::factory()->create(['cantidad' => 5]), 9, false],
     'traslados' => ['Traslados', 'Traslado', 'cantidad', fn () => Traslado::factory()->create(['cantidad' => 5]), 9, false],

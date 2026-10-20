@@ -64,7 +64,7 @@ class PedidoController extends Controller
                 'detalles' => fn ($query) => $query->withTrashed()
                     ->select(['id', 'pedido_id', 'producto_id', 'cantidad', 'precio_unitario', 'subtotal', 'costo_unitario', 'costo_total', 'ganancia_total'])
                     ->with(['producto' => fn ($query) => $query
-                        ->select(['id', 'referencia_producto', 'concatenar_codigo_nombre'])
+                        ->select(['id', 'referencia_producto', 'descripcion_producto', 'marca'])
                         ->withSum('stockBodegas as stock_total', 'stock')]),
                 'abonos:id,pedido_id,puc_id,monto',
                 'abonos.puc:id,concatenar_subcuenta_concepto',
@@ -199,7 +199,7 @@ class PedidoController extends Controller
             'bodega:id,nombre_bodega',
             'user:id,name',
             'detalles' => fn ($query) => $query->withTrashed()
-                ->with(['producto:id,referencia_producto,concatenar_codigo_nombre', 'bodega:id,nombre_bodega']),
+                ->with(['producto:id,referencia_producto,descripcion_producto,marca', 'bodega:id,nombre_bodega']),
             'abonos' => fn ($query) => $query->with(['puc:id,concatenar_subcuenta_concepto', 'vendedor:id,name']),
         ]);
 
@@ -342,7 +342,7 @@ class PedidoController extends Controller
                 ->where(fn ($query) => $query->whereNull('deleted_at')
                     ->when($productosDelPedido->isNotEmpty(), fn ($query) => $query->orWhereIn('id', $productosDelPedido)))
                 ->orderBy('referencia_producto')
-                ->get(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'valor_detal', 'valor_mayorista', 'costo_producto'])
+                ->get(['id', 'referencia_producto', 'descripcion_producto', 'marca', 'valor_detal', 'valor_mayorista', 'costo_producto'])
                 ->each(function (Producto $producto) use ($request): void {
                     foreach (['valor_detal' => 'valor_detal', 'valor_mayorista' => 'valor_mayorista', 'costo_producto' => 'costo'] as $campo => $tipo) {
                         if (! $request->user()->puedeVerPrecio($tipo)) {

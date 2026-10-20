@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/select';
 import type {
     CategoriaOption,
-    MarcaOption,
     PosCatalogoProducto,
     TipoPrecioPedido,
 } from '@/types';
@@ -36,7 +35,6 @@ type Props = {
     /** Reloads the catalog (stock) without leaving the page. */
     onRefresh: () => void;
     refreshing: boolean;
-    marcas: MarcaOption[];
     categorias: CategoriaOption[];
     /** Whether the user may register a new product from here. */
     canCreateProducto: boolean;
@@ -62,7 +60,6 @@ export default function PosCatalog({
     reservedByProducto,
     tipoPrecio,
     onAdd,
-    marcas,
     categorias: categoriasForm,
     canCreateProducto,
     searchRef,
@@ -129,7 +126,6 @@ export default function PosCatalog({
 
                 {canCreateProducto ? (
                     <CreateProductoModal
-                        marcas={marcas}
                         categorias={categoriasForm}
                         stayOnPage
                     >

@@ -37,8 +37,8 @@ class DashboardController extends Controller
                 ->where(fn ($query) => $query
                     ->whereIn('id', DB::table('detalle_pedidos')->select('producto_id'))
                     ->orWhereIn('id', DB::table('detalle_compras')->select('producto_id')))
-                ->orderBy('concatenar_codigo_nombre')
-                ->get(['id', 'concatenar_codigo_nombre']),
+                ->orderBy('referencia_producto')
+                ->get(['id', 'referencia_producto', 'descripcion_producto', 'marca']),
         ]);
     }
 
@@ -239,13 +239,16 @@ class DashboardController extends Controller
             ->map(fn ($fila) => ['categoria' => $fila->categoria, 'cantidad' => (int) $fila->cantidad, 'valor' => (float) $fila->valor])
             ->all();
 
-        $topProductos = (clone $detalles)
-            ->selectRaw('detalle_pedidos.producto_id, MAX(productos.concatenar_codigo_nombre) as producto, SUM(detalle_pedidos.cantidad) as cantidad, SUM(detalle_pedidos.subtotal) as valor')
+        $topFilas = (clone $detalles)
+            ->selectRaw('detalle_pedidos.producto_id, SUM(detalle_pedidos.cantidad) as cantidad, SUM(detalle_pedidos.subtotal) as valor')
             ->groupBy('detalle_pedidos.producto_id')
             ->orderByDesc('cantidad')
             ->limit(10)
-            ->get()
-            ->map(fn ($fila) => ['producto' => $fila->producto ?? 'Producto '.$fila->producto_id, 'cantidad' => (int) $fila->cantidad, 'valor' => (float) $fila->valor])
+            ->get();
+        $nombres = $this->nombresDeProductos($topFilas->pluck('producto_id')->all());
+
+        $topProductos = $topFilas
+            ->map(fn ($fila) => ['producto' => $nombres[$fila->producto_id] ?? 'Producto '.$fila->producto_id, 'cantidad' => (int) $fila->cantidad, 'valor' => (float) $fila->valor])
             ->all();
 
         $filtraPorProducto = $filtros['producto_ids'] !== [];
@@ -304,20 +307,38 @@ class DashboardController extends Controller
      */
     private function sinStock(array $filtros): array
     {
-        return $this->detalles($filtros)
+        $filas = $this->detalles($filtros)
             ->where('productos.inventariable', true)
             ->whereRaw('(select coalesce(sum(stock), 0) from stock_bodegas where stock_bodegas.producto_id = detalle_pedidos.producto_id) <= 0')
-            ->selectRaw('detalle_pedidos.producto_id, MAX(productos.concatenar_codigo_nombre) as producto, SUM(detalle_pedidos.cantidad) as vendidas, (select coalesce(sum(stock), 0) from stock_bodegas where stock_bodegas.producto_id = detalle_pedidos.producto_id) as stock')
+            ->selectRaw('detalle_pedidos.producto_id, SUM(detalle_pedidos.cantidad) as vendidas, (select coalesce(sum(stock), 0) from stock_bodegas where stock_bodegas.producto_id = detalle_pedidos.producto_id) as stock')
             ->groupBy('detalle_pedidos.producto_id')
             ->orderByDesc('vendidas')
             ->limit(5)
-            ->get()
+            ->get();
+        $nombres = $this->nombresDeProductos($filas->pluck('producto_id')->all());
+
+        return $filas
             ->map(fn ($fila) => [
                 'id' => (int) $fila->producto_id,
-                'producto' => $fila->producto ?? 'Producto '.$fila->producto_id,
+                'producto' => $nombres[$fila->producto_id] ?? 'Producto '.$fila->producto_id,
                 'vendidas' => (int) $fila->vendidas,
                 'stock' => (float) $fila->stock,
             ])
+            ->all();
+    }
+
+    /**
+     * The display name of each producto, by id.
+     *
+     * @param  list<int|string>  $ids
+     * @return array<int, string>
+     */
+    private function nombresDeProductos(array $ids): array
+    {
+        return Producto::withTrashed()
+            ->whereIn('id', $ids)
+            ->get(['id', 'referencia_producto', 'descripcion_producto', 'marca'])
+            ->mapWithKeys(fn (Producto $producto): array => [$producto->id => $producto->concatenar_codigo_nombre])
             ->all();
     }
 

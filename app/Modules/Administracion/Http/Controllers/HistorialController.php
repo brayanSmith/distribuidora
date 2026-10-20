@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Modules\Administracion\Models\Empresa;
 use App\Modules\Administracion\Models\Role;
 use App\Modules\Catalogo\Models\Categoria;
-use App\Modules\Catalogo\Models\Marca;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Catalogo\Models\SubCategoria;
 use App\Modules\Compras\Models\Compra;
@@ -44,7 +43,6 @@ class HistorialController extends Controller
         Proveedor::class => ['modulo' => 'Proveedores', 'etiqueta' => 'Proveedor', 'nombre' => 'nombre_proveedor'],
         StockInicial::class => ['modulo' => 'Stock inicial', 'etiqueta' => 'Stock inicial', 'nombre' => null],
         Traslado::class => ['modulo' => 'Traslados', 'etiqueta' => 'Traslado', 'nombre' => null],
-        Marca::class => ['modulo' => 'Marcas', 'etiqueta' => 'Marca', 'nombre' => 'marca'],
         Bodega::class => ['modulo' => 'Bodegas', 'etiqueta' => 'Bodega', 'nombre' => 'nombre_bodega'],
         Puc::class => ['modulo' => 'Medios de pago', 'etiqueta' => 'Medio de pago', 'nombre' => 'concatenar_subcuenta_concepto'],
         Empresa::class => ['modulo' => 'Empresas', 'etiqueta' => 'Empresa', 'nombre' => 'nombre_empresa'],
@@ -89,7 +87,6 @@ class HistorialController extends Controller
         'sku' => 'SKU',
         'referencia_producto' => 'Referencia',
         'descripcion_producto' => 'Descripción',
-        'marca_id' => 'Marca',
         'ancho' => 'Ancho',
         'perfil' => 'Perfil',
         'construccion' => 'Construcción',
@@ -132,7 +129,6 @@ class HistorialController extends Controller
         'bodega_donante_id' => 'Bodega de origen',
         'bodega_destino_id' => 'Bodega de destino',
         'marca' => 'Marca',
-        'descripcion_marca' => 'Descripción',
         'nombre_bodega' => 'Nombre',
         'ubicacion_bodega' => 'Ubicación',
         'cuenta' => 'Cuenta',
@@ -172,7 +168,7 @@ class HistorialController extends Controller
 
     /** Fields that hold the id of another record, which is shown by name. */
     private const REFERENCIAS = [
-        'cliente_id', 'marca_id', 'categoria_id', 'sub_categoria_id', 'proveedor_id', 'user_id', 'vendedor_id', 'puc_id', 'producto_id',
+        'cliente_id', 'categoria_id', 'sub_categoria_id', 'proveedor_id', 'user_id', 'vendedor_id', 'puc_id', 'producto_id',
         'bodega_id', 'bodega_donante_id', 'bodega_destino_id',
     ];
 
@@ -250,7 +246,7 @@ class HistorialController extends Controller
 
             $consulta = method_exists($modelo, 'withTrashed') ? $modelo::withTrashed() : $modelo::query();
 
-            $registros[$modelo] = $consulta->whereIn('id', $ids)->pluck($datos['nombre'], 'id')->all();
+            $registros[$modelo] = $consulta->whereIn('id', $ids)->get()->pluck($datos['nombre'], 'id')->all();
         }
 
         return $registros;
@@ -349,11 +345,10 @@ class HistorialController extends Controller
 
         return [
             'cliente_id' => Cliente::withTrashed()->whereIn('id', $ids['cliente_id'])->pluck('razon_social', 'id')->all(),
-            'marca_id' => Marca::whereIn('id', $ids['marca_id'])->pluck('marca', 'id')->all(),
             'categoria_id' => Categoria::whereIn('id', $ids['categoria_id'])->pluck('nombre_categoria', 'id')->all(),
             'sub_categoria_id' => SubCategoria::whereIn('id', $ids['sub_categoria_id'])->pluck('nombre_sub_categoria', 'id')->all(),
             'proveedor_id' => Proveedor::withTrashed()->whereIn('id', $ids['proveedor_id'])->pluck('nombre_proveedor', 'id')->all(),
-            'producto_id' => Producto::withTrashed()->whereIn('id', $ids['producto_id'])->pluck('concatenar_codigo_nombre', 'id')->all(),
+            'producto_id' => Producto::withTrashed()->whereIn('id', $ids['producto_id'])->get(['id', 'referencia_producto', 'descripcion_producto', 'marca'])->pluck('concatenar_codigo_nombre', 'id')->all(),
             'user_id' => $usuarios,
             'vendedor_id' => $usuarios,
             'bodega_id' => $bodegas,

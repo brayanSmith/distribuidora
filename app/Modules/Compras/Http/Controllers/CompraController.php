@@ -41,7 +41,7 @@ class CompraController extends Controller
                     // Only what the listing shows: the table has a column per bodega with its products.
                     'detallesCompra' => fn ($query) => $query->withTrashed()
                         ->select(['id', 'compra_id', 'producto_id', 'bodega_id'])
-                        ->with(['producto:id,referencia_producto,concatenar_codigo_nombre,tipo_vehiculo', 'bodega:id,nombre_bodega']),
+                        ->with(['producto:id,referencia_producto,descripcion_producto,marca', 'bodega:id,nombre_bodega']),
                 ])
                 ->when($eliminados, fn ($query) => $query->onlyTrashed())
                 ->orderByDesc('fecha')
@@ -101,7 +101,7 @@ class CompraController extends Controller
         return response()->json($compra->load([
             'proveedor:id,nombre_proveedor,nit_proveedor,telefono_proveedor',
             'detallesCompra' => fn ($query) => $query->withTrashed()
-                ->with(['producto:id,referencia_producto,concatenar_codigo_nombre', 'bodega:id,nombre_bodega']),
+                ->with(['producto:id,referencia_producto,descripcion_producto,marca', 'bodega:id,nombre_bodega']),
         ]));
     }
 
@@ -272,7 +272,7 @@ class CompraController extends Controller
             'proveedores' => Proveedor::orderBy('nombre_proveedor')->get(['id', 'nombre_proveedor']),
             'productos' => Producto::where('inventariable', true)
                 ->orderBy('referencia_producto')
-                ->get(['id', 'referencia_producto', 'concatenar_codigo_nombre', 'costo_producto']),
+                ->get(['id', 'referencia_producto', 'descripcion_producto', 'marca', 'costo_producto']),
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
         ];
     }

@@ -4,7 +4,6 @@ import type {
     BodegaOption,
     ClienteOption,
     CategoriaOption,
-    MarcaOption,
     PosCatalogoProducto,
     PucOption,
     VendedorOption,
@@ -16,7 +15,6 @@ type Props = {
     bodegas: BodegaOption[];
     vendedores: VendedorOption[];
     pucs: PucOption[];
-    marcas: MarcaOption[];
     categorias: CategoriaOption[];
     canCreateProducto: boolean;
     canCreateCliente: boolean;

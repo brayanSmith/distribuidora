@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Modules\Catalogo\Models\Marca;
 use App\Modules\Catalogo\Models\Producto;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -27,13 +26,12 @@ class ProductoFactory extends Factory
             'categoria_id' => null,
             'sub_categoria_id' => null,
             'inventariable' => true,
-            'marca_id' => null,
+            'marca' => null,
             'referencia_producto' => $referencia,
             'descripcion_producto' => $descripcion,
             'costo_producto' => fake()->randomFloat(2, 50000, 200000),
             'valor_detal' => fake()->randomFloat(2, 100000, 300000),
             'valor_mayorista' => fake()->randomFloat(2, 80000, 250000),
-            'concatenar_codigo_nombre' => $referencia.'-'.$descripcion,
             'codigo_appsheet' => null,
             'sku' => fake()->unique()->numerify('########'),
         ];
@@ -44,7 +42,7 @@ class ProductoFactory extends Factory
      */
     public function withMarca(): static
     {
-        return $this->state(fn () => ['marca_id' => Marca::factory()]);
+        return $this->state(fn () => ['marca' => fake()->company()]);
     }
 
     /**

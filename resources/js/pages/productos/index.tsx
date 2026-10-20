@@ -1,5 +1,13 @@
 import { Head } from '@inertiajs/react';
-import { ArrowLeftRight, Pencil, Plus, Trash2, X } from 'lucide-react';
+import {
+    ArrowLeftRight,
+    Download,
+    Pencil,
+    Plus,
+    Trash2,
+    Upload,
+    X,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ActionsCell from '@/components/actions-cell';
 import CreateProductoModal from '@/components/productos/create-producto-modal';
@@ -8,11 +16,18 @@ import DataTable, { type DataTableColumn } from '@/components/data-table';
 import DeleteProductoModal from '@/components/productos/delete-producto-modal';
 import EditProductoModal from '@/components/productos/edit-producto-modal';
 import Heading from '@/components/heading';
+import ImportarProductosModal from '@/components/productos/importar-productos-modal';
 import ProductoDetalleModal from '@/components/productos/producto-detalle-modal';
 import RestoreButton from '@/components/restore-button';
 import TrashToggle from '@/components/trash-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
     Dialog,
     DialogContent,
@@ -36,11 +51,10 @@ import {
 import { usePersistedState } from '@/hooks/use-persisted-state';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import { cn } from '@/lib/utils';
-import { index, restore } from '@/routes/productos';
+import { exportar, index, restore } from '@/routes/productos';
 import type {
     Bodega,
     CategoriaOption,
-    MarcaOption,
     Producto,
     ProductoPermissions,
 } from '@/types';
@@ -55,7 +69,6 @@ type Props = {
     productos: Producto[];
     eliminados: boolean;
     bodegas: Bodega[];
-    marcas: MarcaOption[];
     categorias: CategoriaOption[];
     permissions: ProductoPermissions;
 };
@@ -77,6 +90,12 @@ const categoriaDe = (producto: Producto): string =>
     producto.categoria ?? SIN_CATEGORIA;
 const subCategoriaDe = (producto: Producto): string =>
     producto.sub_categoria ?? SIN_SUB_CATEGORIA;
+
+const FORMATOS_EXPORTACION = [
+    { value: 'csv', label: 'CSV' },
+    { value: 'txt', label: 'TXT' },
+    { value: 'xlsx', label: 'Excel' },
+] as const;
 
 /** Each row renders many controls, so bigger pages make the table sluggish. */
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
@@ -212,7 +231,6 @@ export default function ProductosIndex({
     productos,
     eliminados,
     bodegas,
-    marcas,
     categorias,
     permissions,
 }: Props) {
@@ -527,9 +545,53 @@ export default function ProductosIndex({
                             visible={permissions.canViewDeleted}
                         />
 
+                        {permissions.canImport && !eliminados ? (
+                            <ImportarProductosModal>
+                                <Button
+                                    variant="outline"
+                                    data-test="importar-productos-button"
+                                >
+                                    <Upload /> Importar
+                                </Button>
+                            </ImportarProductosModal>
+                        ) : null}
+
+                        {permissions.canExport && !eliminados ? (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        data-test="exportar-productos-button"
+                                    >
+                                        <Download /> Exportar
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {FORMATOS_EXPORTACION.map(
+                                        ({ value, label }) => (
+                                            <DropdownMenuItem
+                                                key={value}
+                                                asChild
+                                            >
+                                                <a
+                                                    href={exportar.url({
+                                                        query: {
+                                                            formato: value,
+                                                        },
+                                                    })}
+                                                    data-test={`exportar-${value}`}
+                                                >
+                                                    {label}
+                                                </a>
+                                            </DropdownMenuItem>
+                                        ),
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        ) : null}
+
                         {permissions.canCreate && !eliminados ? (
                             <CreateProductoModal
-                                marcas={marcas}
                                 categorias={categorias}
                             >
                                 <Button data-test="create-producto-button">
@@ -646,7 +708,6 @@ export default function ProductosIndex({
             />
 
             <EditProductoModal
-                marcas={marcas}
                 categorias={categorias}
                 producto={productoToEdit}
                 open={editDialogOpen}

@@ -24,7 +24,7 @@ class UpdateProductoRequest extends FormRequest
             'categoria_id' => ['nullable', 'integer', 'exists:categorias,id'],
             'sub_categoria_id' => ['nullable', 'integer', Rule::exists('sub_categorias', 'id')->where(fn ($query) => $query->where('categoria_id', $this->input('categoria_id')))],
             'inventariable' => ['boolean'],
-            'marca_id' => ['nullable', 'integer', 'exists:marcas,id'],
+            'marca' => ['nullable', 'string', 'max:255'],
             'referencia_producto' => ['nullable', 'string', 'max:255'],
             'descripcion_producto' => ['nullable', 'string', 'max:255'],
             'costo_producto' => ['nullable', 'numeric', 'min:0'],
@@ -32,6 +32,9 @@ class UpdateProductoRequest extends FormRequest
             'valor_mayorista' => ['nullable', 'numeric', 'min:0'],
             'imagenes' => ['nullable', 'array', 'max:10'],
             'imagenes.*' => ['image', 'max:4096'],
+            // Final order of the imagenes: `e<id>` for a saved one, `n<index>` for the n-th uploaded file.
+            'orden_imagenes' => ['nullable', 'array'],
+            'orden_imagenes.*' => ['string', 'regex:/^[en]\d+$/'],
             'remove_imagen_ids' => ['nullable', 'array'],
             'remove_imagen_ids.*' => ['integer', Rule::exists('imagen_productos', 'id')->where('producto_id', $producto->id)],
             'sku' => ['nullable', 'string', 'max:255', Rule::unique('productos', 'sku')->ignore($producto->id)],
