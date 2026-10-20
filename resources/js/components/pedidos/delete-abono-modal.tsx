@@ -62,7 +62,7 @@ export default function DeleteAbonoModal({
                     <Button
                         variant="destructive"
                         data-test="delete-abono-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteAbono}
                     >
                         Eliminar pago

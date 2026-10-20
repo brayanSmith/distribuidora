@@ -99,7 +99,7 @@ export default function DeleteUser() {
 
                                         <Button
                                             variant="destructive"
-                                            disabled={processing}
+                                            loading={processing}
                                             asChild
                                         >
                                             <button

@@ -15,8 +15,11 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
+import { Spinner } from '@/components/ui/spinner';
 import { useCurrentUrl } from '@/hooks/use-current-url';
-import type { NavGroup } from '@/types';
+import { useNavegando } from '@/hooks/use-navegando';
+import { toUrl } from '@/lib/utils';
+import type { NavGroup, NavItem } from '@/types';
 
 const STORAGE_KEY = 'sidebar:grupos-cerrados';
 
@@ -52,8 +55,20 @@ function useGruposCerrados() {
     return { cerrados, toggle };
 }
 
+/** The path a link points to. */
+function rutaDe(href: NavItem['href']): string {
+    const url = toUrl(href);
+
+    try {
+        return new URL(url, window.location.origin).pathname;
+    } catch {
+        return url;
+    }
+}
+
 function NavItems({ group }: { group: NavGroup }) {
     const { isCurrentUrl } = useCurrentUrl();
+    const { pendiente, iniciar } = useNavegando();
 
     return (
         <SidebarMenu>
@@ -64,8 +79,27 @@ function NavItems({ group }: { group: NavGroup }) {
                         isActive={isCurrentUrl(item.href)}
                         tooltip={{ children: item.title }}
                     >
-                        <Link href={item.href} prefetch>
-                            {item.icon && <item.icon />}
+                        <Link
+                            href={item.href}
+                            prefetch
+                            onClick={(event) => {
+                                // A plain click on another section starts a visit.
+                                if (
+                                    event.button === 0 &&
+                                    !event.metaKey &&
+                                    !event.ctrlKey &&
+                                    !event.shiftKey &&
+                                    !isCurrentUrl(item.href)
+                                ) {
+                                    iniciar(rutaDe(item.href));
+                                }
+                            }}
+                        >
+                            {pendiente === rutaDe(item.href) ? (
+                                <Spinner data-test="nav-spinner" />
+                            ) : (
+                                item.icon && <item.icon />
+                            )}
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>

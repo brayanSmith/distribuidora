@@ -81,7 +81,7 @@ export default function PasskeyItem({ passkey, onDelete }: Props) {
                         <Button
                             variant="destructive"
                             onClick={handleDelete}
-                            disabled={isDeleting}
+                            loading={isDeleting}
                         >
                             {isDeleting ? 'Eliminando...' : 'Eliminar clave'}
                         </Button>

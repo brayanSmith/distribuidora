@@ -363,7 +363,7 @@ export default function PosCartPanel({
                         type="button"
                         variant="outline"
                         className="text-destructive hover:text-destructive"
-                        disabled={processing}
+                        loading={processing}
                         onClick={onReset}
                         data-test="pos-resetear-pedido"
                     >

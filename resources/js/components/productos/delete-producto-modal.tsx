@@ -57,7 +57,7 @@ export default function DeleteProductoModal({
                     <Button
                         variant="destructive"
                         data-test="delete-producto-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteProducto}
                     >
                         Eliminar producto

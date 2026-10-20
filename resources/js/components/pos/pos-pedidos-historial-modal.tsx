@@ -1,5 +1,6 @@
 import { useHttp } from '@inertiajs/react';
 import { Download } from 'lucide-react';
+import { Cargando } from '@/components/record-view';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Pagination from '@/components/pagination';
@@ -338,15 +339,25 @@ export default function PosPedidosHistorialModal({
                                             variant="ghost"
                                             size="sm"
                                             title="Descargar voucher"
-                                            disabled={descargando === pedido.id}
+                                            loading={descargando === pedido.id}
                                             onClick={() => descargar(pedido.id)}
                                             data-test="pos-historial-voucher"
                                         >
-                                            <Download className="size-4" />
+                                            {descargando === pedido.id ? null : (
+                                                <Download className="size-4" />
+                                            )}
                                         </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
+
+                            {loading && pedidos.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={columns}>
+                                        <Cargando />
+                                    </TableCell>
+                                </TableRow>
+                            ) : null}
 
                             {!loading && pedidos.length === 0 ? (
                                 <TableRow>

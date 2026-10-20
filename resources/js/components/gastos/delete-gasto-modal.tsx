@@ -54,7 +54,7 @@ export default function DeleteGastoModal({ gasto, open, onOpenChange }: Props) {
                     <Button
                         variant="destructive"
                         data-test="delete-gasto-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteGasto}
                     >
                         Eliminar gasto

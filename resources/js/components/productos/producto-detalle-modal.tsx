@@ -1,4 +1,5 @@
 import { Link, useHttp } from '@inertiajs/react';
+import { Cargando } from '@/components/record-view';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import {
     ArrowDown,
@@ -673,6 +674,14 @@ export default function ProductoDetalleModal({
                                         </TableRow>
                                     ))}
 
+                                    {loading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={7}>
+                                                <Cargando className="py-4" />
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : null}
+
                                     {!loading && sortedPedidos.length === 0 ? (
                                         <TableRow>
                                             <TableCell
@@ -824,6 +833,14 @@ export default function ProductoDetalleModal({
                                             </TableCell>
                                         </TableRow>
                                     ))}
+
+                                    {loading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={9}>
+                                                <Cargando className="py-4" />
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : null}
 
                                     {!loading && sortedCompras.length === 0 ? (
                                         <TableRow>

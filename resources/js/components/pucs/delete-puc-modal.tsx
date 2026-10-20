@@ -54,7 +54,7 @@ export default function DeletePucModal({ puc, open, onOpenChange }: Props) {
                     <Button
                         variant="destructive"
                         data-test="delete-puc-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deletePuc}
                     >
                         Eliminar cuenta

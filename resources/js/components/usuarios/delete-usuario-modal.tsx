@@ -58,7 +58,7 @@ export default function DeleteUsuarioModal({
                     <Button
                         variant="destructive"
                         data-test="delete-usuario-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={removeUsuario}
                     >
                         Eliminar usuario

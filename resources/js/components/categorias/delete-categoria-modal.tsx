@@ -59,7 +59,7 @@ export default function DeleteCategoriaModal({
                     <Button
                         variant="destructive"
                         data-test="delete-categoria-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteCategoria}
                     >
                         Eliminar categoría

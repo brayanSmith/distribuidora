@@ -3,6 +3,7 @@ import { FileDown, Upload } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
 import InputError from '@/components/input-error';
+import { Cargando } from '@/components/record-view';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +53,7 @@ const ESTADOS: Record<ImportacionEstado, { label: string; className: string }> =
 export default function ImportarProductosModal({ children }: PropsWithChildren) {
     const [open, setOpen] = useState(false);
     const [verErrores, setVerErrores] = useState<number | null>(null);
+    const [cargandoLista, setCargandoLista] = useState(false);
     const importaciones =
         (usePage().props.importaciones as Importacion[] | undefined) ?? [];
     const hayEnCurso = importaciones.some(
@@ -69,7 +71,11 @@ export default function ImportarProductosModal({ children }: PropsWithChildren) 
     // The list is only requested while the dialog is open.
     useEffect(() => {
         if (open) {
-            router.reload({ only: ['importaciones'] });
+            router.reload({
+                only: ['importaciones'],
+                onStart: () => setCargandoLista(true),
+                onFinish: () => setCargandoLista(false),
+            });
         }
     }, [open]);
 
@@ -143,6 +149,8 @@ export default function ImportarProductosModal({ children }: PropsWithChildren) 
                         </>
                     )}
                 </Form>
+
+                {cargandoLista && importaciones.length === 0 ? <Cargando /> : null}
 
                 {importaciones.length > 0 ? (
                     <div className="space-y-2">

@@ -85,7 +85,7 @@ export default function RestoreButton({
                             <Button variant="secondary">Cancelar</Button>
                         </DialogClose>
                         <Button
-                            disabled={processing}
+                            loading={processing}
                             onClick={restaurar}
                             data-test={`${dataTest}-confirm`}
                         >

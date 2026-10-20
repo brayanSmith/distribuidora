@@ -64,7 +64,7 @@ export default function DeleteStockInicialModal({
                     <Button
                         variant="destructive"
                         data-test="delete-stock-inicial-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteStockInicial}
                     >
                         Eliminar stock inicial

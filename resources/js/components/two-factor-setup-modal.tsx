@@ -208,7 +208,7 @@ function TwoFactorVerificationStep({
                                 variant="outline"
                                 className="flex-1"
                                 onClick={onBack}
-                                disabled={processing}
+                                loading={processing}
                             >
                                 Back
                             </Button>

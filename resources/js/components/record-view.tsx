@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 
 export const currencyFormatter = new Intl.NumberFormat('es-CO', {
@@ -86,12 +87,23 @@ export function LoadingOrError({
     }
 
     if (loading) {
-        return (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-                Cargando…
-            </p>
-        );
+        return <Cargando />;
     }
 
     return null;
+}
+
+/** A spinner with its label, for a modal or a table that is fetching its data. */
+export function Cargando({ className }: { className?: string }) {
+    return (
+        <div
+            data-test="cargando"
+            className={cn(
+                'text-muted-foreground flex items-center justify-center gap-2 py-8 text-sm',
+                className,
+            )}
+        >
+            <Spinner /> Cargando…
+        </div>
+    );
 }

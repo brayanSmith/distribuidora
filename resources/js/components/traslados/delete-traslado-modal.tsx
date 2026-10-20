@@ -65,7 +65,7 @@ export default function DeleteTrasladoModal({
                     <Button
                         variant="destructive"
                         data-test="delete-traslado-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteTraslado}
                     >
                         Eliminar traslado

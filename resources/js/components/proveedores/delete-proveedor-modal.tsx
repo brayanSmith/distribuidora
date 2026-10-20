@@ -57,7 +57,7 @@ export default function DeleteProveedorModal({
                     <Button
                         variant="destructive"
                         data-test="delete-proveedor-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteProveedor}
                     >
                         Eliminar proveedor

@@ -58,7 +58,7 @@ export default function DeleteClienteModal({
                     <Button
                         variant="destructive"
                         data-test="delete-cliente-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteCliente}
                     >
                         Eliminar cliente

@@ -62,7 +62,7 @@ export default function DeletePedidoModal({
                     <Button
                         variant="destructive"
                         data-test="delete-pedido-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deletePedido}
                     >
                         Eliminar pedido

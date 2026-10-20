@@ -58,7 +58,7 @@ export default function DeleteBodegaModal({
                     <Button
                         variant="destructive"
                         data-test="delete-bodega-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteBodega}
                     >
                         Eliminar bodega

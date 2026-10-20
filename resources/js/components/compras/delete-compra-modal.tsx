@@ -59,7 +59,7 @@ export default function DeleteCompraModal({
                     <Button
                         variant="destructive"
                         data-test="delete-compra-confirm"
-                        disabled={processing}
+                        loading={processing}
                         onClick={deleteCompra}
                     >
                         Eliminar compra

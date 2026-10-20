@@ -183,7 +183,7 @@ export default function DashboardFilters({
                         type="button"
                         variant="outline"
                         onClick={limpiar}
-                        disabled={analizando}
+                        loading={analizando}
                         data-test="dashboard-filter-clear"
                     >
                         <X />

@@ -50,11 +50,11 @@ export default function VoucherButton({
             type="button"
             variant={label ? 'outline' : 'ghost'}
             size="sm"
-            disabled={descargando}
+            loading={descargando}
             onClick={descargar}
             data-test={dataTest}
         >
-            <FileDown className="h-4 w-4" />
+            {descargando ? null : <FileDown className="h-4 w-4" />}
             {label ? (descargando ? 'Generando...' : label) : null}
         </Button>
     );
