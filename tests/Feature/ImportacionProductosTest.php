@@ -114,17 +114,18 @@ test('members without permission cannot import or export productos', function ()
     $this->actingAs($member)->get(route('productos.exportar', ['formato' => 'csv']))->assertForbidden();
 });
 
-test('the productos page offers the import and export with their permissions, and lists the imports only when asked', function () {
-    Importacion::factory()->create(['estado' => Importacion::PROCESANDO, 'total_filas' => 10, 'procesadas' => 4]);
+test('every page offers the import from the header and lists the imports only when asked, while the export stays on productos', function () {
+    Importacion::factory()->create(['user_id' => $this->owner->id, 'estado' => Importacion::PROCESANDO, 'total_filas' => 10, 'procesadas' => 4]);
 
     $this->actingAs($this->owner)->get(route('productos.index'))
         ->assertInertia(fn ($page) => $page
-            ->where('permissions.canImport', true)
+            ->where('canImportProductos', true)
             ->where('permissions.canExport', true)
             ->missing('importaciones')
         );
 
-    $this->actingAs($this->owner)->get(route('productos.index'), ['X-Inertia-Partial-Data' => 'importaciones', 'X-Inertia-Partial-Component' => 'productos/index'])
+    // The sidebar asks for the list from any page, e.g. the categorias one.
+    $this->actingAs($this->owner)->get(route('categorias.index'), ['X-Inertia-Partial-Data' => 'importaciones', 'X-Inertia-Partial-Component' => 'categorias/index'])
         ->assertInertia(fn ($page) => $page
             ->has('importaciones', 1)
             ->where('importaciones.0.procesadas', 4)
@@ -164,4 +165,40 @@ test('an exported file can be imported back', function () {
     expect($importacion->estado)->toBe(Importacion::COMPLETADA)
         ->and($importacion->actualizados)->toBe(3)
         ->and($importacion->con_error)->toBe(0);
+});
+
+test('the user sees their own imports as notifications and how many finished ones are unread', function () {
+    $otro = User::factory()->create();
+    Importacion::factory()->create(['user_id' => $this->owner->id, 'estado' => Importacion::COMPLETADA]);
+    Importacion::factory()->create(['user_id' => $this->owner->id, 'estado' => Importacion::FALLIDA]);
+    Importacion::factory()->create(['user_id' => $this->owner->id, 'estado' => Importacion::COMPLETADA, 'leida_at' => now()]);
+    Importacion::factory()->create(['user_id' => $this->owner->id, 'estado' => Importacion::PROCESANDO]);
+    Importacion::factory()->create(['user_id' => $otro->id, 'estado' => Importacion::COMPLETADA]);
+
+    $this->actingAs($this->owner)->get(route('categorias.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('importacionesSinLeer', 2)
+            ->where('importacionesEnCurso', 1)
+        );
+
+    $this->actingAs($this->owner)->get(route('categorias.index'), ['X-Inertia-Partial-Data' => 'importaciones', 'X-Inertia-Partial-Component' => 'categorias/index'])
+        ->assertInertia(fn ($page) => $page->has('importaciones', 4));
+});
+
+test('a notification can be marked as read, one by one or all at once, only by its owner', function () {
+    $otro = User::factory()->create();
+    asignarRol($otro, 'Owner');
+    [$una, $dos] = Importacion::factory()->count(2)->create(['user_id' => $this->owner->id, 'estado' => Importacion::COMPLETADA]);
+    $ajena = Importacion::factory()->create(['user_id' => $otro->id, 'estado' => Importacion::COMPLETADA]);
+
+    $this->actingAs($this->owner)->patch(route('importaciones.leida', [$ajena]))->assertForbidden();
+    expect($ajena->fresh()->leida_at)->toBeNull();
+
+    $this->actingAs($this->owner)->patch(route('importaciones.leida', [$una]))->assertRedirect();
+    expect($una->fresh()->leida_at)->not->toBeNull()
+        ->and($dos->fresh()->leida_at)->toBeNull();
+
+    $this->actingAs($this->owner)->patch(route('importaciones.leidas'))->assertRedirect();
+    expect($dos->fresh()->leida_at)->not->toBeNull()
+        ->and($ajena->fresh()->leida_at)->toBeNull();
 });

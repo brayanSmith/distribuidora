@@ -48,7 +48,6 @@ export type ProductoPermissions = {
     canViewPendiente: boolean;
     canViewAlmacenP: boolean;
     canViewStockBodegas: boolean;
-    canImport: boolean;
     canExport: boolean;
     canCreateTraslado: boolean;
 };

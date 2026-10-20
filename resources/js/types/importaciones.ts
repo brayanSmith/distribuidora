@@ -16,6 +16,7 @@ export type Importacion = {
     errores: { fila: number; mensaje: string }[] | null;
     iniciada_at: string | null;
     terminada_at: string | null;
+    leida_at: string | null;
     created_at: string;
     user: { id: number; name: string } | null;
 };

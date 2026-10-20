@@ -8,7 +8,6 @@ use App\Modules\Catalogo\Http\Requests\StoreProductoRequest;
 use App\Modules\Catalogo\Http\Requests\UpdateProductoRequest;
 use App\Modules\Catalogo\Models\Categoria;
 use App\Modules\Catalogo\Models\ImagenProducto;
-use App\Modules\Catalogo\Models\Importacion;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Catalogo\Models\SubCategoria;
 use App\Modules\Compras\Models\DetalleCompra;
@@ -45,8 +44,6 @@ class ProductoController extends Controller
             'eliminados' => $eliminados,
             'bodegas' => Bodega::orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
             'categorias' => $this->categorias(),
-            // Only sent when asked for (the import dialog opens and polls it).
-            'importaciones' => Inertia::optional(fn () => Importacion::with('user:id,name')->latest('id')->limit(10)->get()),
             'permissions' => $this->permissions($request),
         ]);
     }
@@ -399,7 +396,6 @@ class ProductoController extends Controller
             'canViewPendiente' => $request->user()->can('productos.view-pendiente'),
             'canViewAlmacenP' => $request->user()->can('productos.view-almacen-p'),
             'canViewStockBodegas' => $request->user()->can('productos.view-stock-bodegas'),
-            'canImport' => $request->user()->can('productos.import'),
             'canExport' => $request->user()->can('productos.export'),
             // The same permissions the traslado store accepts.
             'canCreateTraslado' => $request->user()->canAny(['traslados.create', 'stock-bodegas.create-traslado']),

@@ -22,6 +22,8 @@ Route::get('cotizador', [CotizadorController::class, 'index'])->name('cotizador.
 
 Route::post('productos/importaciones', [ImportacionController::class, 'store'])->name('importaciones.store');
 Route::get('productos/importaciones/plantilla', [ImportacionController::class, 'plantilla'])->name('importaciones.plantilla');
+Route::patch('productos/importaciones/leidas', [ImportacionController::class, 'marcarTodasLeidas'])->name('importaciones.leidas');
+Route::patch('productos/importaciones/{importacion}/leida', [ImportacionController::class, 'marcarLeida'])->name('importaciones.leida');
 Route::get('productos/exportar', ExportacionProductosController::class)->name('productos.exportar');
 
 Route::get('productos', [ProductoController::class, 'index'])->name('productos.index');

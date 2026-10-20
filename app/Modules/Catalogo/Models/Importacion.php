@@ -5,6 +5,7 @@ namespace App\Modules\Catalogo\Models;
 use App\Models\User;
 use Database\Factories\ImportacionFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -39,12 +40,14 @@ class Importacion extends Model
         'errores',
         'iniciada_at',
         'terminada_at',
+        'leida_at',
     ];
 
     protected $casts = [
         'errores' => 'array',
         'iniciada_at' => 'datetime',
         'terminada_at' => 'datetime',
+        'leida_at' => 'datetime',
     ];
 
     /**
@@ -53,6 +56,37 @@ class Importacion extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The imports of a user: their notifications.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeDe(Builder $query, User $user): Builder
+    {
+        return $query->where('user_id', $user->id);
+    }
+
+    /**
+     * Finished imports nobody marked as read yet.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeSinLeer(Builder $query): Builder
+    {
+        return $query->whereIn('estado', [self::COMPLETADA, self::FALLIDA])->whereNull('leida_at');
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeEnCurso(Builder $query): Builder
+    {
+        return $query->whereIn('estado', [self::PENDIENTE, self::PROCESANDO]);
     }
 
     public function estaEnCurso(): bool

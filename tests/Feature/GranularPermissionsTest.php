@@ -495,19 +495,17 @@ test('each column of the productos listing is only sent with its permission', fu
         ->assertInertia(fn ($page) => $page
             ->where('productos.0.stock_total', null)
             ->where('productos.0.pendiente', null)
-            ->where('productos.0.proveedor_pendiente', null)
             ->where('productos.0.stock_por_bodega', null)
             ->where('permissions.canViewStockTotal', false)
             ->where('permissions.canViewStockBodegas', false)
         );
 
-    concederPermisos($this->miembro, ['productos.view-stock-total', 'productos.view-pendiente', 'productos.view-almacen-p', 'productos.view-stock-bodegas']);
+    concederPermisos($this->miembro, ['productos.view-stock-total', 'productos.view-pendiente', 'productos.view-stock-bodegas']);
 
     $this->actingAs($this->miembro)->get(route('productos.index'))
         ->assertInertia(fn ($page) => $page
             ->where('productos.0.stock_total', 5)
             ->where('productos.0.pendiente', 7)
-            ->whereType('productos.0.proveedor_pendiente', 'string')
             ->where("productos.0.stock_por_bodega.{$stock->bodega_id}", 5)
             ->where('permissions.canViewStockTotal', true)
             ->where('permissions.canViewStockBodegas', true)

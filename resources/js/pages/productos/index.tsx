@@ -8,7 +8,6 @@ import {
     Pencil,
     Plus,
     Trash2,
-    Upload,
     X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -19,7 +18,6 @@ import DataTable, { type DataTableColumn } from '@/components/data-table';
 import DeleteProductoModal from '@/components/productos/delete-producto-modal';
 import EditProductoModal from '@/components/productos/edit-producto-modal';
 import Heading from '@/components/heading';
-import ImportarProductosModal from '@/components/productos/importar-productos-modal';
 import ProductoDetalleModal from '@/components/productos/producto-detalle-modal';
 import RestoreButton from '@/components/restore-button';
 import TrashToggle from '@/components/trash-toggle';
@@ -774,17 +772,6 @@ export default function ProductosIndex({
                                 </Button>
                             ) : null}
                         </div>
-                        {permissions.canImport && !eliminados ? (
-                            <ImportarProductosModal>
-                                <Button
-                                    variant="outline"
-                                    data-test="importar-productos-button"
-                                >
-                                    <Upload /> Importar
-                                </Button>
-                            </ImportarProductosModal>
-                        ) : null}
-
                         {permissions.canExport && !eliminados ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

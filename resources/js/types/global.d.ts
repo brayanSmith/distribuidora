@@ -27,6 +27,11 @@ declare module '@inertiajs/core' {
             canViewEmpresa: boolean;
             canViewGastos: boolean;
             canViewProductos: boolean;
+            canImportProductos: boolean;
+            /** Finished imports of the user not marked as read. */
+            importacionesSinLeer: number;
+            /** Imports of the user still queued or running. */
+            importacionesEnCurso: number;
             canViewCotizador: boolean;
             canViewPos: boolean;
             canViewCompras: boolean;

@@ -27,6 +27,8 @@ return new class extends Migration
             $table->json('errores')->nullable();
             $table->timestamp('iniciada_at')->nullable();
             $table->timestamp('terminada_at')->nullable();
+            // When its owner marked the finished import as read (notifications).
+            $table->timestamp('leida_at')->nullable();
             $table->timestamps();
         });
     }
