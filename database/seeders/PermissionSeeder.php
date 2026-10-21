@@ -20,7 +20,7 @@ class PermissionSeeder extends Seeder
         'proveedores' => ['view', 'create', 'update', 'delete', 'view-deleted', 'restore'],
         'categorias' => ['view', 'create', 'update', 'delete'],
         'sub-categorias' => ['view', 'create', 'update', 'delete'],
-        'puc' => ['view', 'create', 'update', 'delete'],
+        'puc' => ['view', 'create', 'update', 'delete', 'import'],
         'empresa' => ['view', 'update'],
         'productos' => ['view', 'create', 'update', 'delete', 'view-deleted', 'restore', 'view-stock-total', 'view-pendiente', 'view-almacen-p', 'view-stock-bodegas', 'view-sin-stock', 'import', 'export'],
         'gastos' => ['view', 'create', 'update', 'delete', 'view-deleted', 'restore'],

@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('tipo')->default('productos');
             $table->string('archivo');
             $table->string('nombre_original');
+            // Which header of the file feeds each column: {columna: encabezado}.
+            $table->json('mapeo')->nullable();
             $table->string('estado')->default('pendiente');
             $table->unsignedInteger('total_filas')->default(0);
             $table->unsignedInteger('procesadas')->default(0);

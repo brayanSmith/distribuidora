@@ -1,4 +1,5 @@
 import type { Auth } from '@/types/auth';
+import type { TipoImportacion } from '@/types/importaciones';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -27,7 +28,8 @@ declare module '@inertiajs/core' {
             canViewEmpresa: boolean;
             canViewGastos: boolean;
             canViewProductos: boolean;
-            canImportProductos: boolean;
+            /** What the user may import from a file, with the columns of each. */
+            tiposImportacion: TipoImportacion[];
             /** Finished imports of the user not marked as read. */
             importacionesSinLeer: number;
             /** Imports of the user still queued or running. */

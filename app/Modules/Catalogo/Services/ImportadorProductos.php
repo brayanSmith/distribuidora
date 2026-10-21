@@ -6,20 +6,16 @@ use App\Modules\Catalogo\Models\Categoria;
 use App\Modules\Catalogo\Models\Importacion;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Catalogo\Models\SubCategoria;
-use Illuminate\Support\Facades\Storage;
+use App\Support\Importaciones\FilaInvalida;
+use App\Support\Importaciones\Importador;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Spatie\SimpleExcel\SimpleExcelReader;
-use Throwable;
 
 /**
- * Reads a spreadsheet of productos row by row and creates or updates them.
- *
- * A producto is matched by its SKU; the categorias and subcategorias that do
- * not exist yet are created on the way. A failing row is recorded and the rest
- * go on.
+ * Imports productos. A producto is matched by its SKU; the categorias and
+ * subcategorias that do not exist yet are created on the way.
  */
-class ImportadorProductos
+class ImportadorProductos extends Importador
 {
     /** Columns of the file, in the order the template lists them. */
     public const COLUMNAS = [
@@ -38,62 +34,28 @@ class ImportadorProductos
         'mayorista' => 'valor_mayorista',
     ];
 
-    private const MAX_ERRORES_GUARDADOS = 200;
-
-    private const FILAS_POR_ACTUALIZACION = 100;
-
     /** @var array<string, Categoria> */
     private array $categorias = [];
 
     /** @var array<string, SubCategoria> */
     private array $subCategorias = [];
 
-    public function importar(Importacion $importacion): void
+    public function columnas(): array
     {
-        $ruta = Storage::disk('local')->path($importacion->archivo);
-
-        $importacion->update([
-            'estado' => Importacion::PROCESANDO,
-            'iniciada_at' => now(),
-            'total_filas' => $this->contarFilas($ruta),
-        ]);
-
-        $errores = [];
-
-        foreach ($this->lector($ruta)->getRows() as $indice => $fila) {
-            // The header is the first row of the file, so data starts on row 2.
-            $numero = $indice + 2;
-
-            try {
-                $this->procesarFila($importacion, $fila);
-            } catch (Throwable $e) {
-                $importacion->con_error++;
-
-                if (count($errores) < self::MAX_ERRORES_GUARDADOS) {
-                    $errores[] = ['fila' => $numero, 'mensaje' => $e instanceof FilaInvalida ? $e->getMessage() : 'Error inesperado: '.$e->getMessage()];
-                }
-            }
-
-            $importacion->procesadas++;
-
-            if ($importacion->procesadas % self::FILAS_POR_ACTUALIZACION === 0) {
-                $importacion->errores = $errores;
-                $importacion->save();
-            }
-        }
-
-        $importacion->errores = $errores;
-        $importacion->estado = Importacion::COMPLETADA;
-        $importacion->terminada_at = now();
-        $importacion->save();
-
-        Storage::disk('local')->delete($importacion->archivo);
+        return self::COLUMNAS;
     }
 
-    /**
-     * @param  array<string, mixed>  $fila
-     */
-    private function procesarFila(Importacion $importacion, array $fila): void
+    public function filaDeEjemplo(): array
+    {
+        return ['SKU-001', 'Marca', 'Referencia', 'Descripción', 'Categoría', 'Subcategoría', '100000', '150000', '130000', 'si'];
+    }
+
+    protected function alias(): array
+    {
+        return self::ALIAS;
+    }
+
+    protected function procesarFila(Importacion $importacion, array $fila): void
     {
         $datos = $this->validar($fila);
 
@@ -139,7 +101,7 @@ class ImportadorProductos
      */
     private function validar(array $fila): array
     {
-        $texto = fn (string $columna): ?string => ($valor = trim((string) ($fila[$columna] ?? ''))) === '' ? null : $valor;
+        $texto = fn (string $columna): ?string => $this->texto($fila, $columna);
 
         $datos = [];
         foreach (['sku', 'marca', 'referencia', 'descripcion', 'categoria', 'subcategoria'] as $columna) {
@@ -188,77 +150,5 @@ class ImportadorProductos
             ->where('categoria_id', $categoria->id)
             ->whereRaw('lower(nombre_sub_categoria) = ?', [Str::lower($nombre)])
             ->first() ?? SubCategoria::create(['categoria_id' => $categoria->id, 'nombre_sub_categoria' => $nombre]);
-    }
-
-    /**
-     * Accepts "1234.5" and "1.234,50" alike; anything else is left as text so
-     * the validation rejects it.
-     */
-    private function numero(?string $valor): float|string|null
-    {
-        if ($valor === null) {
-            return null;
-        }
-
-        $limpio = str_replace(['$', ' '], '', $valor);
-
-        if (str_contains($limpio, ',')) {
-            $limpio = str_replace(',', '.', str_replace('.', '', $limpio));
-        }
-
-        return is_numeric($limpio) ? (float) $limpio : $valor;
-    }
-
-    private function booleano(?string $valor): ?bool
-    {
-        if ($valor === null) {
-            return null;
-        }
-
-        return in_array(Str::lower($valor), ['1', 'si', 'sí', 's', 'true', 'x', 'yes'], true);
-    }
-
-    private function contarFilas(string $ruta): int
-    {
-        return $this->lector($ruta)->getRows()->count();
-    }
-
-    private function lector(string $ruta): SimpleExcelReader
-    {
-        $esExcel = Str::lower(pathinfo($ruta, PATHINFO_EXTENSION)) === 'xlsx';
-        $lector = SimpleExcelReader::create($ruta, $esExcel ? 'xlsx' : 'csv');
-
-        if (! $esExcel) {
-            $lector->useDelimiter($this->delimitador($ruta));
-        }
-
-        return $lector->formatHeadersUsing(fn (string $encabezado): string => $this->normalizar($encabezado));
-    }
-
-    /**
-     * The delimiter the first line uses: comma, semicolon or tab.
-     */
-    private function delimitador(string $ruta): string
-    {
-        $linea = (string) fgets(fopen($ruta, 'r'));
-
-        $cuentas = [',' => substr_count($linea, ','), ';' => substr_count($linea, ';'), "\t" => substr_count($linea, "\t")];
-        arsort($cuentas);
-
-        return array_key_first($cuentas);
-    }
-
-    private function normalizar(string $encabezado): string
-    {
-        $limpio = Str::of($encabezado)
-            ->replace("\xEF\xBB\xBF", '')
-            ->trim()
-            ->ascii()
-            ->lower()
-            ->replaceMatches('/[^a-z0-9]+/', '_')
-            ->trim('_')
-            ->toString();
-
-        return self::ALIAS[$limpio] ?? $limpio;
     }
 }

@@ -1,14 +1,16 @@
 <?php
 
-namespace App\Modules\Catalogo\Jobs;
+namespace App\Support\Importaciones;
 
 use App\Modules\Catalogo\Models\Importacion;
-use App\Modules\Catalogo\Services\ImportadorProductos;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
-class ImportarProductosJob implements ShouldQueue
+/**
+ * Imports an uploaded file in the background with the importer of its type.
+ */
+class ImportarArchivoJob implements ShouldQueue
 {
     use Queueable;
 
@@ -18,11 +20,12 @@ class ImportarProductosJob implements ShouldQueue
 
     public function __construct(public int $importacionId) {}
 
-    public function handle(ImportadorProductos $importador): void
+    public function handle(): void
     {
         $importacion = Importacion::findOrFail($this->importacionId);
+        $importador = TiposImportacion::importador($importacion->tipo);
 
-        // A bulk import would flood the history with one entry per producto.
+        // A bulk import would flood the history with one entry per record.
         activity()->withoutLogs(fn () => $importador->importar($importacion));
     }
 

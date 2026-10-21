@@ -31,6 +31,7 @@ class Importacion extends Model
         'tipo',
         'archivo',
         'nombre_original',
+        'mapeo',
         'estado',
         'total_filas',
         'procesadas',
@@ -45,6 +46,7 @@ class Importacion extends Model
 
     protected $casts = [
         'errores' => 'array',
+        'mapeo' => 'array',
         'iniciada_at' => 'datetime',
         'terminada_at' => 'datetime',
         'leida_at' => 'datetime',

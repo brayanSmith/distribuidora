@@ -7,6 +7,7 @@ use App\Modules\Catalogo\Models\Importacion;
 use App\Modules\Compras\Models\Compra;
 use App\Modules\Ventas\Models\Pedido;
 use App\Support\Branding;
+use App\Support\Importaciones\TiposImportacion;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Middleware;
@@ -69,14 +70,13 @@ class HandleInertiaRequests extends Middleware
             'canViewPedidos' => fn () => $user?->can('pedidos.view') ?? false,
             'canViewPedidosMayoristas' => fn () => $user?->can('pedidos-mayoristas.view') ?? false,
             'canViewProductos' => fn () => $user?->can('productos.view') ?? false,
-            'canImportProductos' => fn () => $user?->can('productos.import') ?? false,
+            // What the user may import from a file (productos, medios de pago...).
+            'tiposImportacion' => fn () => TiposImportacion::para($user),
             // The import dialog lives in the header, so any page can ask for the user's
             // imports (partial reload) and show how many finished ones are unread.
-            'importaciones' => Inertia::optional(fn () => $user?->can('productos.import')
-                ? Importacion::de($user)->latest('id')->limit(20)->get()
-                : []),
-            'importacionesSinLeer' => fn () => $user?->can('productos.import') ? Importacion::de($user)->sinLeer()->count() : 0,
-            'importacionesEnCurso' => fn () => $user?->can('productos.import') ? Importacion::de($user)->enCurso()->count() : 0,
+            'importaciones' => Inertia::optional(fn () => $user ? Importacion::de($user)->latest('id')->limit(20)->get() : []),
+            'importacionesSinLeer' => fn () => $user ? Importacion::de($user)->sinLeer()->count() : 0,
+            'importacionesEnCurso' => fn () => $user ? Importacion::de($user)->enCurso()->count() : 0,
             'canViewStockIniciales' => fn () => $user?->can('stock-iniciales.view') ?? false,
             'canViewStockBodegas' => fn () => $user?->can('stock-bodegas.view') ?? false,
             'canViewTraslados' => fn () => $user?->can('traslados.view') ?? false,

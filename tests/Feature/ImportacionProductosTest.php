@@ -1,11 +1,12 @@
 <?php
 
 use App\Models\User;
-use App\Modules\Catalogo\Jobs\ImportarProductosJob;
 use App\Modules\Catalogo\Models\Categoria;
 use App\Modules\Catalogo\Models\Importacion;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Catalogo\Models\SubCategoria;
+use App\Modules\Finanzas\Models\Puc;
+use App\Support\Importaciones\ImportarArchivoJob;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -32,7 +33,7 @@ A-3,,Instalación,Servicio,Servicios,,0,20000,0,no
 CSV;
 
     $this->actingAs($this->owner)
-        ->post(route('importaciones.store'), ['archivo' => csvProductos($csv)])
+        ->post(route('importaciones.store'), ['tipo' => 'productos', 'archivo' => csvProductos($csv)])
         ->assertSessionHasNoErrors();
 
     $importacion = Importacion::firstOrFail();
@@ -57,7 +58,7 @@ test('a row with an existing sku updates that producto', function () {
 
     $csv = "sku;referencia;valor_detal\nA-1;NUEVA;250,50\n";
 
-    $this->actingAs($this->owner)->post(route('importaciones.store'), ['archivo' => csvProductos($csv)]);
+    $this->actingAs($this->owner)->post(route('importaciones.store'), ['tipo' => 'productos', 'archivo' => csvProductos($csv)]);
 
     $importacion = Importacion::firstOrFail();
     expect($importacion->actualizados)->toBe(1)
@@ -77,7 +78,7 @@ MAL-2,Sin categoria,100,Carro
 OK-2,Otra buena,200,
 CSV;
 
-    $this->actingAs($this->owner)->post(route('importaciones.store'), ['archivo' => csvProductos($csv)]);
+    $this->actingAs($this->owner)->post(route('importaciones.store'), ['tipo' => 'productos', 'archivo' => csvProductos($csv)]);
 
     $importacion = Importacion::firstOrFail();
     expect($importacion->estado)->toBe(Importacion::COMPLETADA)
@@ -91,17 +92,17 @@ test('the import is queued so the user can keep working', function () {
     Queue::fake();
 
     $this->actingAs($this->owner)
-        ->post(route('importaciones.store'), ['archivo' => csvProductos("sku,referencia\nA-1,X\n")])
+        ->post(route('importaciones.store'), ['tipo' => 'productos', 'archivo' => csvProductos("sku,referencia\nA-1,X\n")])
         ->assertRedirect();
 
-    Queue::assertPushed(ImportarProductosJob::class);
+    Queue::assertPushed(ImportarArchivoJob::class);
     expect(Importacion::firstOrFail()->estado)->toBe(Importacion::PENDIENTE)
         ->and(Producto::count())->toBe(0);
 });
 
 test('only csv, txt and xlsx files are accepted', function () {
     $this->actingAs($this->owner)
-        ->post(route('importaciones.store'), ['archivo' => UploadedFile::fake()->create('productos.pdf', 10)])
+        ->post(route('importaciones.store'), ['tipo' => 'productos', 'archivo' => UploadedFile::fake()->create('productos.pdf', 10)])
         ->assertSessionHasErrors('archivo');
 });
 
@@ -109,8 +110,8 @@ test('members without permission cannot import or export productos', function ()
     $member = User::factory()->create();
     asignarRol($member, 'Member');
 
-    $this->actingAs($member)->get(route('importaciones.plantilla'))->assertForbidden();
-    $this->actingAs($member)->post(route('importaciones.store'), ['archivo' => csvProductos("sku\nA\n")])->assertForbidden();
+    $this->actingAs($member)->get(route('importaciones.plantilla', ['tipo' => 'productos']))->assertForbidden();
+    $this->actingAs($member)->post(route('importaciones.store'), ['tipo' => 'productos', 'archivo' => csvProductos("sku\nA\n")])->assertForbidden();
     $this->actingAs($member)->get(route('productos.exportar', ['formato' => 'csv']))->assertForbidden();
 });
 
@@ -119,7 +120,7 @@ test('every page offers the import from the header and lists the imports only wh
 
     $this->actingAs($this->owner)->get(route('productos.index'))
         ->assertInertia(fn ($page) => $page
-            ->where('canImportProductos', true)
+            ->where('tiposImportacion.0.value', 'productos')
             ->where('permissions.canExport', true)
             ->missing('importaciones')
         );
@@ -158,6 +159,7 @@ test('an exported file can be imported back', function () {
     $contenido = $this->actingAs($this->owner)->get(route('productos.exportar', ['formato' => 'xlsx']))->streamedContent();
 
     $this->actingAs($this->owner)->post(route('importaciones.store'), [
+        'tipo' => 'productos',
         'archivo' => csvProductos($contenido, 'productos.xlsx'),
     ]);
 
@@ -201,4 +203,106 @@ test('a notification can be marked as read, one by one or all at once, only by i
     $this->actingAs($this->owner)->patch(route('importaciones.leidas'))->assertRedirect();
     expect($dos->fresh()->leida_at)->not->toBeNull()
         ->and($ajena->fresh()->leida_at)->toBeNull();
+});
+
+test('medios de pago are imported from the same dialog, matched by their subcuenta', function () {
+    Puc::factory()->create(['tipo' => '1', 'cuenta' => '1105', 'subcuenta' => '110505', 'concepto' => 'Caja vieja']);
+
+    $csv = "tipo;cuenta;subcuenta;concepto;descripcion\n"
+        ."1;1105;110505;Caja general;Efectivo\n"
+        ."1;1110;111005;Bancolombia;Cuenta de ahorros\n"
+        ."10;1110;111010;Mal tipo;\n";
+
+    $this->actingAs($this->owner)
+        ->post(route('importaciones.store'), ['tipo' => 'pucs', 'archivo' => csvProductos($csv, 'pucs.csv')])
+        ->assertSessionHasNoErrors();
+
+    $importacion = Importacion::firstOrFail();
+    expect($importacion->tipo)->toBe('pucs')
+        ->and($importacion->creados)->toBe(1)
+        ->and($importacion->actualizados)->toBe(1)
+        ->and($importacion->con_error)->toBe(1)
+        ->and($importacion->errores[0]['fila'])->toBe(4)
+        ->and(Puc::where('subcuenta', '110505')->value('concepto'))->toBe('Caja general')
+        ->and(Puc::where('subcuenta', '111005')->value('concatenar_subcuenta_concepto'))->toBe('111005 - Bancolombia');
+});
+
+test('each import type needs its own permission, also for its template', function () {
+    $miembro = User::factory()->create();
+    asignarRol($miembro, 'Member');
+    $miembro->givePermissionTo('productos.import');
+
+    $this->actingAs($miembro)->get(route('importaciones.plantilla', ['tipo' => 'productos']))->assertOk();
+    $this->actingAs($miembro)->get(route('importaciones.plantilla', ['tipo' => 'pucs']))->assertForbidden();
+    $this->actingAs($miembro)
+        ->post(route('importaciones.store'), ['tipo' => 'pucs', 'archivo' => csvProductos("tipo\n1\n", 'pucs.csv')])
+        ->assertForbidden();
+
+    $this->actingAs($miembro)->get(route('profile.edit'))
+        ->assertInertia(fn ($page) => $page
+            ->has('tiposImportacion', 1)
+            ->where('tiposImportacion.0.value', 'productos')
+        );
+});
+
+test('the template of each type has its own columns', function () {
+    $contenido = $this->actingAs($this->owner)->get(route('importaciones.plantilla', ['tipo' => 'pucs']))->streamedContent();
+
+    expect($contenido)->toContain('tipo,cuenta,subcuenta,concepto,descripcion');
+});
+
+test('the preview reads the headers of the file and suggests the column of each one', function () {
+    $csv = "Codigo;Nombre comercial;sku;Precio\nA-1;Llanta;SKU-1;150000\n";
+
+    $previa = $this->actingAs($this->owner)
+        ->post(route('importaciones.previa'), ['tipo' => 'productos', 'archivo' => csvProductos($csv)])
+        ->assertOk()
+        ->json();
+
+    expect($previa['archivo_temporal'])->toMatch('/^[A-Za-z0-9]{40}\.csv$/')
+        ->and(collect($previa['encabezados'])->pluck('nombre')->all())->toBe(['Codigo', 'Nombre comercial', 'sku', 'Precio'])
+        ->and($previa['sugerido']['sku'])->toBe('sku')
+        ->and($previa['sugerido']['referencia'])->toBeNull()
+        ->and($previa['muestra'][0]['codigo'])->toBe('A-1');
+    Storage::disk('local')->assertExists('importaciones/previas/'.$this->owner->id.'/'.$previa['archivo_temporal']);
+});
+
+test('a file with other column names and order is imported with the columns the user related', function () {
+    $csv = "Precio venta;Nombre comercial;Codigo interno\n150000;Llanta 155;A-1\n";
+
+    $previa = $this->actingAs($this->owner)
+        ->post(route('importaciones.previa'), ['tipo' => 'productos', 'archivo' => csvProductos($csv)])
+        ->json();
+
+    $this->actingAs($this->owner)->post(route('importaciones.store'), [
+        'tipo' => 'productos',
+        'archivo_temporal' => $previa['archivo_temporal'],
+        'nombre_original' => 'inventario.csv',
+        'mapeo' => ['sku' => 'codigo_interno', 'referencia' => 'nombre_comercial', 'valor_detal' => 'precio_venta', 'marca' => ''],
+    ])->assertSessionHasNoErrors();
+
+    $importacion = Importacion::firstOrFail();
+    $producto = Producto::where('sku', 'A-1')->firstOrFail();
+
+    expect($importacion->nombre_original)->toBe('inventario.csv')
+        ->and($importacion->creados)->toBe(1)
+        ->and($producto->referencia_producto)->toBe('Llanta 155')
+        ->and((float) $producto->valor_detal)->toBe(150000.0)
+        ->and($producto->marca)->toBeNull();
+});
+
+test('a previewed file can only be imported by the user who uploaded it', function () {
+    $previa = $this->actingAs($this->owner)
+        ->post(route('importaciones.previa'), ['tipo' => 'productos', 'archivo' => csvProductos("sku\nA-1\n")])
+        ->json();
+
+    $otro = User::factory()->create();
+    asignarRol($otro, 'Owner');
+
+    $this->actingAs($otro)->post(route('importaciones.store'), [
+        'tipo' => 'productos',
+        'archivo_temporal' => $previa['archivo_temporal'],
+    ])->assertStatus(422);
+
+    expect(Importacion::count())->toBe(0);
 });

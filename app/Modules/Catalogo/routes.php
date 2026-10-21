@@ -20,10 +20,11 @@ Route::delete('sub-categorias/{sub_categoria}', [SubCategoriaController::class, 
 
 Route::get('cotizador', [CotizadorController::class, 'index'])->name('cotizador.index');
 
-Route::post('productos/importaciones', [ImportacionController::class, 'store'])->name('importaciones.store');
-Route::get('productos/importaciones/plantilla', [ImportacionController::class, 'plantilla'])->name('importaciones.plantilla');
-Route::patch('productos/importaciones/leidas', [ImportacionController::class, 'marcarTodasLeidas'])->name('importaciones.leidas');
-Route::patch('productos/importaciones/{importacion}/leida', [ImportacionController::class, 'marcarLeida'])->name('importaciones.leida');
+Route::post('importaciones/previa', [ImportacionController::class, 'previa'])->name('importaciones.previa');
+Route::post('importaciones', [ImportacionController::class, 'store'])->name('importaciones.store');
+Route::get('importaciones/plantilla', [ImportacionController::class, 'plantilla'])->name('importaciones.plantilla');
+Route::patch('importaciones/leidas', [ImportacionController::class, 'marcarTodasLeidas'])->name('importaciones.leidas');
+Route::patch('importaciones/{importacion}/leida', [ImportacionController::class, 'marcarLeida'])->name('importaciones.leida');
 Route::get('productos/exportar', ExportacionProductosController::class)->name('productos.exportar');
 
 Route::get('productos', [ProductoController::class, 'index'])->name('productos.index');

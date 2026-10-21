@@ -1,8 +1,9 @@
-import { Form, router, usePage, usePoll } from '@inertiajs/react';
-import { CheckCheck, FileDown, Upload } from 'lucide-react';
+import { router, usePage, usePoll } from '@inertiajs/react';
+import { CheckCheck, CircleCheck, CircleX } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
-import InputError from '@/components/input-error';
+import BarraProgreso from '@/components/importaciones/barra-progreso';
+import ImportarArchivo from '@/components/importaciones/importar-archivo';
 import { Cargando } from '@/components/record-view';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,15 +15,10 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { leida, leidas, plantilla, store } from '@/routes/importaciones';
+import { leida, leidas } from '@/routes/importaciones';
 import type { Importacion, ImportacionEstado } from '@/types';
-
-const COLUMNAS =
-    'sku, marca, referencia, descripcion, categoria, subcategoria, costo, valor_detal, valor_mayorista, inventariable';
 
 const ESTADOS: Record<ImportacionEstado, { label: string; className: string }> =
     {
@@ -68,12 +64,13 @@ function esSinLeer(importacion: Importacion): boolean {
 }
 
 /**
- * Imports productos from a CSV, TXT or Excel file. The file is processed in the
+ * Imports records (productos, medios de pago...) from a CSV, TXT or Excel
+ * file; the type is picked in the dialog. The file is processed in the
  * background, so the dialog can be closed and the user can keep working; the
  * "Notificaciones" tab keeps the history of the user's imports and their
  * failed rows.
  */
-export default function ImportarProductosModal({ children }: PropsWithChildren) {
+export default function ImportarModal({ children }: PropsWithChildren) {
     const [open, setOpen] = useState(false);
     const [pestana, setPestana] = useState<'importar' | 'notificaciones'>(
         'importar',
@@ -81,6 +78,9 @@ export default function ImportarProductosModal({ children }: PropsWithChildren) 
     const [detalle, setDetalle] = useState<Importacion | null>(null);
     const [cargandoLista, setCargandoLista] = useState(false);
     const page = usePage();
+    const tipos = page.props.tiposImportacion;
+    const etiquetaDe = (valor: string) =>
+        tipos.find((opcion) => opcion.value === valor)?.label ?? valor;
     const importaciones =
         (page.props.importaciones as Importacion[] | undefined) ?? [];
     const sinLeer = page.props.importacionesSinLeer ?? 0;
@@ -138,7 +138,7 @@ export default function ImportarProductosModal({ children }: PropsWithChildren) 
                 <DialogTrigger asChild>{children}</DialogTrigger>
                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Importar productos</DialogTitle>
+                        <DialogTitle>Importar</DialogTitle>
                         <DialogDescription>
                             Se procesa en segundo plano: puedes cerrar esta
                             ventana y seguir trabajando.
@@ -171,63 +171,12 @@ export default function ImportarProductosModal({ children }: PropsWithChildren) 
                             </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="importar" className="space-y-3">
-                            <p className="text-muted-foreground text-sm">
-                                Archivo CSV, TXT o Excel con las columnas:{' '}
-                                {COLUMNAS}. Si el SKU ya existe se actualiza el
-                                producto; las categorías y subcategorías que no
-                                existan se crean solas.
-                            </p>
-
-                            <Form
-                                {...store.form()}
-                                className="space-y-3"
-                                resetOnSuccess
-                                options={{
-                                    only: [...PROPS_IMPORTACIONES, 'flash'],
-                                }}
-                                onSuccess={() => setPestana('notificaciones')}
-                            >
-                                {({ errors, processing }) => (
-                                    <>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="archivo">
-                                                Archivo
-                                            </Label>
-                                            <Input
-                                                id="archivo"
-                                                name="archivo"
-                                                type="file"
-                                                accept=".csv,.txt,.xlsx"
-                                                data-test="importacion-archivo"
-                                                required
-                                            />
-                                            <InputError
-                                                message={errors.archivo}
-                                            />
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-2">
-                                            <Button
-                                                type="submit"
-                                                disabled={processing}
-                                                data-test="importacion-submit"
-                                            >
-                                                <Upload /> Importar
-                                            </Button>
-                                            <Button variant="outline" asChild>
-                                                <a
-                                                    href={plantilla.url()}
-                                                    data-test="importacion-plantilla"
-                                                >
-                                                    <FileDown /> Descargar
-                                                    plantilla
-                                                </a>
-                                            </Button>
-                                        </div>
-                                    </>
-                                )}
-                            </Form>
+                        <TabsContent value="importar">
+                            <ImportarArchivo
+                                tipos={tipos}
+                                recargar={PROPS_IMPORTACIONES}
+                                onImportado={() => setPestana('notificaciones')}
+                            />
                         </TabsContent>
 
                         <TabsContent
@@ -247,8 +196,7 @@ export default function ImportarProductosModal({ children }: PropsWithChildren) 
                                         onClick={marcarTodas}
                                         data-test="importacion-marcar-todas"
                                     >
-                                        <CheckCheck /> Marcar todas como
-                                        leídas
+                                        <CheckCheck /> Marcar todas como leídas
                                     </Button>
                                 ) : null}
                             </div>
@@ -272,6 +220,9 @@ export default function ImportarProductosModal({ children }: PropsWithChildren) 
                                             onVerMas={() =>
                                                 setDetalle(importacion)
                                             }
+                                            etiquetaTipo={etiquetaDe(
+                                                importacion.tipo,
+                                            )}
                                             onMarcarLeida={() =>
                                                 marcarLeida(importacion)
                                             }
@@ -297,8 +248,8 @@ export default function ImportarProductosModal({ children }: PropsWithChildren) 
                         <DialogTitle>Filas fallidas</DialogTitle>
                         <DialogDescription>
                             {detalle?.nombre_original}: {detalle?.con_error}{' '}
-                            {detalle?.con_error === 1 ? 'fila' : 'filas'} no
-                            se importaron. Corrígelas y vuelve a importar el
+                            {detalle?.con_error === 1 ? 'fila' : 'filas'} no se
+                            importaron. Corrígelas y vuelve a importar el
                             archivo.
                         </DialogDescription>
                     </DialogHeader>
@@ -340,10 +291,12 @@ export default function ImportarProductosModal({ children }: PropsWithChildren) 
 
 function Notificacion({
     importacion,
+    etiquetaTipo,
     onVerMas,
     onMarcarLeida,
 }: {
     importacion: Importacion;
+    etiquetaTipo: string;
     onVerMas: () => void;
     onMarcarLeida: () => void;
 }) {
@@ -371,6 +324,7 @@ function Notificacion({
                     <span className="truncate font-medium">
                         {importacion.nombre_original}
                     </span>
+                    <Badge variant="outline">{etiquetaTipo}</Badge>
                     <Badge
                         className={`border-transparent ${ESTADOS[importacion.estado].className}`}
                     >
@@ -378,36 +332,57 @@ function Notificacion({
                     </Badge>
                 </div>
 
-                <div className="text-sm">
-                    {terminada ? (
-                        <>
-                            Se importaron{' '}
-                            <strong>{importadas}</strong>{' '}
-                            {importadas === 1 ? 'fila' : 'filas'} y{' '}
-                            <strong
-                                className={cn(
-                                    importacion.con_error > 0 &&
-                                        'text-red-600 dark:text-red-400',
-                                )}
-                            >
-                                {importacion.con_error}
-                            </strong>{' '}
+                {terminada ? (
+                    <div className="flex flex-wrap gap-2 text-sm">
+                        <span
+                            data-test="importacion-importadas"
+                            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-2 py-1 font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                        >
+                            <CircleCheck className="size-4" />
+                            {importadas}{' '}
+                            {importadas === 1
+                                ? 'fila importada'
+                                : 'filas importadas'}
+                        </span>
+                        <span
+                            data-test="importacion-fallidas"
+                            className="inline-flex items-center gap-1.5 rounded-md bg-red-100 px-2 py-1 font-medium text-red-700 dark:bg-red-950 dark:text-red-400"
+                        >
+                            <CircleX className="size-4" />
+                            {importacion.con_error}{' '}
                             {importacion.con_error === 1
-                                ? 'quedó fallida'
-                                : 'quedaron fallidas'}
-                            .
-                        </>
-                    ) : (
-                        <>
-                            Procesando {importacion.procesadas} de{' '}
-                            {importacion.total_filas || '…'} filas.
-                        </>
-                    )}
-                </div>
+                                ? 'fila fallida'
+                                : 'filas fallidas'}
+                        </span>
+                    </div>
+                ) : (
+                    <div className="space-y-1">
+                        <BarraProgreso
+                            porcentaje={
+                                importacion.total_filas > 0
+                                    ? Math.round(
+                                          (importacion.procesadas /
+                                              importacion.total_filas) *
+                                              100,
+                                      )
+                                    : null
+                            }
+                            dataTest="importacion-progreso"
+                        />
+                        <p className="text-muted-foreground text-xs">
+                            {importacion.estado === 'pendiente'
+                                ? 'En cola, empieza en un momento…'
+                                : `Procesando ${importacion.procesadas} de ${importacion.total_filas || '…'} filas`}
+                            {importacion.total_filas > 0
+                                ? ` · ${Math.round((importacion.procesadas / importacion.total_filas) * 100)}%`
+                                : ''}
+                        </p>
+                    </div>
+                )}
 
                 <div className="text-muted-foreground text-xs">
-                    {importacion.creados} creados ·{' '}
-                    {importacion.actualizados} actualizados ·{' '}
+                    {importacion.creados} creados · {importacion.actualizados}{' '}
+                    actualizados ·{' '}
                     {fechaHora.format(new Date(importacion.created_at))}
                 </div>
             </div>

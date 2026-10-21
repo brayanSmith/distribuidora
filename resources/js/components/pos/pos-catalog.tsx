@@ -184,7 +184,7 @@ export default function PosCatalog({
             </div>
 
             {pageItems.length > 0 ? (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-stretch gap-3">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] items-stretch gap-2">
                     {pageItems.map((producto) => (
                         <PosProductCard
                             key={producto.id}
