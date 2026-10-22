@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Combobox from '@/components/combobox';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,22 +10,28 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import PosEntregaFields from '@/components/pos/pos-entrega-fields';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { PosAbono, PosNewAbono } from '@/hooks/use-pos-abonos';
-import type { PosHeaderState } from '@/hooks/use-pos-header';
+import type { PosEntrega, PosHeaderState } from '@/hooks/use-pos-header';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 import { calcularTotales } from '@/lib/pos-totals';
+import { fechaMasDias } from '@/lib/vencimiento';
 import { cn } from '@/lib/utils';
-import type { PucOption, TipoPagoPedido } from '@/types';
+import type { ClienteOption, PucOption, TipoPagoPedido } from '@/types';
 
 /** The id of the checkout `<form>`; the submit button lives in this modal. */
 export const POS_CHECKOUT_FORM_ID = 'pos-checkout-form';
 
 type Props = {
     header: PosHeaderState;
+    /** Days of credit of the cliente, for the suggested due date. */
+    diasCredito: number;
+    /** The cliente, to start the delivery data of a contra entrega with. */
+    cliente: ClienteOption | null;
     onFieldChange: <K extends keyof PosHeaderState>(
         key: K,
         value: PosHeaderState[K],
@@ -48,6 +54,7 @@ const TIPOS_PAGO: { value: TipoPagoPedido; label: string }[] = [
     { value: 'CONTADO', label: 'Contado' },
     { value: 'SEPARADO', label: 'Separado' },
     { value: 'CREDITO', label: 'Crédito' },
+    { value: 'CONTRA_ENTREGA', label: 'Contra entrega' },
 ];
 
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
@@ -57,6 +64,24 @@ const currencyFormatter = new Intl.NumberFormat('es-CO', {
 });
 
 /**
+ * The delivery data of a contra entrega, taken from the cliente.
+ */
+function entregaDelCliente(
+    cliente: ClienteOption | null,
+    clienteId: string,
+): PosEntrega {
+    return {
+        clienteId,
+        direccion: cliente?.direccion ?? '',
+        ciudad: cliente?.ciudad ?? '',
+        telefono: cliente?.telefono ?? '',
+        recibe: cliente?.razon_social ?? '',
+        nota: '',
+        fecha_programada: '',
+    };
+}
+
+/**
  * Checkout step ("Proceder al Pago"): how the sale is paid (tipo de pago),
  * the adjustments (descuento, flete, reteica, retefuente), the resulting
  * total to pay and the payments (abonos) collected now. Submitting it
@@ -64,6 +89,8 @@ const currencyFormatter = new Intl.NumberFormat('es-CO', {
  */
 export default function PosPagoModal({
     header,
+    diasCredito,
+    cliente,
     onFieldChange,
     totalBruto,
     pucs,
@@ -78,6 +105,21 @@ export default function PosPagoModal({
     onClose,
 }: Props) {
     const finalizarRef = useRef<HTMLButtonElement>(null);
+
+    // Contra entrega takes the cliente's address and phone, and takes them
+    // again whenever another cliente is picked.
+    useEffect(() => {
+        if (
+            header.tipoPago === 'CONTRA_ENTREGA' &&
+            header.entrega?.clienteId !== header.clienteId
+        ) {
+            onFieldChange(
+                'entrega',
+                entregaDelCliente(cliente, header.clienteId),
+            );
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [header.tipoPago, header.clienteId, header.entrega?.clienteId]);
     // F9 finalizes (the button ignores it while it is disabled).
     useHotkeys([{ key: 'F9', handler: () => finalizarRef.current?.click() }]);
 
@@ -194,6 +236,16 @@ export default function PosPagoModal({
                                     'tipoPago',
                                     value as TipoPagoPedido,
                                 );
+
+                                if (
+                                    value === 'CREDITO' &&
+                                    !header.fechaVencimiento
+                                ) {
+                                    onFieldChange(
+                                        'fechaVencimiento',
+                                        fechaMasDias(diasCredito),
+                                    );
+                                }
                             }
                         }}
                         className="flex-wrap justify-start"
@@ -210,6 +262,56 @@ export default function PosPagoModal({
                         ))}
                     </ToggleGroup>
                 </div>
+
+                {header.tipoPago === 'CONTRA_ENTREGA' && header.entrega ? (
+                    <PosEntregaFields
+                        entrega={header.entrega}
+                        onChange={(entrega) =>
+                            onFieldChange('entrega', entrega)
+                        }
+                        onUsarDatosCliente={
+                            cliente
+                                ? () =>
+                                      onFieldChange(
+                                          'entrega',
+                                          entregaDelCliente(
+                                              cliente,
+                                              header.clienteId,
+                                          ),
+                                      )
+                                : undefined
+                        }
+                        errors={errors}
+                    />
+                ) : null}
+
+                {header.tipoPago === 'CREDITO' ? (
+                    <div className="grid gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
+                        <Label htmlFor="pos-pago-vencimiento">
+                            El saldo vence el
+                        </Label>
+                        <Input
+                            id="pos-pago-vencimiento"
+                            type="date"
+                            value={
+                                header.fechaVencimiento ||
+                                fechaMasDias(diasCredito)
+                            }
+                            onChange={(event) =>
+                                onFieldChange(
+                                    'fechaVencimiento',
+                                    event.target.value,
+                                )
+                            }
+                            data-test="pos-pago-vencimiento"
+                        />
+                        <p className="text-muted-foreground text-xs">
+                            {diasCredito > 0
+                                ? `El cliente tiene ${diasCredito} días de crédito.`
+                                : 'El cliente no tiene días de crédito configurados.'}
+                        </p>
+                    </div>
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     {numberField('descuento', 'Descuento')}

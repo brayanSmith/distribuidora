@@ -124,7 +124,7 @@ export default function PosCartPanel({
     const { subtotal, total } = calcularTotales(cart.totalBruto, header);
 
     return (
-        <div className="bg-card flex flex-col overflow-hidden rounded-lg border lg:max-h-[calc(100vh-2rem)]">
+        <div className="bg-card flex flex-col overflow-hidden rounded-lg border lg:max-h-[calc(100svh-6rem)]">
             <div className="bg-primary text-primary-foreground flex shrink-0 items-center justify-between p-4">
                 <span className="flex items-center gap-2 font-semibold">
                     <ShoppingCart className="size-4" />

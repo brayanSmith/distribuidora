@@ -24,10 +24,12 @@ return new class extends Migration
             $table->string('direccion_proveedor')->nullable();
             $table->string('telefono_proveedor')->nullable();
             $table->string('banco_proveedor')->nullable();
-            $table->enum('tipo_cuenta_proveedor',['AHORRO', 'CORRIENTE'])->nullable();
+            $table->enum('tipo_cuenta_proveedor', ['AHORRO', 'CORRIENTE'])->nullable();
             $table->string('numero_cuenta_proveedor')->nullable();
             $table->string('convenio')->nullable();
             $table->string('tiempo_respuesta')->nullable();
+            // Days the proveedor gives to pay a compra on credit (0: cash).
+            $table->unsignedSmallInteger('dias_credito')->default(0);
             $table->string('fabricante')->nullable();
             $table->boolean('flete')->default(false);
             $table->decimal('valor_flete', 15, 2)->default(0);

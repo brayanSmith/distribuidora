@@ -115,7 +115,7 @@ function NavItems({ group }: { group: NavGroup }) {
                             ) : null}
                             <span
                                 data-test="nav-badge-pendiente"
-                                title="Compras pendientes"
+                                title={item.badgePendienteTitulo}
                                 className="flex h-5 min-w-5 items-center justify-center rounded-md bg-red-600 px-1 text-xs font-medium text-white tabular-nums"
                             >
                                 {item.badgePendiente}

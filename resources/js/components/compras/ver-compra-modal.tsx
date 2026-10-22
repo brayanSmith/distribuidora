@@ -1,4 +1,6 @@
-import { usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
+import { Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
@@ -26,11 +28,14 @@ import {
 } from '@/components/record-view';
 import { cn } from '@/lib/utils';
 import { show } from '@/routes/compras';
-import type { Compra } from '@/types';
+import { destroy as destroyAbono } from '@/routes/compras/abonos';
+import type { AbonoCompra, Compra } from '@/types';
 
 type Props = {
     /** The compra to show, or `null` while the modal is closed. */
     compra: Compra | null;
+    /** Whether the payments can be deleted from here. */
+    canDeleteAbono?: boolean;
     onClose: () => void;
 };
 
@@ -40,6 +45,7 @@ type Detalle = {
     precio_unitario: string;
     subtotal: string;
     estado_entrega: string;
+    cantidad_recibida?: string;
     producto?: {
         concatenar_codigo_nombre: string | null;
         referencia_producto: string | null;
@@ -54,15 +60,33 @@ type CompraDetalleCompleto = Omit<Compra, 'detalles_compra' | 'proveedor'> & {
         telefono_proveedor: string | null;
     } | null;
     detalles_compra?: Detalle[];
+    abonos?: AbonoCompra[];
 };
 
 /** Read-only view of a compra: header, products and totals. */
-export default function VerCompraModal({ compra, onClose }: Props) {
+export default function VerCompraModal({
+    compra,
+    canDeleteAbono = false,
+    onClose,
+}: Props) {
     const { record, loading, failed } = useFetchedRecord<CompraDetalleCompleto>(
         compra ? show([compra.id]) : null,
     );
 
     const detalles = record?.detalles_compra ?? [];
+    const abonos = record?.abonos ?? [];
+
+    // The listing reloads with the new balance; the modal closes.
+    const eliminarAbono = (abono: AbonoCompra) => {
+        if (!compra || !window.confirm('¿Eliminar este pago?')) {
+            return;
+        }
+
+        router.visit(destroyAbono([compra.id, abono.id]), {
+            preserveScroll: true,
+            onSuccess: onClose,
+        });
+    };
 
     return (
         <Dialog
@@ -100,6 +124,18 @@ export default function VerCompraModal({ compra, onClose }: Props) {
                                 >
                                     {record.estado}
                                 </Badge>
+                            </Field>
+                            <Field label="Tipo de pago">
+                                {record.tipo_pago === 'CONTADO'
+                                    ? 'Contado'
+                                    : 'Crédito'}
+                            </Field>
+                            <Field label="Vence el">
+                                {record.fecha_vencimiento
+                                    ? new Date(
+                                          `${record.fecha_vencimiento}T00:00:00`,
+                                      ).toLocaleDateString('es-CO')
+                                    : '—'}
                             </Field>
                             <Field label="Proveedor">
                                 {record.proveedor?.nombre_proveedor}
@@ -153,7 +189,14 @@ export default function VerCompraModal({ compra, onClose }: Props) {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant="secondary">
-                                                        {detalle.estado_entrega}
+                                                        {detalle.estado_entrega ===
+                                                            'PENDIENTE' &&
+                                                        Number(
+                                                            detalle.cantidad_recibida ??
+                                                                0,
+                                                        ) > 0
+                                                            ? `${Number(detalle.cantidad_recibida)} de ${Number(detalle.cantidad)}`
+                                                            : detalle.estado_entrega}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right">
@@ -194,7 +237,96 @@ export default function VerCompraModal({ compra, onClose }: Props) {
                                 value={Number(record.total_a_pagar)}
                                 strong
                             />
+                            <TotalRow
+                                label="Pagado"
+                                value={Number(record.abono)}
+                            />
+                            <TotalRow
+                                label="Saldo"
+                                value={Number(record.saldo_pendiente)}
+                                strong
+                            />
                         </div>
+
+                        <Section title="Pagos al proveedor">
+                            {abonos.length === 0 ? (
+                                <p className="text-muted-foreground text-sm">
+                                    Aún no se ha pagado nada de esta compra.
+                                </p>
+                            ) : (
+                                <div className="overflow-x-auto rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Fecha</TableHead>
+                                                <TableHead>
+                                                    Medio de pago
+                                                </TableHead>
+                                                <TableHead>
+                                                    Descripción
+                                                </TableHead>
+                                                <TableHead>Registró</TableHead>
+                                                <TableHead className="text-right">
+                                                    Monto
+                                                </TableHead>
+                                                {canDeleteAbono ? (
+                                                    <TableHead />
+                                                ) : null}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {abonos.map((abono) => (
+                                                <TableRow
+                                                    key={abono.id}
+                                                    data-test="compra-abono"
+                                                >
+                                                    <TableCell>
+                                                        {formatDate(
+                                                            abono.fecha,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {abono.puc
+                                                            ?.concatenar_subcuenta_concepto ??
+                                                            '—'}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {abono.descripcion ??
+                                                            '—'}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {abono.user?.name ??
+                                                            '—'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium text-emerald-600 dark:text-emerald-400">
+                                                        {currencyFormatter.format(
+                                                            Number(abono.monto),
+                                                        )}
+                                                    </TableCell>
+                                                    {canDeleteAbono ? (
+                                                        <TableCell className="text-right">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                aria-label="Eliminar pago"
+                                                                onClick={() =>
+                                                                    eliminarAbono(
+                                                                        abono,
+                                                                    )
+                                                                }
+                                                                data-test="compra-abono-eliminar"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    ) : null}
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+                        </Section>
                     </div>
                 ) : null}
             </DialogContent>

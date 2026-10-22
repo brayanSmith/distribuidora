@@ -5,17 +5,19 @@ import Heading from '@/components/heading';
 import TrashToggle from '@/components/trash-toggle';
 import { Button } from '@/components/ui/button';
 import { create, index } from '@/routes/compras';
-import type { Compra, CompraPermissions } from '@/types';
+import type { Compra, CompraPermissions, PucOption } from '@/types';
 
 type Props = {
     compras: Compra[];
     eliminados: boolean;
     permissions: CompraPermissions;
+    pucs: PucOption[];
 };
 
 export default function ComprasIndex({
     compras,
     permissions,
+    pucs,
     eliminados,
 }: Props) {
     return (
@@ -49,6 +51,7 @@ export default function ComprasIndex({
                 <ComprasTable
                     compras={compras}
                     permissions={permissions}
+                    pucs={pucs}
                     eliminados={eliminados}
                 />
             </div>

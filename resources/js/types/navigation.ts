@@ -15,6 +15,8 @@ export type NavItem = {
     badge?: number;
     /** A second count shown in red next to the badge (e.g. pending items). */
     badgePendiente?: number;
+    /** What the red badge counts, shown on hover. */
+    badgePendienteTitulo?: string;
 };
 
 /** A sidebar section. Without a `label` its items are standalone links. */

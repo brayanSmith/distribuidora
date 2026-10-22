@@ -24,9 +24,8 @@ class PermissionSeeder extends Seeder
         'empresa' => ['view', 'update'],
         'productos' => ['view', 'create', 'update', 'delete', 'view-deleted', 'restore', 'view-stock-total', 'view-pendiente', 'view-almacen-p', 'view-stock-bodegas', 'view-sin-stock', 'import', 'export'],
         'gastos' => ['view', 'create', 'update', 'delete', 'view-deleted', 'restore'],
-        'compras' => ['view', 'create', 'update', 'delete', 'view-deleted', 'restore'],
+        'compras' => ['view', 'create', 'update', 'delete', 'view-deleted', 'restore', 'create-abono', 'delete-abono', 'recibir'],
         'pedidos' => ['view', 'create', 'update', 'delete', 'view-deleted', 'restore', 'view-detalle', 'create-abono', 'update-abono', 'delete-abono', 'create-detalle', 'update-detalle', 'delete-detalle', 'update-datos'],
-        'pedidos-mayoristas' => ['view', 'create', 'update', 'delete', 'view-deleted', 'restore', 'view-detalle', 'create-abono', 'update-abono', 'delete-abono', 'create-detalle', 'update-detalle', 'delete-detalle', 'update-datos'],
         'stock-iniciales' => ['view', 'create', 'update', 'delete'],
         'stock-bodegas' => ['view', 'view-inversion', 'create-traslado'],
         'cotizador' => ['view'],
@@ -36,6 +35,7 @@ class PermissionSeeder extends Seeder
         'roles' => ['view', 'create', 'update', 'delete'],
         'dashboard' => ['widget-productos', 'widget-ganancia', 'widget-ajustes', 'tabla-bodegas', 'chart-categorias', 'chart-top-productos', 'chart-pedidos', 'alerta-stock'],
         'traslados' => ['view', 'create', 'update', 'delete'],
+        'entregas' => ['view', 'update'],
     ];
 
     /**

@@ -10,9 +10,11 @@ use App\Modules\Inventario\Models\Bodega;
 use Carbon\Carbon;
 use Database\Factories\PedidoFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -45,6 +47,7 @@ class Pedido extends Model
         'total_a_pagar',
         'abono',
         'saldo_pendiente',
+        'fecha_vencimiento',
         'user_id',
         'aplica_turno',
         'turno',
@@ -72,9 +75,11 @@ class Pedido extends Model
         );
     }
 
+    protected $appends = ['vencido'];
+
     protected $casts = [
         'fecha' => 'datetime',
-        'fecha_vencimiento' => 'datetime',
+        'fecha_vencimiento' => 'date:Y-m-d',
         'fecha_ultimo_abono' => 'datetime',
         'reteica' => 'decimal:2',
         'retefuente' => 'decimal:2',
@@ -147,6 +152,16 @@ class Pedido extends Model
     }
 
     // Alias para compatibilidad - obtener todos los abonos
+    /**
+     * Where it is delivered, when it is (contra entrega).
+     *
+     * @return HasOne<Entrega, $this>
+     */
+    public function entrega(): HasOne
+    {
+        return $this->hasOne(Entrega::class);
+    }
+
     public function abonos()
     {
         return $this->hasMany(Abono::class);
@@ -175,6 +190,47 @@ class Pedido extends Model
     public function puc()
     {
         return $this->belongsTo(Puc::class, 'id_puc');
+    }
+
+    /**
+     * Whether it still owes something and its due date already passed.
+     * Worked out on the fly, so it never goes stale with the days.
+     *
+     * @return Attribute<bool, never>
+     */
+    protected function vencido(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): bool => (float) ($this->attributes['saldo_pendiente'] ?? 0) > 0
+                && $this->fecha_vencimiento !== null
+                && $this->fecha_vencimiento->lt(today()),
+        );
+    }
+
+    /**
+     * The pedidos that still owe something and whose due date passed.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeVencidos(Builder $query): Builder
+    {
+        return $query->where('saldo_pendiente', '>', 0)->whereDate('fecha_vencimiento', '<', today());
+    }
+
+    /**
+     * When a pedido on credit is due unless told otherwise: its date plus
+     * the days of credit of the cliente. Other tipos de pago are not due.
+     */
+    public static function vencimientoPorDefecto(?string $tipoPago, ?Cliente $cliente, mixed $fecha): ?string
+    {
+        if ($tipoPago !== 'CREDITO') {
+            return null;
+        }
+
+        return Carbon::parse($fecha ?? now())
+            ->addDays((int) ($cliente?->dias_credito ?? 0))
+            ->toDateString();
     }
 
     /**

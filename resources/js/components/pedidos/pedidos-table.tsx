@@ -64,6 +64,7 @@ import {
     usePersistedState,
 } from '@/hooks/use-persisted-state';
 import { cn } from '@/lib/utils';
+import { formatoFecha } from '@/lib/vencimiento';
 import type {
     PedidoDetalle,
     Pedido,
@@ -239,11 +240,15 @@ function productosResumen(pedido: Pedido): string {
 }
 
 /** Every abono listed on its own, even when the método de pago repeats. */
-function mediosDePagoList(pedido: Pedido): { id: number; nombre: string; monto: number }[] {
+function mediosDePagoList(
+    pedido: Pedido,
+): { id: number; nombre: string; monto: number }[] {
     return (pedido.abonos ?? []).flatMap((abono) => {
         const nombre = abono.puc?.concatenar_subcuenta_concepto;
 
-        return nombre ? [{ id: abono.id, nombre, monto: Number(abono.monto) }] : [];
+        return nombre
+            ? [{ id: abono.id, nombre, monto: Number(abono.monto) }]
+            : [];
     });
 }
 
@@ -1008,10 +1013,17 @@ export default function PedidosTable({
                             'border-transparent',
                             pedido.estado_pago === 'SALDADO'
                                 ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
-                                : 'bg-amber-100 text-amber-700 hover:bg-amber-100',
+                                : pedido.vencido
+                                  ? 'bg-red-600 text-white hover:bg-red-600'
+                                  : 'bg-amber-100 text-amber-700 hover:bg-amber-100',
                         )}
+                        title={
+                            pedido.fecha_vencimiento
+                                ? `Vence el ${formatoFecha(pedido.fecha_vencimiento)}`
+                                : undefined
+                        }
                     >
-                        {pedido.estado_pago}
+                        {pedido.vencido ? 'VENCIDO' : pedido.estado_pago}
                     </Badge>
                 );
             case 'acciones':

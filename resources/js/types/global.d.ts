@@ -37,8 +37,10 @@ declare module '@inertiajs/core' {
             canViewCotizador: boolean;
             canViewPos: boolean;
             canViewCompras: boolean;
+            canCreateCompras: boolean;
+            canRecibirCompras: boolean;
+            canViewEntregas: boolean;
             canViewPedidos: boolean;
-            canViewPedidosMayoristas: boolean;
             canViewStockIniciales: boolean;
             canViewStockBodegas: boolean;
             canViewTraslados: boolean;
@@ -47,9 +49,14 @@ declare module '@inertiajs/core' {
             /** Record totals shown as sidebar badges. */
             navCounts: {
                 pedidos: number;
-                pedidosMayoristas: number;
                 compras: number;
                 comprasPendientes: number;
+                comprasVencidas: number;
+                comprasPorPagar: number;
+                pedidosPorCobrar: number;
+                pedidosVencidos: number;
+                entregasActivas: number;
+                entregasDevueltas: number;
             };
             [key: string]: unknown;
         };

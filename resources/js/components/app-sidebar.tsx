@@ -6,11 +6,14 @@ import {
     Calculator,
     ClipboardList,
     FileText,
+    HandCoins,
     History,
     LayoutGrid,
     LogIn,
     MonitorSmartphone,
     Package,
+    PackageOpen,
+    PackagePlus,
     Quote,
     Receipt,
     Search,
@@ -21,7 +24,9 @@ import {
     Truck,
     UserCog,
     Users,
+    Wallet,
     Warehouse,
+    Bike,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AppLogo from '@/components/app-logo';
@@ -40,16 +45,21 @@ import {
 import { dashboard } from '@/routes';
 import { index as bodegasIndex } from '@/routes/bodegas';
 import { index as clientesIndex } from '@/routes/clientes';
-import { index as comprasIndex } from '@/routes/compras';
+import {
+    cuentasPorPagar,
+    index as comprasIndex,
+    pendientes as comprasPendientes,
+    pos as comprasPos,
+} from '@/routes/compras';
 import { index as cotizadorIndex } from '@/routes/cotizador';
+import { index as entregasIndex } from '@/routes/entregas';
 import { edit as empresaEdit } from '@/routes/empresa';
 import { index as gastosIndex } from '@/routes/gastos';
 import { index as historialIndex } from '@/routes/historial';
 import { index as iniciosSesionIndex } from '@/routes/inicios-sesion';
 import { index as categoriasIndex } from '@/routes/categorias';
 import { index as subCategoriasIndex } from '@/routes/sub-categorias';
-import { index as pedidosIndex } from '@/routes/pedidos';
-import { index as pedidosMayoristasIndex } from '@/routes/pedidos-mayoristas';
+import { cuentasPorCobrar, index as pedidosIndex } from '@/routes/pedidos';
 import { index as posIndex } from '@/routes/pos';
 import { index as productosIndex } from '@/routes/productos';
 import { index as proveedoresIndex } from '@/routes/proveedores';
@@ -73,8 +83,20 @@ export function AppSidebar() {
         icon: NavItem['icon'],
         badge?: number,
         badgePendiente?: number,
+        badgePendienteTitulo?: string,
     ): NavItem[] =>
-        visible ? [{ title, href: href(), icon, badge, badgePendiente }] : [];
+        visible
+            ? [
+                  {
+                      title,
+                      href: href(),
+                      icon,
+                      badge,
+                      badgePendiente,
+                      badgePendienteTitulo,
+                  },
+              ]
+            : [];
 
     const groups: NavGroup[] = [
         {
@@ -128,24 +150,60 @@ export function AppSidebar() {
                     page.props.navCounts?.pedidos,
                 ),
                 ...entry(
-                    page.props.canViewPedidosMayoristas,
-                    'Pedidos Mayorista',
-                    pedidosMayoristasIndex,
-                    FileText,
-                    page.props.navCounts?.pedidosMayoristas,
+                    page.props.canViewPedidos,
+                    'Cuentas por cobrar',
+                    cuentasPorCobrar,
+                    HandCoins,
+                    page.props.navCounts?.pedidosPorCobrar || undefined,
+                    page.props.navCounts?.pedidosVencidos || undefined,
+                    'Pedidos vencidos',
+                ),
+                ...entry(
+                    page.props.canViewEntregas,
+                    'Entregas',
+                    entregasIndex,
+                    Bike,
+                    page.props.navCounts?.entregasActivas || undefined,
+                    page.props.navCounts?.entregasDevueltas || undefined,
+                    'Entregas devueltas sin resolver',
                 ),
             ],
         },
         {
             label: 'Compras',
-            items: entry(
-                page.props.canViewCompras,
-                'Compras',
-                comprasIndex,
-                ShoppingCart,
-                page.props.navCounts?.compras,
-                page.props.navCounts?.comprasPendientes,
-            ),
+            items: [
+                ...entry(
+                    page.props.canCreateCompras,
+                    'POS Compras',
+                    comprasPos,
+                    PackagePlus,
+                ),
+                ...entry(
+                    page.props.canViewCompras,
+                    'Compras',
+                    comprasIndex,
+                    ShoppingCart,
+                    page.props.navCounts?.compras,
+                    page.props.navCounts?.comprasPendientes,
+                    'Compras pendientes de recibir',
+                ),
+                ...entry(
+                    page.props.canRecibirCompras,
+                    'Pendientes por recibir',
+                    comprasPendientes,
+                    PackageOpen,
+                    page.props.navCounts?.comprasPendientes || undefined,
+                ),
+                ...entry(
+                    page.props.canViewCompras,
+                    'Cuentas por pagar',
+                    cuentasPorPagar,
+                    Wallet,
+                    page.props.navCounts?.comprasPorPagar || undefined,
+                    page.props.navCounts?.comprasVencidas || undefined,
+                    'Compras vencidas',
+                ),
+            ],
         },
         {
             label: 'Productos',

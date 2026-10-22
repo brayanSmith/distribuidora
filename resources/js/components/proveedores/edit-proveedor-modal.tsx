@@ -375,6 +375,24 @@ export default function EditProveedorModal({
                                         </div>
 
                                         <div className="grid gap-2">
+                                            <Label htmlFor="edit_dias_credito">
+                                                Días de crédito
+                                            </Label>
+                                            <Input
+                                                id="edit_dias_credito"
+                                                name="dias_credito"
+                                                type="number"
+                                                min={0}
+                                                defaultValue={
+                                                    proveedor.dias_credito ?? 0
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.dias_credito}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
                                             <Label htmlFor="edit_tiempo_respuesta">
                                                 Tiempo de respuesta
                                             </Label>

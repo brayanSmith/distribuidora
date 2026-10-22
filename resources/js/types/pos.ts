@@ -22,7 +22,11 @@ export type PosCatalogoProducto = {
     stock_por_bodega: Record<string, number>;
 };
 
-export type TipoPagoPedido = 'CONTADO' | 'SEPARADO' | 'CREDITO';
+export type TipoPagoPedido =
+    | 'CONTADO'
+    | 'SEPARADO'
+    | 'CREDITO'
+    | 'CONTRA_ENTREGA';
 
 /** One row of a cliente's order history in the POS history modal. */
 export type PosPedidoHistorial = {
@@ -73,5 +77,15 @@ export type PosVoucher = {
         telefono: string | null;
         email: string | null;
     };
+    /** Where a contra entrega goes (null for the rest). */
+    entrega?: {
+        direccion: string;
+        ciudad: string | null;
+        telefono: string;
+        recibe: string | null;
+        nota: string | null;
+        fecha_programada: string | null;
+        mensajero: string | null;
+    } | null;
     detalles: { nombre: string; cantidad: number; total: number }[];
 };

@@ -38,9 +38,7 @@ class PosController extends Controller
         Gate::authorize('pos.view');
 
         return Inertia::render('pos/index', [
-            'clientes' => Cliente::orderBy('razon_social')->get([
-                'id', 'tipo_documento', 'numero_documento', 'razon_social', 'direccion', 'telefono', 'ciudad', 'email',
-            ]),
+            'clientes' => $this->clientesConDeuda(),
             'productos' => $this->catalogoProductos(),
             'bodegas' => Bodega::permitidas()->orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
             'vendedores' => User::orderBy('name')->get(['id', 'name']),
@@ -160,6 +158,34 @@ class PosController extends Controller
                     ->map(fn ($detalle): string => (float) $detalle->cantidad.' x '.($detalle->producto?->concatenar_codigo_nombre ?? $detalle->producto?->referencia_producto ?? 'Producto '.$detalle->producto_id))
                     ->all(),
             ]);
+    }
+
+    /**
+     * The clientes with what they owe and how much of it is overdue, so the
+     * POS can warn before selling them on credit again.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function clientesConDeuda(): array
+    {
+        $deudas = Pedido::query()
+            ->where('saldo_pendiente', '>', 0)
+            ->selectRaw('cliente_id, SUM(saldo_pendiente) as deuda')
+            ->selectRaw('SUM(CASE WHEN fecha_vencimiento < ? THEN saldo_pendiente ELSE 0 END) as deuda_vencida', [today()->toDateString()])
+            ->groupBy('cliente_id')
+            ->get()
+            ->keyBy('cliente_id');
+
+        $campos = ['id', 'tipo_documento', 'numero_documento', 'razon_social', 'direccion', 'telefono', 'ciudad', 'email', 'dias_credito'];
+
+        return Cliente::orderBy('razon_social')
+            ->get($campos)
+            ->map(fn (Cliente $cliente): array => [
+                ...$cliente->only($campos),
+                'deuda' => round((float) ($deudas[$cliente->id]->deuda ?? 0), 2),
+                'deuda_vencida' => round((float) ($deudas[$cliente->id]->deuda_vencida ?? 0), 2),
+            ])
+            ->all();
     }
 
     /**

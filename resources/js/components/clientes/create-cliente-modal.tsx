@@ -27,7 +27,18 @@ import {
 import { store } from '@/routes/clientes';
 import type { RetenedorFuente, TipoDocumento } from '@/types';
 
-const TIPOS_DOCUMENTO: TipoDocumento[] = ['CC', 'NIT', 'CE', 'TI', 'PASAPORTE', 'PPT', 'DNI', 'RUT', 'NIT DE VENEZUELA', 'OTRO'];
+const TIPOS_DOCUMENTO: TipoDocumento[] = [
+    'CC',
+    'NIT',
+    'CE',
+    'TI',
+    'PASAPORTE',
+    'PPT',
+    'DNI',
+    'RUT',
+    'NIT DE VENEZUELA',
+    'OTRO',
+];
 
 type Props = PropsWithChildren<{
     /** Called after the cliente was created and the modal closed. */
@@ -229,6 +240,21 @@ export default function CreateClienteModal({
                                     <InputError
                                         message={errors.retenedor_fuente}
                                     />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="dias_credito">
+                                        Días de crédito
+                                    </Label>
+                                    <Input
+                                        id="dias_credito"
+                                        name="dias_credito"
+                                        type="number"
+                                        min={0}
+                                        defaultValue={0}
+                                        data-test="cliente-dias-credito"
+                                    />
+                                    <InputError message={errors.dias_credito} />
                                 </div>
 
                                 <div className="flex items-center gap-2 pt-6">

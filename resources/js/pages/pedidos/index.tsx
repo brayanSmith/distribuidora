@@ -33,7 +33,7 @@ export default function PedidosIndex({
             vendedores={vendedores}
             routes={{ pedidos: pedidosRoutes, abonos: pedidosAbonosRoutes }}
             title="Pedidos"
-            description="Administra los pedidos al detal de los clientes"
+            description="Administra todos los pedidos de los clientes: detal, mayorista y otros"
         />
     );
 }

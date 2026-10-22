@@ -23,7 +23,6 @@ const RESOURCE_LABELS: Record<string, string> = {
     gastos: 'Gastos',
     compras: 'Compras',
     pedidos: 'Pedidos',
-    'pedidos-mayoristas': 'Pedidos mayorista',
     'stock-iniciales': 'Stock inicial',
     'stock-bodegas': 'Stock por bodega',
     cotizador: 'Cotizador',
@@ -31,6 +30,7 @@ const RESOURCE_LABELS: Record<string, string> = {
     'inicios-sesion': 'Inicios de sesión',
     historial: 'Historial de cambios',
     traslados: 'Traslados',
+    entregas: 'Entregas (contra entrega)',
     dashboard: 'Panel',
     team: 'Equipo',
 };
@@ -70,16 +70,19 @@ const ACTION_LABELS: Record<string, string> = {
     'view-stock-bodegas': 'Ver stock por bodega',
     'view-sin-stock': 'Ver productos sin stock',
     'create-traslado': 'Crear traslados',
+    recibir: 'Recibir mercancía',
 };
 
-/** Extra explanation shown as a tooltip next to a permission. */
+/** Extra explanation shown as a tooltip next to a permission (by its full name or its action). */
 const ACTION_HINTS: Record<string, string> = {
     'view-all-pedidos':
         'Desmarcado, en el POS solo se ve el historial de los pedidos del vendedor autenticado.',
     'update-datos':
         'Cliente, fecha, vendedor, bodega, tipo de precio, facturación, flete, descuento y retenciones. La observación y la observación de pago siempre se pueden editar con "Editar".',
-    'create-abono':
+    'pedidos.create-abono':
         'Desde el formulario de edición y desde la tabla de pedidos. También requiere "Editar".',
+    'compras.create-abono':
+        'Pagos al proveedor: desde el POS de compras y desde la tabla de compras.',
     'create-detalle': 'Solo aplica en el formulario de edición del pedido.',
     'view-sin-stock':
         'Desmarcado, no se listan los productos sin stock que tampoco tienen compras pendientes.',
@@ -98,7 +101,7 @@ export function permissionLabel(name: string): string {
 export function permissionHint(name: string): string | undefined {
     const [, ...rest] = name.split('.');
 
-    return ACTION_HINTS[rest.join('.')];
+    return ACTION_HINTS[name] ?? ACTION_HINTS[rest.join('.')];
 }
 
 export function resourceLabel(resource: string): string {

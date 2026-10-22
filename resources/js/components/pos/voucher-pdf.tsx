@@ -120,7 +120,11 @@ function alturaPagina(voucher: PosVoucher): number {
         Math.ceil((voucher.pedido.observacion?.length ?? 0) / 38) +
         Math.ceil((voucher.pedido.observacion_pago?.length ?? 0) / 38);
 
-    return 440 + voucher.detalles.length * 38 + extra * 10;
+    const entrega = voucher.entrega
+        ? 110 + Math.ceil((voucher.entrega.nota?.length ?? 0) / 38) * 10
+        : 0;
+
+    return 440 + voucher.detalles.length * 38 + extra * 10 + entrega;
 }
 
 function VoucherDocument({
@@ -130,7 +134,7 @@ function VoucherDocument({
     voucher: PosVoucher;
     logo: string | null;
 }) {
-    const { empresa, pedido, cliente, vendedor, detalles } = voucher;
+    const { empresa, pedido, cliente, vendedor, detalles, entrega } = voucher;
 
     return (
         <Document title={`Voucher ${pedido.turno ?? pedido.id}`}>
@@ -191,6 +195,46 @@ function VoucherDocument({
                     OBSERVACION PAGO: {pedido.observacion_pago ?? ''}
                 </Text>
                 <View style={styles.separator} />
+
+                {entrega ? (
+                    <>
+                        <Text
+                            style={[
+                                styles.bold,
+                                styles.center,
+                                { fontSize: 9, marginBottom: 3 },
+                            ]}
+                        >
+                            CONTRA ENTREGA
+                        </Text>
+                        <Linea
+                            label="ENTREGAR EN"
+                            value={`${entrega.direccion}${entrega.ciudad ? `, ${entrega.ciudad}` : ''}`}
+                        />
+                        <Linea label="TEL" value={entrega.telefono} />
+                        <Linea label="RECIBE" value={entrega.recibe} />
+                        {entrega.fecha_programada ? (
+                            <Linea
+                                label="FECHA"
+                                value={entrega.fecha_programada}
+                            />
+                        ) : null}
+                        {entrega.mensajero ? (
+                            <Linea
+                                label="MENSAJERO"
+                                value={entrega.mensajero}
+                            />
+                        ) : null}
+                        {entrega.nota ? (
+                            <Linea label="NOTA" value={entrega.nota} />
+                        ) : null}
+                        <View style={styles.total}>
+                            <Text>COBRAR AL ENTREGAR</Text>
+                            <Text>{money(pedido.saldo_pendiente)}</Text>
+                        </View>
+                        <View style={styles.separator} />
+                    </>
+                ) : null}
 
                 <Text style={[styles.bold, { marginBottom: 3 }]}>
                     PRODUCTOS FACTURADOS

@@ -507,8 +507,7 @@ test('the sidebar badges count all the pedidos and compras the user can see', fu
     $this->actingAs($owner)
         ->get(route('pos.index'))
         ->assertInertia(fn ($page) => $page
-            ->where('navCounts.pedidos', 2)
-            ->where('navCounts.pedidosMayoristas', 2)
+            ->where('navCounts.pedidos', 4)
             ->where('navCounts.compras', 0)
         );
 
@@ -520,7 +519,6 @@ test('the sidebar badges count all the pedidos and compras the user can see', fu
         ->get(route('pos.index'))
         ->assertInertia(fn ($page) => $page
             ->where('navCounts.pedidos', 0)
-            ->where('navCounts.pedidosMayoristas', 0)
         );
 });
 
@@ -627,4 +625,44 @@ test('a POS line only accepts DETAL, MAYORISTA or PERSONALIZADO as its tipo de p
             ['producto_id' => Producto::factory()->create()->id, 'cantidad' => 1, 'precio_unitario' => 100, 'tipo_precio' => 'OTRO'],
         ],
     ])->assertSessionHasErrors('detalles.0.tipo_precio');
+});
+
+test('a POS sale on credit is due after the days of credit of the cliente unless a date is given', function () {
+    Carbon\Carbon::setTestNow('2026-10-21 10:00:00');
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    $cliente = Cliente::factory()->create(['dias_credito' => 15]);
+
+    $venta = fn (array $extra) => $this->actingAs($owner)->post(route('pos.store'), $extra + [
+        'cliente_id' => $cliente->id,
+        'fecha' => '2026-10-21 10:00:00',
+        'user_id' => $owner->id,
+        'bodega_id' => Bodega::factory()->create()->id,
+        'tipo_precio' => 'DETAL',
+        'detalles' => [
+            ['producto_id' => Producto::factory()->create()->id, 'cantidad' => 1, 'precio_unitario' => 100],
+        ],
+    ]);
+
+    $venta(['tipo_pago' => 'CREDITO', 'observacion' => 'A'])->assertSessionHasNoErrors();
+    $venta(['tipo_pago' => 'CREDITO', 'observacion' => 'B', 'fecha_vencimiento' => '2026-11-30'])->assertSessionHasNoErrors();
+    $venta(['tipo_pago' => 'CONTADO', 'observacion' => 'C', 'fecha_vencimiento' => '2026-11-30'])->assertSessionHasNoErrors();
+
+    expect(Pedido::where('observacion', 'A')->first()->fecha_vencimiento->toDateString())->toBe('2026-11-05')
+        ->and(Pedido::where('observacion', 'B')->first()->fecha_vencimiento->toDateString())->toBe('2026-11-30')
+        ->and(Pedido::where('observacion', 'C')->first()->fecha_vencimiento)->toBeNull();
+
+    Carbon\Carbon::setTestNow('2026-11-06');
+    expect(Pedido::where('observacion', 'A')->first()->vencido)->toBeTrue()
+        ->and(Pedido::where('observacion', 'B')->first()->vencido)->toBeFalse();
+    Carbon\Carbon::setTestNow();
+});
+
+test('the POS knows the days of credit of each cliente', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    Cliente::factory()->create(['dias_credito' => 30]);
+
+    $this->actingAs($owner)->get(route('pos.index'))
+        ->assertInertia(fn ($page) => $page->where('clientes.0.dias_credito', 30));
 });

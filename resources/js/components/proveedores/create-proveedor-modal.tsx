@@ -32,9 +32,12 @@ import type {
     TipoProveedor,
 } from '@/types';
 
-type Props = PropsWithChildren<{}>;
+type Props = PropsWithChildren<{
+    /** Called once the proveedor is saved (e.g. to select it in the compras POS). */
+    onCreated?: () => void;
+}>;
 
-export default function CreateProveedorModal({ children }: Props) {
+export default function CreateProveedorModal({ children, onCreated }: Props) {
     const [open, setOpen] = useState(false);
     const [tipoProveedor, setTipoProveedor] =
         useState<TipoProveedor>('REMISIONADO');
@@ -77,7 +80,10 @@ export default function CreateProveedorModal({ children }: Props) {
                     key={String(open)}
                     {...store.form()}
                     className="space-y-6"
-                    onSuccess={() => handleOpenChange(false)}
+                    onSuccess={() => {
+                        handleOpenChange(false);
+                        onCreated?.();
+                    }}
                 >
                     {({ errors, processing }) => (
                         <>
@@ -330,6 +336,23 @@ export default function CreateProveedorModal({ children }: Props) {
                                             <Input
                                                 id="convenio"
                                                 name="convenio"
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="dias_credito">
+                                                Días de crédito
+                                            </Label>
+                                            <Input
+                                                id="dias_credito"
+                                                name="dias_credito"
+                                                type="number"
+                                                min={0}
+                                                defaultValue={0}
+                                                data-test="proveedor-dias-credito"
+                                            />
+                                            <InputError
+                                                message={errors.dias_credito}
                                             />
                                         </div>
 

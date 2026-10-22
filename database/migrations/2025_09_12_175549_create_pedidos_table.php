@@ -19,7 +19,7 @@ return new class extends Migration
             $table->enum('estado', ['PENDIENTE', 'COMPLETADO'])->default(value: 'PENDIENTE');
             $table->enum('estado_pago', ['EN_CARTERA', 'SALDADO', 'NO_APLICA'])->default(value: 'EN_CARTERA');
 
-            $table->enum('tipo_pago', ['CONTADO', 'SEPARADO', 'CREDITO'])->default(value: 'CONTADO');
+            $table->enum('tipo_pago', ['CONTADO', 'SEPARADO', 'CREDITO', 'CONTRA_ENTREGA'])->default(value: 'CONTADO');
             $table->enum('tipo_precio', ['DETAL', 'MAYORISTA', 'OTRO'])->default(value: 'DETAL');
             // $table->foreignId('id_puc')->constrained('pucs')->nullable();//Medio de Pago
             $table->foreignId('bodega_id')->constrained('bodegas')->nullable()->default(1);
@@ -31,6 +31,8 @@ return new class extends Migration
             $table->decimal('total_a_pagar', 12, 2)->default(0);
             $table->decimal('abono', 12, 2)->default(0);
             $table->decimal('saldo_pendiente', 12, 2)->default(0);
+            // When a pedido on credit must be paid; past it with a balance it is overdue.
+            $table->date('fecha_vencimiento')->nullable();
             $table->foreignId('user_id')->constrained('users')->nullable();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->boolean('aplica_turno')->default(false);

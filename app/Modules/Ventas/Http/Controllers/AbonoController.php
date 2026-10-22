@@ -11,12 +11,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 /**
- * Serves payments for both the "pedidos" and "pedidos-mayoristas" modules;
- * see PedidoController for why the module is derived from the route name.
+ * The payments (abonos) of a pedido.
  */
 class AbonoController extends Controller
 {
@@ -25,10 +23,9 @@ class AbonoController extends Controller
      */
     public function store(StoreAbonoRequest $request, Pedido $pedido): RedirectResponse
     {
-        $module = $this->module($request);
 
-        Gate::authorize("{$module}.update");
-        Gate::authorize("{$module}.create-abono");
+        Gate::authorize('pedidos.update');
+        Gate::authorize('pedidos.create-abono');
 
         $data = $request->validated();
 
@@ -62,10 +59,9 @@ class AbonoController extends Controller
      */
     public function update(UpdateAbonoRequest $request, Pedido $pedido, Abono $abono): RedirectResponse
     {
-        $module = $this->module($request);
 
-        Gate::authorize("{$module}.update");
-        Gate::authorize("{$module}.update-abono");
+        Gate::authorize('pedidos.update');
+        Gate::authorize('pedidos.update-abono');
 
         $data = $request->validated();
 
@@ -89,7 +85,7 @@ class AbonoController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Pago actualizado.')]);
 
-        return to_route("{$module}.edit", ['pedido' => $pedido]);
+        return to_route('pedidos.edit', ['pedido' => $pedido]);
     }
 
     /**
@@ -97,10 +93,9 @@ class AbonoController extends Controller
      */
     public function destroy(Request $request, Pedido $pedido, Abono $abono): RedirectResponse
     {
-        $module = $this->module($request);
 
-        Gate::authorize("{$module}.update");
-        Gate::authorize("{$module}.delete-abono");
+        Gate::authorize('pedidos.update');
+        Gate::authorize('pedidos.delete-abono');
 
         DB::transaction(function () use ($pedido, $abono): void {
             $abono->delete();
@@ -109,15 +104,6 @@ class AbonoController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Pago eliminado.')]);
 
-        return to_route("{$module}.edit", ['pedido' => $pedido]);
-    }
-
-    /**
-     * The active module ("pedidos" or "pedidos-mayoristas"), derived from
-     * the matched route's name (e.g. "pedidos-mayoristas.abonos.store").
-     */
-    private function module(Request $request): string
-    {
-        return Str::before($request->route()->getName(), '.');
+        return to_route('pedidos.edit', ['pedido' => $pedido]);
     }
 }

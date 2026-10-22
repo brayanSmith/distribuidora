@@ -19,6 +19,8 @@ class UpdateCompraRequest extends FormRequest
             'factura' => ['required', 'string', 'max:255'],
             'proveedor_id' => ['required', 'integer', 'exists:proveedors,id'],
             'fecha' => ['required', 'date'],
+            // Empty: the date of the compra plus the days of credit of the proveedor.
+            'fecha_vencimiento' => ['nullable', 'date'],
             'observaciones' => ['nullable', 'string'],
             'descuento' => ['nullable', 'numeric', 'min:0'],
             'detalles' => ['required', 'array', 'min:1'],
@@ -27,6 +29,8 @@ class UpdateCompraRequest extends FormRequest
             'detalles.*.cantidad' => ['required', 'numeric', 'min:0.01'],
             'detalles.*.precio_unitario' => ['required', 'numeric', 'min:0'],
             'detalles.*.recibido' => ['nullable', 'boolean'],
+            // A partial receipt kept when editing (ignored when the line is received).
+            'detalles.*.cantidad_recibida' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

@@ -1,4 +1,14 @@
-export type TipoDocumento = 'CC' | 'NIT' | 'CE' | 'TI' | 'PASAPORTE' | 'PPT' | 'DNI' | 'RUT' | 'NIT DE VENEZUELA' | 'OTRO';
+export type TipoDocumento =
+    | 'CC'
+    | 'NIT'
+    | 'CE'
+    | 'TI'
+    | 'PASAPORTE'
+    | 'PPT'
+    | 'DNI'
+    | 'RUT'
+    | 'NIT DE VENEZUELA'
+    | 'OTRO';
 
 export type RetenedorFuente = 'SI' | 'NO';
 
@@ -16,6 +26,7 @@ export type Cliente = {
     rut_imagen: string | null;
     rut_imagen_url: string | null;
     retenedor_fuente: RetenedorFuente;
+    dias_credito: number;
 };
 
 export type ClientePermissions = {

@@ -8,7 +8,6 @@ use Spatie\Permission\Models\Permission;
 beforeEach(function () {
     Permission::findOrCreate('cotizador.view');
     Permission::findOrCreate('pedidos.view');
-    Permission::findOrCreate('pedidos-mayoristas.view');
 });
 
 test('the cotizador only lists productos with stock and the expected fields', function () {
@@ -55,11 +54,12 @@ test('members without permission cannot view the cotizador', function () {
     $this->actingAs($member)->get(route('cotizador.index'))->assertForbidden();
 });
 
-test('the price type is locked to the module the user can view', function () {
+test('the price type is locked to the only price the user can see', function () {
 
     $detalOnly = User::factory()->create();
     asignarRol($detalOnly, 'Member');
-    $detalOnly->givePermissionTo(['cotizador.view', 'pedidos.view']);
+    $detalOnly->givePermissionTo('cotizador.view');
+    $detalOnly->update(['tipos_precio_permitidos' => ['valor_detal']]);
 
     $this->actingAs($detalOnly)
         ->get(route('cotizador.index'))
@@ -67,14 +67,15 @@ test('the price type is locked to the module the user can view', function () {
 
     $mayoristaOnly = User::factory()->create();
     asignarRol($mayoristaOnly, 'Member');
-    $mayoristaOnly->givePermissionTo(['cotizador.view', 'pedidos-mayoristas.view']);
+    $mayoristaOnly->givePermissionTo('cotizador.view');
+    $mayoristaOnly->update(['tipos_precio_permitidos' => ['valor_mayorista']]);
 
     $this->actingAs($mayoristaOnly)
         ->get(route('cotizador.index'))
         ->assertInertia(fn ($page) => $page->where('tipoPrecioRestringido', 'MAYORISTA'));
 });
 
-test('a user who can view both pedido modules gets the free choice', function () {
+test('a user who can see both prices gets the free choice', function () {
     $owner = User::factory()->create();
     asignarRol($owner, 'Owner');
 

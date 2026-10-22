@@ -5,6 +5,7 @@ namespace App\Modules\Ventas\Services;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Inventario\Models\StockBodega;
+use App\Modules\Ventas\Models\Cliente;
 use App\Modules\Ventas\Models\DetallePedido;
 use App\Modules\Ventas\Models\Pedido;
 use Illuminate\Support\Carbon;
@@ -39,6 +40,9 @@ class PedidoService
                 'aplica_turno' => $aplicaTurno,
                 'turno' => $aplicaTurno ? $this->generarTurno((int) $data['bodega_id'], Carbon::parse($data['fecha'])) : null,
                 'tipo_pago' => $data['tipo_pago'] ?? 'CONTADO',
+                'fecha_vencimiento' => ($data['tipo_pago'] ?? 'CONTADO') === 'CREDITO'
+                    ? ($data['fecha_vencimiento'] ?? Pedido::vencimientoPorDefecto('CREDITO', Cliente::find($data['cliente_id']), $data['fecha']))
+                    : null,
                 'observacion' => $data['observacion'] ?? null,
                 'observacion_pago' => $data['observacion_pago'] ?? null,
                 'flete' => $data['flete'] ?? 0,
@@ -51,6 +55,11 @@ class PedidoService
 
             $this->syncDetalles($pedido, $data['detalles']);
             $this->registrarAbonos($pedido, $data['abonos'] ?? []);
+
+            // Paid on delivery: where it goes, to dispatch it later.
+            if (($data['tipo_pago'] ?? null) === 'CONTRA_ENTREGA') {
+                $pedido->entrega()->create($data['entrega']);
+            }
             $pedido->registrarCambioDetalles(null);
 
             return $pedido;
@@ -163,6 +172,22 @@ class PedidoService
         ]);
 
         $pedido->recalcularTotales();
+    }
+
+    /**
+     * Remove a pedido, putting its productos back in stock. Being soft
+     * deleted, it no longer counts as a sale nor as a debt.
+     */
+    public function eliminar(Pedido $pedido): void
+    {
+        DB::transaction(function () use ($pedido): void {
+            foreach ($pedido->detalles as $detalle) {
+                $this->adjustStock($detalle, $pedido, 1);
+            }
+
+            $pedido->detalles()->delete();
+            $pedido->delete();
+        });
     }
 
     /**

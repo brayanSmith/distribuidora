@@ -15,11 +15,12 @@ return new class extends Migration
         Schema::create('abono_compras', function (Blueprint $table) {
             $table->id();
             $table->foreignId('compra_id')->constrained('compras')->onDelete('cascade');
-            $table->dateTime('fecha_abono_compra')->default(DB::raw('CURRENT_TIMESTAMP'));
-            $table->decimal('monto_abono_compra', 12, 2)->default(0);
-            $table->foreignId('forma_pago_abono_compra')->constrained('pucs')->onDelete('cascade');
-            $table->string('descripcion_abono_compra')->nullable();
-            $table->string('imagen_abono_compra')->nullable();
+            // A payment made to the proveedor of the compra, with its medio de pago.
+            $table->dateTime('fecha')->default(DB::raw('CURRENT_TIMESTAMP'));
+            $table->decimal('monto', 12, 2)->default(0);
+            $table->foreignId('puc_id')->constrained('pucs')->onDelete('cascade');
+            $table->string('descripcion')->nullable();
+            $table->string('imagen')->nullable();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });

@@ -5,6 +5,7 @@ use App\Modules\Catalogo\Http\Controllers\CotizadorController;
 use App\Modules\Catalogo\Http\Controllers\ExportacionProductosController;
 use App\Modules\Catalogo\Http\Controllers\ImportacionController;
 use App\Modules\Catalogo\Http\Controllers\ProductoController;
+use App\Modules\Catalogo\Http\Controllers\ProductoPreciosController;
 use App\Modules\Catalogo\Http\Controllers\SubCategoriaController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,5 +35,6 @@ Route::get('productos/{producto}', [ProductoController::class, 'show'])->name('p
 Route::get('productos/{producto}/detalles', [ProductoController::class, 'detalles'])->withTrashed()->name('productos.detalles');
 Route::get('productos/{producto}/editar', [ProductoController::class, 'edit'])->name('productos.edit');
 Route::patch('productos/{producto}', [ProductoController::class, 'update'])->name('productos.update');
+Route::patch('productos/{producto}/precios', ProductoPreciosController::class)->name('productos.precios');
 Route::delete('productos/{producto}', [ProductoController::class, 'destroy'])->name('productos.destroy');
 Route::patch('productos/{producto}/restaurar', [ProductoController::class, 'restore'])->withTrashed()->name('productos.restore');

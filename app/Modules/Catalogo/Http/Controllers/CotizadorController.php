@@ -56,15 +56,15 @@ class CotizadorController extends Controller
     }
 
     /**
-     * If the user can only view one of the DETAL/MAYORISTA pedido modules,
+     * If the user can only see one of the DETAL/MAYORISTA prices,
      * lock the quote builder's price type to that one. Users with access to
      * both (or neither) get the free choice.
      */
     private function tipoPrecioRestringido(Request $request): ?string
     {
         $user = $request->user();
-        $canDetal = $user->can('pedidos.view');
-        $canMayorista = $user->can('pedidos-mayoristas.view');
+        $canDetal = $user->puedeVerPrecio('valor_detal');
+        $canMayorista = $user->puedeVerPrecio('valor_mayorista');
 
         return match (true) {
             $canDetal && ! $canMayorista => 'DETAL',

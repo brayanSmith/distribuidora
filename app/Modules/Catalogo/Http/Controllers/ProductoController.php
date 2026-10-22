@@ -329,7 +329,7 @@ class ProductoController extends Controller
             ->where('detalle_compras.estado_entrega', 'PENDIENTE')
             ->whereNull('detalle_compras.deleted_at')
             ->whereNull('compras.deleted_at')
-            ->get(['detalle_compras.producto_id', 'detalle_compras.cantidad', "{$proveedores}.nombre_proveedor"])
+            ->get(['detalle_compras.producto_id', DB::raw('detalle_compras.cantidad - detalle_compras.cantidad_recibida as cantidad'), "{$proveedores}.nombre_proveedor"])
             ->groupBy('producto_id');
 
         $usuario = auth()->user();

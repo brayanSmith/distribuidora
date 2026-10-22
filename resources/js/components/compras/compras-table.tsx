@@ -9,6 +9,7 @@ import {
     Pencil,
     Search,
     Trash2,
+    Wallet,
     X,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -20,6 +21,7 @@ import TableBottomBar from '@/components/table-bottom-bar';
 import ResizeHandle from '@/components/column-resize-handle';
 import ActionsCell from '@/components/actions-cell';
 import DeleteCompraModal from '@/components/compras/delete-compra-modal';
+import RegistrarPagoCompraModal from '@/components/compras/registrar-pago-compra-modal';
 import VerCompraModal from '@/components/compras/ver-compra-modal';
 import RestoreButton from '@/components/restore-button';
 import { Badge } from '@/components/ui/badge';
@@ -62,11 +64,13 @@ import {
 } from '@/hooks/use-persisted-state';
 import { cn } from '@/lib/utils';
 import { edit, restore } from '@/routes/compras';
-import type { Compra, CompraPermissions } from '@/types';
+import type { Compra, CompraPermissions, PucOption } from '@/types';
 
 type Props = {
     compras: Compra[];
     permissions: CompraPermissions;
+    /** Medios de pago, to pay a compra from the listing. */
+    pucs?: PucOption[];
     /** Showing the deleted compras: rows offer "restaurar" instead of edit/delete. */
     eliminados?: boolean;
 };
@@ -79,7 +83,11 @@ type StaticColumnKey =
     | 'estado'
     | 'subtotal'
     | 'descuento'
-    | 'total';
+    | 'total'
+    | 'pagado'
+    | 'saldo'
+    | 'estado_pago'
+    | 'vencimiento';
 
 // Bodega columns are dynamic (one per warehouse seen in the data), so their
 // keys are built as `bodega:<id>` and are not part of this static union.
@@ -138,7 +146,32 @@ const STATIC_COLUMN_DEFS: ColumnMeta[] = [
         filter: 'text',
         align: 'right',
     },
+    {
+        key: 'pagado',
+        label: 'Pagado',
+        sortable: true,
+        filter: 'text',
+        align: 'right',
+    },
+    {
+        key: 'saldo',
+        label: 'Saldo',
+        sortable: true,
+        filter: 'text',
+        align: 'right',
+    },
+    { key: 'estado_pago', label: 'Pago', sortable: true, filter: 'text' },
+    { key: 'vencimiento', label: 'Vence', sortable: true, filter: 'date' },
 ];
+
+/** Pagada, Vencida (owes past its due date) or Por pagar. */
+function etiquetaPago(compra: Compra): string {
+    if (compra.estado_pago === 'PAGADA') {
+        return 'Pagada';
+    }
+
+    return compra.vencida ? 'Vencida' : 'Por pagar';
+}
 
 const ACCIONES_COLUMN: ColumnMeta = {
     key: 'acciones',
@@ -157,6 +190,10 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
     subtotal: 130,
     descuento: 120,
     total: 140,
+    pagado: 130,
+    saldo: 130,
+    estado_pago: 120,
+    vencimiento: 120,
     acciones: 160,
 };
 
@@ -207,6 +244,16 @@ function getSortValue(compra: Compra, key: ColumnKey): string | number {
             return Number(compra.descuento);
         case 'total':
             return Number(compra.total_a_pagar);
+        case 'pagado':
+            return Number(compra.abono);
+        case 'saldo':
+            return Number(compra.saldo_pendiente);
+        case 'estado_pago':
+            return etiquetaPago(compra);
+        case 'vencimiento':
+            return compra.fecha_vencimiento
+                ? new Date(`${compra.fecha_vencimiento}T00:00:00`).getTime()
+                : 0;
         default: {
             const bodegaId = bodegaIdFromColumnKey(key);
 
@@ -405,11 +452,13 @@ function HeaderCell({
 export default function ComprasTable({
     compras,
     permissions,
+    pucs = [],
     eliminados = false,
 }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [compraToDelete, setCompraToDelete] = useState<Compra | null>(null);
     const [compraToView, setCompraToView] = useState<Compra | null>(null);
+    const [compraToPay, setCompraToPay] = useState<Compra | null>(null);
     const storageKey = `table:compras${eliminados ? ':papelera' : ''}`;
     const session = { scope: 'session' } as const;
     const [search, setSearch] = usePersistedState(
@@ -926,6 +975,56 @@ export default function ComprasTable({
                 return currencyFormatter.format(Number(compra.descuento));
             case 'total':
                 return currencyFormatter.format(Number(compra.total_a_pagar));
+            case 'pagado':
+                return (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                        {currencyFormatter.format(Number(compra.abono))}
+                    </span>
+                );
+            case 'saldo':
+                return (
+                    <span
+                        className={cn(
+                            Number(compra.saldo_pendiente) > 0 &&
+                                'font-medium text-red-600 dark:text-red-400',
+                        )}
+                    >
+                        {currencyFormatter.format(
+                            Number(compra.saldo_pendiente),
+                        )}
+                    </span>
+                );
+            case 'estado_pago':
+                return (
+                    <Badge
+                        data-test="compra-estado-pago"
+                        className={cn(
+                            'border-transparent',
+                            compra.estado_pago === 'PAGADA'
+                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                                : compra.vencida
+                                  ? 'bg-red-600 text-white hover:bg-red-600'
+                                  : 'bg-amber-100 text-amber-700 hover:bg-amber-100',
+                        )}
+                    >
+                        {etiquetaPago(compra)}
+                    </Badge>
+                );
+            case 'vencimiento':
+                return compra.fecha_vencimiento ? (
+                    <span
+                        className={cn(
+                            compra.vencida &&
+                                'font-medium text-red-600 dark:text-red-400',
+                        )}
+                    >
+                        {new Date(
+                            `${compra.fecha_vencimiento}T00:00:00`,
+                        ).toLocaleDateString('es-CO')}
+                    </span>
+                ) : (
+                    '—'
+                );
             case 'acciones':
                 if (eliminados) {
                     return (
@@ -974,6 +1073,24 @@ export default function ComprasTable({
                                 <p>Ver</p>
                             </TooltipContent>
                         </Tooltip>
+                        {permissions.canCreateAbono &&
+                        Number(compra.saldo_pendiente) > 0 ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        data-test="pagar-compra-button"
+                                        onClick={() => setCompraToPay(compra)}
+                                    >
+                                        <Wallet className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Registrar pago</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
                         {permissions.canUpdate ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1182,7 +1299,14 @@ export default function ComprasTable({
 
             <VerCompraModal
                 compra={compraToView}
+                canDeleteAbono={permissions.canDeleteAbono}
                 onClose={() => setCompraToView(null)}
+            />
+
+            <RegistrarPagoCompraModal
+                compra={compraToPay}
+                pucs={pucs}
+                onClose={() => setCompraToPay(null)}
             />
 
             <DeleteCompraModal

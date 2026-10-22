@@ -35,6 +35,7 @@ class ProveedorFactory extends Factory
             'numero_cuenta_proveedor' => fake()->numerify('##########'),
             'convenio' => null,
             'tiempo_respuesta' => '3 días',
+            'dias_credito' => 0,
             'fabricante' => null,
             'flete' => false,
             'valor_flete' => 0,

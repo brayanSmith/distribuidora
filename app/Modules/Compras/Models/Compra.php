@@ -6,12 +6,14 @@ use App\Models\Concerns\LogsDetalles;
 use App\Modules\Catalogo\Models\Producto;
 use Database\Factories\CompraFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -30,7 +32,12 @@ class Compra extends Model
         'subtotal' => 'decimal:2',
         'descuento' => 'decimal:2',
         'total_a_pagar' => 'decimal:2',
+        'abono' => 'decimal:2',
+        'saldo_pendiente' => 'decimal:2',
+        'fecha_vencimiento' => 'date:Y-m-d',
     ];
+
+    protected $appends = ['vencida'];
 
     protected $fillable = [
         'factura',
@@ -41,6 +48,11 @@ class Compra extends Model
         'subtotal',
         'descuento',
         'total_a_pagar',
+        'tipo_pago',
+        'abono',
+        'saldo_pendiente',
+        'estado_pago',
+        'fecha_vencimiento',
     ];
 
     /**
@@ -80,7 +92,9 @@ class Compra extends Model
                 'bodega' => $detalle->bodega?->nombre_bodega ?? '—',
                 'cantidad' => (float) $detalle->cantidad,
                 'precio_unitario' => (float) $detalle->precio_unitario,
-                'estado' => $detalle->estado_entrega,
+                'estado' => $detalle->estado_entrega === 'PENDIENTE' && (float) $detalle->cantidad_recibida > 0
+                    ? 'RECIBIDA '.(float) $detalle->cantidad_recibida.' DE '.(float) $detalle->cantidad
+                    : $detalle->estado_entrega,
             ])
             ->all();
     }
@@ -114,5 +128,69 @@ class Compra extends Model
         return Attribute::make(
             get: fn () => "{$this->id} - {$this->factura}",
         );
+    }
+
+    /**
+     * Whether it still owes something and its due date already passed.
+     * Worked out on the fly, so it never goes stale with the days.
+     *
+     * @return Attribute<bool, never>
+     */
+    protected function vencida(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): bool => (float) ($this->attributes['saldo_pendiente'] ?? 0) > 0
+                && $this->fecha_vencimiento !== null
+                && $this->fecha_vencimiento->lt(today()),
+        );
+    }
+
+    /**
+     * When a compra is due unless told otherwise: its date plus the days of
+     * credit the proveedor gives (none: the same day).
+     */
+    public static function vencimientoPorDefecto(?Proveedor $proveedor, mixed $fecha): string
+    {
+        return Carbon::parse($fecha ?? now())
+            ->addDays((int) ($proveedor?->dias_credito ?? 0))
+            ->toDateString();
+    }
+
+    /**
+     * The compras that still owe something and whose due date passed.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeVencidas(Builder $query): Builder
+    {
+        return $query->where('saldo_pendiente', '>', 0)->whereDate('fecha_vencimiento', '<', today());
+    }
+
+    /**
+     * The payments made to the proveedor.
+     *
+     * @return HasMany<AbonoCompra, $this>
+     */
+    public function abonos(): HasMany
+    {
+        return $this->hasMany(AbonoCompra::class);
+    }
+
+    /**
+     * Recompute what was paid, what is still owed and whether the compra is
+     * paid, from its abonos and its current total.
+     */
+    public function recalcularPagos(): void
+    {
+        $abono = (float) $this->abonos()->sum('monto');
+        $total = (float) $this->total_a_pagar;
+        $saldo = max($total - $abono, 0);
+
+        $this->update([
+            'abono' => $abono,
+            'saldo_pendiente' => $saldo,
+            'estado_pago' => $saldo <= 0 ? 'PAGADA' : 'POR_PAGAR',
+        ]);
     }
 }

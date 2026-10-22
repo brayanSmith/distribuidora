@@ -26,6 +26,7 @@ import {
     TotalRow,
 } from '@/components/record-view';
 import { cn } from '@/lib/utils';
+import { formatoFecha } from '@/lib/vencimiento';
 import type { Pedido, PedidoRoutes } from '@/types';
 
 type Props = {
@@ -70,6 +71,15 @@ type PedidoDetalleCompleto = Omit<Pedido, 'detalles' | 'abonos'> & {
     } | null;
     detalles?: Detalle[];
     abonos?: Abono[];
+    entrega?: {
+        direccion: string;
+        ciudad: string | null;
+        telefono: string;
+        recibe: string | null;
+        nota: string | null;
+        estado: string;
+        mensajero: string | null;
+    } | null;
 };
 
 /** Read-only view of a pedido: header, products, payments and totals. */
@@ -98,7 +108,7 @@ export default function VerPedidoModal({ pedido, routes, onClose }: Props) {
                         <div className="pt-1">
                             <VoucherButton
                                 action={routes.pedidos.voucher([pedido.id])}
-                                label="Descargar voucher"
+                                label="Ver voucher"
                                 dataTest="ver-pedido-voucher"
                             />
                         </div>
@@ -166,8 +176,53 @@ export default function VerPedidoModal({ pedido, routes, onClose }: Props) {
                                 {record.cliente?.direccion}
                             </Field>
                             <Field label="Tipo de pago">
-                                {record.tipo_pago}
+                                {record.tipo_pago === 'CONTRA_ENTREGA'
+                                    ? 'Contra entrega'
+                                    : record.tipo_pago}
                             </Field>
+                            {record.entrega ? (
+                                <>
+                                    <Field label="Entregar en">
+                                        {record.entrega.direccion}
+                                        {record.entrega.ciudad
+                                            ? `, ${record.entrega.ciudad}`
+                                            : ''}
+                                    </Field>
+                                    <Field label="Teléfono de entrega">
+                                        {record.entrega.telefono}
+                                    </Field>
+                                    <Field label="Recibe">
+                                        {record.entrega.recibe}
+                                    </Field>
+                                    <Field label="Estado de la entrega">
+                                        {record.entrega.estado.replace(
+                                            '_',
+                                            ' ',
+                                        )}
+                                        {record.entrega.mensajero
+                                            ? ` · ${record.entrega.mensajero}`
+                                            : ''}
+                                    </Field>
+                                    {record.entrega.nota ? (
+                                        <Field label="Nota de entrega">
+                                            {record.entrega.nota}
+                                        </Field>
+                                    ) : null}
+                                </>
+                            ) : null}
+                            {record.fecha_vencimiento ? (
+                                <Field label="Vence el">
+                                    <span
+                                        className={cn(
+                                            record.vencido &&
+                                                'font-medium text-red-600 dark:text-red-400',
+                                        )}
+                                    >
+                                        {formatoFecha(record.fecha_vencimiento)}
+                                        {record.vencido ? ' · vencido' : ''}
+                                    </span>
+                                </Field>
+                            ) : null}
                             <Field label="Facturación electrónica">
                                 {record.facturacion_electronica ? 'Sí' : 'No'}
                             </Field>

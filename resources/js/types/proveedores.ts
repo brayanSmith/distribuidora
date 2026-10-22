@@ -22,6 +22,8 @@ export type Proveedor = {
     numero_cuenta_proveedor: string | null;
     convenio: string | null;
     tiempo_respuesta: string | null;
+    /** Days given to pay a compra on credit. */
+    dias_credito: number;
     fabricante: string | null;
     flete: boolean;
     valor_flete: string;

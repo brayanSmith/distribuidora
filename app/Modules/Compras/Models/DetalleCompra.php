@@ -2,10 +2,10 @@
 
 namespace App\Modules\Compras\Models;
 
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
-use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Catalogo\Models\Producto;
+use App\Modules\Inventario\Models\Bodega;
 use Database\Factories\DetalleCompraFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +21,7 @@ class DetalleCompra extends Model
 
     protected $casts = [
         'cantidad' => 'decimal:2',
+        'cantidad_recibida' => 'decimal:2',
         'precio_unitario' => 'decimal:2',
         'subtotal' => 'decimal:2',
     ];
@@ -31,6 +32,7 @@ class DetalleCompra extends Model
         'bodega_id',
         'estado_entrega',
         'cantidad',
+        'cantidad_recibida',
         'precio_unitario',
         'subtotal',
     ];

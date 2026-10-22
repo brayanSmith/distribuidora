@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -22,6 +21,14 @@ return new class extends Migration
             $table->decimal('subtotal', 12, 2)->default(0);
             $table->decimal('descuento', 12, 2)->default(0)->nullable();
             $table->decimal('total_a_pagar', 12, 2)->default(0);
+            // What was already paid to the proveedor (sum of its abonos) and what is still owed.
+            // CONTADO: paid in full when registered; CREDITO: paid later, by its due date.
+            $table->enum('tipo_pago', ['CONTADO', 'CREDITO'])->default('CREDITO');
+            $table->decimal('abono', 12, 2)->default(0);
+            $table->decimal('saldo_pendiente', 12, 2)->default(0);
+            $table->enum('estado_pago', ['POR_PAGAR', 'PAGADA'])->default('POR_PAGAR');
+            // When what is owed must be paid; past it with a balance the compra is overdue.
+            $table->date('fecha_vencimiento')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

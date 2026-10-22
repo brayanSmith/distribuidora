@@ -13,7 +13,7 @@ use App\Modules\Ventas\Models\Pedido;
  */
 class PedidoEdicion
 {
-    /** The header fields covered by `{module}.update-datos` (observaciones are always editable). */
+    /** The header fields covered by `pedidos.update-datos` (observaciones are always editable). */
     private const CAMPOS_DATOS = [
         'cliente_id', 'fecha', 'user_id', 'bodega_id', 'tipo_precio',
         'facturacion_electronica', 'flete', 'descuento', 'reteica', 'retefuente',

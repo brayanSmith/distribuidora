@@ -2,9 +2,9 @@
 
 namespace App\Modules\Compras\Models;
 
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use App\Models\Concerns\LogsCambios;
 use Database\Factories\ProveedorFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -46,6 +46,7 @@ class Proveedor extends Model
         'numero_cuenta_proveedor',
         'convenio',
         'tiempo_respuesta',
+        'dias_credito',
         'fabricante',
         'flete',
         'valor_flete',

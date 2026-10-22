@@ -1,4 +1,12 @@
+import { AlertTriangle, Wallet } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { ClienteOption } from '@/types';
+
+const moneda = new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0,
+});
 
 type Props = {
     cliente: ClienteOption;
@@ -21,6 +29,29 @@ export default function PosClienteCard({ cliente }: Props) {
             data-test="pos-cliente-card"
         >
             <p className="font-semibold">{cliente.razon_social}</p>
+            {cliente.deuda ? (
+                <div
+                    data-test="pos-cliente-deuda"
+                    className={cn(
+                        'flex items-start gap-2 rounded-md border p-2 text-xs font-medium',
+                        cliente.deuda_vencida
+                            ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400'
+                            : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400',
+                    )}
+                >
+                    {cliente.deuda_vencida ? (
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    ) : (
+                        <Wallet className="mt-0.5 size-4 shrink-0" />
+                    )}
+                    <span>
+                        Debe {moneda.format(cliente.deuda)}
+                        {cliente.deuda_vencida
+                            ? ` · ${moneda.format(cliente.deuda_vencida)} vencido. Revisa antes de venderle a crédito.`
+                            : ' en pedidos pendientes.'}
+                    </span>
+                </div>
+            ) : null}
             <Dato label="Documento" value={cliente.numero_documento} />
             <Dato label="Teléfono" value={cliente.telefono} />
             <Dato label="Ciudad" value={cliente.ciudad} />

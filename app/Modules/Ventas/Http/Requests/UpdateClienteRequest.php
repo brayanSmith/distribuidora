@@ -33,6 +33,7 @@ class UpdateClienteRequest extends FormRequest
             'rut_imagen' => ['nullable', 'image', 'max:4096'],
             'remove_rut_imagen' => ['boolean'],
             'retenedor_fuente' => ['required', Rule::in(['SI', 'NO'])],
+            'dias_credito' => ['nullable', 'integer', 'min:0', 'max:365'],
         ];
     }
 }

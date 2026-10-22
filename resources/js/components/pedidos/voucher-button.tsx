@@ -1,8 +1,8 @@
 import { useHttp } from '@inertiajs/react';
-import { FileDown } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { descargarVoucher } from '@/components/pos/voucher-actions';
+import VoucherPreviewModal from '@/components/pedidos/voucher-preview-modal';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -20,8 +20,8 @@ type Props = {
 };
 
 /**
- * Downloads a pedido's payment voucher as a PDF: fetches its data and
- * renders the PDF in the browser (the renderer loads only on first use).
+ * Shows a pedido's payment voucher as a PDF preview, from where it is
+ * printed or downloaded: fetches its data and renders the PDF in the browser.
  */
 export default function VoucherButton({
     action,
@@ -29,19 +29,18 @@ export default function VoucherButton({
     dataTest = 'voucher-button',
 }: Props) {
     const { submit } = useHttp();
-    const [descargando, setDescargando] = useState(false);
+    const [abierto, setAbierto] = useState(false);
+    const [voucher, setVoucher] = useState<PosVoucher | null>(null);
 
-    const descargar = async () => {
-        setDescargando(true);
+    const ver = async () => {
+        setVoucher(null);
+        setAbierto(true);
 
         try {
-            const voucher = (await submit('get', action.url)) as PosVoucher;
-
-            await descargarVoucher(voucher);
+            setVoucher((await submit('get', action.url)) as PosVoucher);
         } catch {
-            toast.error('No se pudo descargar el voucher.');
-        } finally {
-            setDescargando(false);
+            setAbierto(false);
+            toast.error('No se pudo cargar el voucher.');
         }
     };
 
@@ -50,25 +49,33 @@ export default function VoucherButton({
             type="button"
             variant={label ? 'outline' : 'ghost'}
             size="sm"
-            loading={descargando}
-            onClick={descargar}
+            onClick={ver}
             data-test={dataTest}
         >
-            {descargando ? null : <FileDown className="h-4 w-4" />}
-            {label ? (descargando ? 'Generando...' : label) : null}
+            <FileText className="h-4 w-4" />
+            {label ?? null}
         </Button>
     );
 
-    if (label) {
-        return button;
-    }
-
     return (
-        <Tooltip>
-            <TooltipTrigger asChild>{button}</TooltipTrigger>
-            <TooltipContent>
-                <p>{descargando ? 'Generando...' : 'Descargar voucher'}</p>
-            </TooltipContent>
-        </Tooltip>
+        <>
+            {label ? (
+                button
+            ) : (
+                <Tooltip>
+                    <TooltipTrigger asChild>{button}</TooltipTrigger>
+                    <TooltipContent>
+                        <p>Ver voucher</p>
+                    </TooltipContent>
+                </Tooltip>
+            )}
+
+            {abierto ? (
+                <VoucherPreviewModal
+                    voucher={voucher}
+                    onClose={() => setAbierto(false)}
+                />
+            ) : null}
+        </>
     );
 }

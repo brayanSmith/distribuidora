@@ -1,10 +1,8 @@
 import { useHttp } from '@inertiajs/react';
-import { Download } from 'lucide-react';
 import { Cargando } from '@/components/record-view';
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import Pagination from '@/components/pagination';
-import { descargarVoucher } from '@/components/pos/voucher-actions';
+import VoucherButton from '@/components/pedidos/voucher-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,7 +34,6 @@ import type { RouteDefinition } from '@/wayfinder';
 import type {
     LaravelPaginator,
     PosPedidoHistorial,
-    PosVoucher,
     VendedorOption,
 } from '@/types';
 
@@ -89,7 +86,6 @@ export default function PosPedidosHistorialModal({
     onClose,
 }: Props) {
     const { submit } = useHttp();
-    const { submit: submitVoucher } = useHttp();
     const buildRouteRef = useRef(buildRoute);
     buildRouteRef.current = buildRoute;
 
@@ -134,24 +130,6 @@ export default function PosPedidosHistorialModal({
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [desde, hasta, userId, page]);
-
-    const [descargando, setDescargando] = useState<number | null>(null);
-
-    const descargar = async (pedidoId: number) => {
-        setDescargando(pedidoId);
-
-        try {
-            const voucher = (await submitVoucher(
-                buildVoucherRoute(pedidoId),
-            )) as PosVoucher;
-
-            await descargarVoucher(voucher);
-        } catch {
-            toast.error('No se pudo descargar el voucher.');
-        } finally {
-            setDescargando(null);
-        }
-    };
 
     const changeFilter =
         (setter: (value: string) => void) => (value: string) => {
@@ -334,20 +312,12 @@ export default function PosPedidosHistorialModal({
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            title="Descargar voucher"
-                                            loading={descargando === pedido.id}
-                                            onClick={() => descargar(pedido.id)}
-                                            data-test="pos-historial-voucher"
-                                        >
-                                            {descargando ===
-                                            pedido.id ? null : (
-                                                <Download className="size-4" />
+                                        <VoucherButton
+                                            action={buildVoucherRoute(
+                                                pedido.id,
                                             )}
-                                        </Button>
+                                            dataTest="pos-historial-voucher"
+                                        />
                                     </TableCell>
                                 </TableRow>
                             ))}

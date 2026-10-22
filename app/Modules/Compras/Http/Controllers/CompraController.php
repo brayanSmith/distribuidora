@@ -10,14 +10,16 @@ use App\Modules\Compras\Http\Requests\UpdateCompraRequest;
 use App\Modules\Compras\Models\Compra;
 use App\Modules\Compras\Models\DetalleCompra;
 use App\Modules\Compras\Models\Proveedor;
+use App\Modules\Compras\Services\RecepcionCompras;
+use App\Modules\Finanzas\Models\Puc;
 use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Inventario\Models\StockBodega;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -35,7 +37,7 @@ class CompraController extends Controller
         $eliminados = $this->verEliminados($request, 'compras');
 
         return Inertia::render('compras/index', [
-            'compras' => Compra::select(['id', 'factura', 'proveedor_id', 'fecha', 'estado', 'subtotal', 'descuento', 'total_a_pagar', 'deleted_at'])
+            'compras' => Compra::select(['id', 'factura', 'proveedor_id', 'fecha', 'estado', 'subtotal', 'descuento', 'total_a_pagar', 'tipo_pago', 'abono', 'saldo_pendiente', 'estado_pago', 'fecha_vencimiento', 'deleted_at'])
                 ->with([
                     'proveedor:id,nombre_proveedor',
                     // Only what the listing shows: the table has a column per bodega with its products.
@@ -48,6 +50,10 @@ class CompraController extends Controller
                 ->get(),
             'eliminados' => $eliminados,
             'permissions' => $this->permissions($request),
+            // For paying a compra right from the listing.
+            'pucs' => $request->user()->can('compras.create-abono')
+                ? Puc::orderBy('concatenar_subcuenta_concepto')->get(['id', 'concatenar_subcuenta_concepto'])
+                : [],
         ]);
     }
 
@@ -70,7 +76,7 @@ class CompraController extends Controller
 
         $data = $request->validated();
 
-        DB::transaction(function () use ($data): void {
+        DB::transaction(function () use ($data, $request): void {
             $compra = Compra::create([
                 'factura' => $data['factura'],
                 'proveedor_id' => $data['proveedor_id'],
@@ -79,13 +85,21 @@ class CompraController extends Controller
                 'descuento' => $data['descuento'] ?? 0,
                 'subtotal' => 0,
                 'total_a_pagar' => 0,
+                'fecha_vencimiento' => $data['fecha_vencimiento']
+                    ?? Compra::vencimientoPorDefecto(Proveedor::find($data['proveedor_id']), $data['fecha']),
             ]);
 
             $this->syncDetalles($compra, $data['detalles']);
             $compra->registrarCambioDetalles(null);
+            $this->registrarAbonos($compra, $data['abonos'] ?? [], $request->user()->id);
+            $this->fijarTipoPago($compra->fresh(), $data['tipo_pago'] ?? null);
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Compra created.')]);
+
+        if ($request->boolean('stay_on_page')) {
+            return back();
+        }
 
         return to_route('compras.index');
     }
@@ -100,6 +114,7 @@ class CompraController extends Controller
 
         return response()->json($compra->load([
             'proveedor:id,nombre_proveedor,nit_proveedor,telefono_proveedor',
+            'abonos' => fn ($query) => $query->with(['puc:id,concatenar_subcuenta_concepto', 'user:id,name'])->orderBy('fecha'),
             'detallesCompra' => fn ($query) => $query->withTrashed()
                 ->with(['producto:id,referencia_producto,descripcion_producto,marca', 'bodega:id,nombre_bodega']),
         ]));
@@ -144,6 +159,9 @@ class CompraController extends Controller
                 'fecha' => $data['fecha'],
                 'observaciones' => $data['observaciones'] ?? null,
                 'descuento' => $data['descuento'] ?? 0,
+                'fecha_vencimiento' => $data['fecha_vencimiento']
+                    ?? $compra->fecha_vencimiento?->toDateString()
+                    ?? Compra::vencimientoPorDefecto(Proveedor::find($data['proveedor_id']), $data['fecha']),
             ]);
 
             $this->syncDetalles($compra, $data['detalles']);
@@ -191,13 +209,19 @@ class CompraController extends Controller
             $itemSubtotal = $cantidad * $precioUnitario;
             $subtotal += $itemSubtotal;
 
+            // Received: all of it; otherwise what had already arrived (partial receipts).
+            $recibida = ! empty($item['recibido'])
+                ? $cantidad
+                : min(max((float) ($item['cantidad_recibida'] ?? 0), 0), $cantidad);
+
             $detalle = $compra->detallesCompra()->create([
                 'producto_id' => $item['producto_id'],
                 'bodega_id' => $item['bodega_id'],
                 'cantidad' => $cantidad,
+                'cantidad_recibida' => $recibida,
                 'precio_unitario' => $precioUnitario,
                 'subtotal' => $itemSubtotal,
-                'estado_entrega' => ! empty($item['recibido']) ? 'RECIBIDA' : 'PENDIENTE',
+                'estado_entrega' => $recibida >= $cantidad ? 'RECIBIDA' : 'PENDIENTE',
             ]);
 
             $this->adjustStock($detalle, 1);
@@ -211,6 +235,54 @@ class CompraController extends Controller
             'total_a_pagar' => max($subtotal - $descuento, 0),
             'estado' => $compra->detallesCompra()->where('estado_entrega', 'PENDIENTE')->doesntExist() ? 'RECIBIDA' : 'PENDIENTE',
         ]);
+
+        // The total may have changed: what is owed follows it.
+        $compra->recalcularPagos();
+    }
+
+    /**
+     * CONTADO must be paid in full right away, so it is never due later;
+     * without a tipo it is CONTADO when the payments cover the total.
+     */
+    private function fijarTipoPago(Compra $compra, ?string $tipoPago): void
+    {
+        $pagada = (float) $compra->saldo_pendiente <= 0;
+        $tipoPago ??= $pagada ? 'CONTADO' : 'CREDITO';
+
+        if ($tipoPago === 'CONTADO' && ! $pagada) {
+            throw ValidationException::withMessages(['abonos' => __('A cash compra must be paid in full.')]);
+        }
+
+        $compra->update([
+            'tipo_pago' => $tipoPago,
+            'fecha_vencimiento' => $tipoPago === 'CONTADO' ? null : $compra->fecha_vencimiento,
+        ]);
+    }
+
+    /**
+     * The payments made to the proveedor while registering the compra.
+     *
+     * @param  list<array{puc_id: int, monto: float|string, descripcion?: string|null}>  $abonos
+     */
+    private function registrarAbonos(Compra $compra, array $abonos, int $userId): void
+    {
+        $total = (float) $compra->fresh()->total_a_pagar;
+
+        if (array_sum(array_column($abonos, 'monto')) > $total + 0.001) {
+            throw ValidationException::withMessages(['abonos' => __('The payments are more than the total of the compra.')]);
+        }
+
+        foreach ($abonos as $abono) {
+            $compra->abonos()->create([
+                'fecha' => now(),
+                'monto' => $abono['monto'],
+                'puc_id' => $abono['puc_id'],
+                'descripcion' => $abono['descripcion'] ?? null,
+                'user_id' => $userId,
+            ]);
+        }
+
+        $compra->recalcularPagos();
     }
 
     /**
@@ -236,31 +308,11 @@ class CompraController extends Controller
     }
 
     /**
-     * Apply (or revert) a received detalle's quantity to the warehouse stock.
+     * Apply (or revert) what arrived of a detalle to the warehouse stock.
      */
     private function adjustStock(DetalleCompra $detalle, int $sign): void
     {
-        if ($detalle->estado_entrega !== 'RECIBIDA') {
-            return;
-        }
-
-        // Servicios (and any producto marked as not inventariable) never carry stock.
-        if (Producto::withTrashed()->whereKey($detalle->producto_id)
-            ->where('inventariable', false)
-            ->exists()) {
-            return;
-        }
-
-        $stockBodega = StockBodega::firstOrNew([
-            'bodega_id' => $detalle->bodega_id,
-            'producto_id' => $detalle->producto_id,
-        ]);
-
-        $cantidad = (float) $detalle->cantidad;
-
-        $stockBodega->entradas = (float) ($stockBodega->entradas ?? 0) + $sign * $cantidad;
-        $stockBodega->stock = (float) ($stockBodega->stock ?? 0) + $sign * $cantidad;
-        $stockBodega->save();
+        app(RecepcionCompras::class)->moverStock($detalle, $sign * (float) $detalle->cantidad_recibida);
     }
 
     /**
@@ -288,6 +340,8 @@ class CompraController extends Controller
             'canDelete' => $request->user()->can('compras.delete'),
             'canViewDeleted' => $request->user()->can('compras.view-deleted'),
             'canRestore' => $request->user()->can('compras.restore'),
+            'canCreateAbono' => $request->user()->can('compras.create-abono'),
+            'canDeleteAbono' => $request->user()->can('compras.delete-abono'),
         ];
     }
 

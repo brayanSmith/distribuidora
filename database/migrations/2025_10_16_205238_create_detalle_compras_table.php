@@ -18,6 +18,8 @@ return new class extends Migration
             $table->foreignId('bodega_id')->constrained('bodegas');
             $table->enum('estado_entrega', ['PENDIENTE', 'RECIBIDA'])->default('PENDIENTE');
             $table->decimal('cantidad', 12, 2);
+            // How much of it already arrived: it is what adds stock; the line is received once it reaches cantidad.
+            $table->decimal('cantidad_recibida', 12, 2)->default(0);
             $table->decimal('precio_unitario', 12, 2); // snapshot del preci
             $table->decimal('subtotal', 12, 2)->default(0);
             $table->timestamps();

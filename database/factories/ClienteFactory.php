@@ -31,6 +31,7 @@ class ClienteFactory extends Factory
             'novedad' => null,
             'rut_imagen' => null,
             'retenedor_fuente' => 'NO',
+            'dias_credito' => 0,
         ];
     }
 }

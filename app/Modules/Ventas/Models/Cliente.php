@@ -32,6 +32,7 @@ class Cliente extends Model
         'novedad',
         'rut_imagen',
         'retenedor_fuente',
+        'dias_credito',
     ];
 
     protected $appends = [

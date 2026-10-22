@@ -25,7 +25,18 @@ import {
 import { update } from '@/routes/clientes';
 import type { Cliente, RetenedorFuente, TipoDocumento } from '@/types';
 
-const TIPOS_DOCUMENTO: TipoDocumento[] = ['CC', 'NIT', 'CE', 'TI', 'PASAPORTE', 'PPT', 'DNI', 'RUT', 'NIT DE VENEZUELA', 'OTRO'];
+const TIPOS_DOCUMENTO: TipoDocumento[] = [
+    'CC',
+    'NIT',
+    'CE',
+    'TI',
+    'PASAPORTE',
+    'PPT',
+    'DNI',
+    'RUT',
+    'NIT DE VENEZUELA',
+    'OTRO',
+];
 
 type Props = {
     cliente: Cliente | null;
@@ -243,6 +254,21 @@ export default function EditClienteModal({
                                     <InputError
                                         message={errors.retenedor_fuente}
                                     />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit_dias_credito">
+                                        Días de crédito
+                                    </Label>
+                                    <Input
+                                        id="edit_dias_credito"
+                                        name="dias_credito"
+                                        type="number"
+                                        min={0}
+                                        defaultValue={cliente.dias_credito ?? 0}
+                                        data-test="cliente-dias-credito"
+                                    />
+                                    <InputError message={errors.dias_credito} />
                                 </div>
 
                                 <div className="flex items-center gap-2 pt-6">

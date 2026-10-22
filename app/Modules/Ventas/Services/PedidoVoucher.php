@@ -7,7 +7,8 @@ use App\Modules\Ventas\Models\Pedido;
 
 /**
  * The data printed on a pedido's payment voucher (turno, remisión, cliente,
- * products, totals, abono and balance), plus the company's letterhead.
+ * products, totals, abono and balance), plus the company's letterhead and,
+ * for a contra entrega, where it goes and what to collect.
  */
 class PedidoVoucher
 {
@@ -16,7 +17,7 @@ class PedidoVoucher
      */
     public function toArray(Pedido $pedido): array
     {
-        $pedido->loadMissing(['cliente', 'user', 'detalles.producto']);
+        $pedido->loadMissing(['cliente', 'user', 'detalles.producto', 'entrega']);
         $empresa = Empresa::first();
 
         return [
@@ -52,6 +53,15 @@ class PedidoVoucher
                 'telefono' => $pedido->cliente?->telefono,
                 'email' => $pedido->cliente?->email,
             ],
+            'entrega' => $pedido->entrega ? [
+                'direccion' => $pedido->entrega->direccion,
+                'ciudad' => $pedido->entrega->ciudad,
+                'telefono' => $pedido->entrega->telefono,
+                'recibe' => $pedido->entrega->recibe,
+                'nota' => $pedido->entrega->nota,
+                'fecha_programada' => $pedido->entrega->fecha_programada?->format('d/m/Y'),
+                'mensajero' => $pedido->entrega->mensajero,
+            ] : null,
             'detalles' => $pedido->detalles->map(fn ($detalle): array => [
                 'nombre' => $detalle->producto?->concatenar_codigo_nombre ?? $detalle->producto?->referencia_producto ?? 'Producto '.$detalle->producto_id,
                 'cantidad' => (float) $detalle->cantidad,

@@ -27,6 +27,7 @@ class StoreClienteRequest extends FormRequest
             'novedad' => ['nullable', 'string', 'max:255'],
             'rut_imagen' => ['nullable', 'image', 'max:4096'],
             'retenedor_fuente' => ['required', Rule::in(['SI', 'NO'])],
+            'dias_credito' => ['nullable', 'integer', 'min:0', 'max:365'],
         ];
     }
 }

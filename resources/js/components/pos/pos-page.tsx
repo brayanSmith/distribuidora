@@ -386,7 +386,7 @@ export default function PosPage({
                 </div>
 
                 {isDesktop ? (
-                    <div className="lg:sticky lg:top-4">{cartPanel}</div>
+                    <div className="lg:sticky lg:top-20">{cartPanel}</div>
                 ) : null}
             </div>
 
@@ -505,6 +505,26 @@ export default function PosPage({
                         name="tipo_pago"
                         value={header.tipoPago}
                     />
+                    {header.tipoPago === 'CONTRA_ENTREGA' && header.entrega
+                        ? Object.entries(header.entrega)
+                              .filter(([campo]) => campo !== 'clienteId')
+                              .map(([campo, valor]) => (
+                                  <input
+                                      key={campo}
+                                      type="hidden"
+                                      name={`entrega[${campo}]`}
+                                      value={valor}
+                                  />
+                              ))
+                        : null}
+                    {header.tipoPago === 'CREDITO' &&
+                    header.fechaVencimiento ? (
+                        <input
+                            type="hidden"
+                            name="fecha_vencimiento"
+                            value={header.fechaVencimiento}
+                        />
+                    ) : null}
 
                     {abonos.abonos.map((abono, index) => (
                         <Fragment key={abono.id}>
@@ -605,6 +625,8 @@ export default function PosPage({
                 <PosPagoModal
                     header={header}
                     onFieldChange={setField}
+                    diasCredito={cliente?.dias_credito ?? 0}
+                    cliente={cliente}
                     totalBruto={cart.totalBruto}
                     pucs={pucs}
                     abonos={abonos.abonos}

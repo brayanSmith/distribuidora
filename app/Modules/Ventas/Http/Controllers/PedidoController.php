@@ -24,15 +24,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Serves both the "pedidos" (DETAL) and "pedidos-mayoristas" (MAYORISTA)
- * modules. Which one is active is derived from the matched route's name
- * (e.g. "pedidos.index" vs "pedidos-mayoristas.index"), so both modules
- * share this one controller instead of duplicating it.
+ * Every pedido, whatever its tipo de precio (detal, mayorista or otro), in
+ * one listing.
  */
 class PedidoController extends Controller
 {
@@ -43,18 +40,17 @@ class PedidoController extends Controller
      */
     public function index(Request $request): Response
     {
-        $module = $this->module($request);
 
-        Gate::authorize("{$module}.view");
+        Gate::authorize('pedidos.view');
 
-        $eliminados = $this->verEliminados($request, $module);
-        $permissions = $this->permissions($request, $module);
+        $eliminados = $this->verEliminados($request, 'pedidos');
+        $permissions = $this->permissions($request);
 
         // Only the fields the listing shows: every pedido brings its lines,
         // products and payments, so whole models add up to megabytes.
         $pedidos = Pedido::select([
             'id', 'fecha', 'estado', 'estado_pago', 'tipo_precio', 'turno', 'observacion', 'observacion_pago',
-            'total_a_pagar', 'saldo_pendiente', 'descuento', 'reteica', 'retefuente', 'deleted_at',
+            'total_a_pagar', 'saldo_pendiente', 'fecha_vencimiento', 'descuento', 'reteica', 'retefuente', 'deleted_at',
             'cliente_id', 'bodega_id', 'user_id',
         ])
             ->with([
@@ -70,9 +66,8 @@ class PedidoController extends Controller
                 'abonos.puc:id,concatenar_subcuenta_concepto',
             ])
             ->when($eliminados, fn ($query) => $query->onlyTrashed())
-            ->where('tipo_precio', $this->tipoPrecio($module))
             ->when(
-                $module === 'pedidos' ? $request->user()->idsBodegasPermitidas() : null,
+                $request->user()->idsBodegasPermitidas(),
                 fn ($query, array $bodegaIds) => $query->whereIn('bodega_id', $bodegaIds),
             )
             ->orderByDesc('fecha')
@@ -84,7 +79,7 @@ class PedidoController extends Controller
             ? null
             : $pedido->detalles->each->makeHidden(['costo_unitario', 'costo_total', 'ganancia_total']));
 
-        return Inertia::render("{$module}/index", [
+        return Inertia::render('pedidos/index', [
             'pedidos' => $pedidos,
             'eliminados' => $eliminados,
             'permissions' => $permissions,
@@ -130,7 +125,7 @@ class PedidoController extends Controller
             ->where('detalle_compras.estado_entrega', 'PENDIENTE')
             ->whereNull('detalle_compras.deleted_at')
             ->whereNull('compras.deleted_at')
-            ->get(['detalle_compras.producto_id', 'detalle_compras.cantidad', "{$proveedores}.nombre_proveedor"])
+            ->get(['detalle_compras.producto_id', DB::raw('detalle_compras.cantidad - detalle_compras.cantidad_recibida as cantidad'), "{$proveedores}.nombre_proveedor"])
             ->groupBy('producto_id');
 
         $detalles->each(function (DetallePedido $detalle) use ($pendientes, $permissions): void {
@@ -160,13 +155,12 @@ class PedidoController extends Controller
      */
     public function create(Request $request): Response
     {
-        $module = $this->module($request);
 
-        Gate::authorize("{$module}.create");
+        Gate::authorize('pedidos.create');
 
-        return Inertia::render("{$module}/create", [
+        return Inertia::render('pedidos/create', [
             ...$this->formData($request),
-            'defaultTipoPrecio' => $this->tipoPrecio($module),
+            'defaultTipoPrecio' => 'DETAL',
         ]);
     }
 
@@ -175,15 +169,14 @@ class PedidoController extends Controller
      */
     public function store(StorePedidoRequest $request, PedidoService $pedidoService): RedirectResponse
     {
-        $module = $this->module($request);
 
-        Gate::authorize("{$module}.create");
+        Gate::authorize('pedidos.create');
 
         $pedidoService->create($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Pedido created.')]);
 
-        return to_route("{$module}.index");
+        return to_route('pedidos.index');
     }
 
     /**
@@ -192,7 +185,7 @@ class PedidoController extends Controller
      */
     public function show(Request $request, Pedido $pedido): JsonResponse
     {
-        Gate::authorize($this->module($request).'.view');
+        Gate::authorize('pedidos.view');
 
         $pedido->load([
             'cliente:id,razon_social,tipo_documento,numero_documento,telefono,ciudad,email,direccion',
@@ -201,6 +194,7 @@ class PedidoController extends Controller
             'detalles' => fn ($query) => $query->withTrashed()
                 ->with(['producto:id,referencia_producto,descripcion_producto,marca', 'bodega:id,nombre_bodega']),
             'abonos' => fn ($query) => $query->with(['puc:id,concatenar_subcuenta_concepto', 'vendedor:id,name']),
+            'entrega',
         ]);
 
         // What the pedido cost and earned is not for this view.
@@ -215,7 +209,7 @@ class PedidoController extends Controller
      */
     public function voucher(Request $request, Pedido $pedido, PedidoVoucher $voucher): JsonResponse
     {
-        Gate::authorize($this->module($request).'.view');
+        Gate::authorize('pedidos.view');
 
         return response()->json($voucher->toArray($pedido));
     }
@@ -225,11 +219,10 @@ class PedidoController extends Controller
      */
     public function edit(Request $request, Pedido $pedido): Response
     {
-        $module = $this->module($request);
 
-        Gate::authorize("{$module}.update");
+        Gate::authorize('pedidos.update');
 
-        return Inertia::render("{$module}/edit", [
+        return Inertia::render('pedidos/edit', [
             'pedido' => $pedido->load([
                 'cliente',
                 'detalles.producto',
@@ -241,14 +234,14 @@ class PedidoController extends Controller
             ]),
             ...$this->formData($request, $pedido),
             'permissions' => [
-                'canDelete' => $request->user()->can("{$module}.delete"),
-                'canCreateAbono' => $request->user()->can("{$module}.create-abono"),
-                'canUpdateAbono' => $request->user()->can("{$module}.update-abono"),
-                'canDeleteAbono' => $request->user()->can("{$module}.delete-abono"),
-                'canCreateDetalle' => $request->user()->can("{$module}.create-detalle"),
-                'canUpdateDetalle' => $request->user()->can("{$module}.update-detalle"),
-                'canDeleteDetalle' => $request->user()->can("{$module}.delete-detalle"),
-                'canUpdateDatos' => $request->user()->can("{$module}.update-datos"),
+                'canDelete' => $request->user()->can('pedidos.delete'),
+                'canCreateAbono' => $request->user()->can('pedidos.create-abono'),
+                'canUpdateAbono' => $request->user()->can('pedidos.update-abono'),
+                'canDeleteAbono' => $request->user()->can('pedidos.delete-abono'),
+                'canCreateDetalle' => $request->user()->can('pedidos.create-detalle'),
+                'canUpdateDetalle' => $request->user()->can('pedidos.update-detalle'),
+                'canDeleteDetalle' => $request->user()->can('pedidos.delete-detalle'),
+                'canUpdateDatos' => $request->user()->can('pedidos.update-datos'),
             ],
         ]);
     }
@@ -258,12 +251,11 @@ class PedidoController extends Controller
      */
     public function update(UpdatePedidoRequest $request, PedidoService $pedidoService, PedidoEdicion $edicion, Pedido $pedido): RedirectResponse
     {
-        $module = $this->module($request);
 
-        Gate::authorize("{$module}.update");
+        Gate::authorize('pedidos.update');
 
         // Only what the user is allowed to change (data, products) is applied.
-        $data = $edicion->restringir($pedido, $request->validated(), $request->user(), $module);
+        $data = $edicion->restringir($pedido, $request->validated(), $request->user(), 'pedidos');
 
         DB::transaction(function () use ($pedido, $data, $pedidoService): void {
             $detallesAntes = $pedido->resumenDetalles();
@@ -296,7 +288,7 @@ class PedidoController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Pedido updated.')]);
 
-        return to_route("{$module}.edit", ['pedido' => $pedido]);
+        return to_route('pedidos.edit', ['pedido' => $pedido]);
     }
 
     /**
@@ -304,22 +296,13 @@ class PedidoController extends Controller
      */
     public function destroy(Request $request, PedidoService $pedidoService, Pedido $pedido): RedirectResponse
     {
-        $module = $this->module($request);
+        Gate::authorize('pedidos.delete');
 
-        Gate::authorize("{$module}.delete");
-
-        DB::transaction(function () use ($pedido, $pedidoService): void {
-            foreach ($pedido->detalles as $detalle) {
-                $pedidoService->adjustStock($detalle, $pedido, 1);
-            }
-
-            $pedido->detalles()->delete();
-            $pedido->delete();
-        });
+        $pedidoService->eliminar($pedido);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Pedido deleted.')]);
 
-        return to_route("{$module}.index");
+        return to_route('pedidos.index');
     }
 
     /**
@@ -351,7 +334,7 @@ class PedidoController extends Controller
                 }),
             // Mayorista is its own section: it always offers every bodega.
             'bodegas' => Bodega::query()
-                ->when($this->module($request) === 'pedidos', fn ($query) => $query->permitidas())
+                ->permitidas()
                 ->orderBy('nombre_bodega')
                 ->get(['id', 'nombre_bodega']),
             'vendedores' => User::orderBy('name')->get(['id', 'name']),
@@ -362,38 +345,21 @@ class PedidoController extends Controller
     /**
      * @return array{canCreate: bool, canUpdate: bool, canDelete: bool}
      */
-    private function permissions(Request $request, string $module): array
+    private function permissions(Request $request): array
     {
         return [
-            'canCreate' => $request->user()->can("{$module}.create"),
-            'canUpdate' => $request->user()->can("{$module}.update"),
-            'canDelete' => $request->user()->can("{$module}.delete"),
-            'canViewDeleted' => $request->user()->can("{$module}.view-deleted"),
-            'canRestore' => $request->user()->can("{$module}.restore"),
-            'canViewDetalle' => $request->user()->can("{$module}.view-detalle"),
+            'canCreate' => $request->user()->can('pedidos.create'),
+            'canUpdate' => $request->user()->can('pedidos.update'),
+            'canDelete' => $request->user()->can('pedidos.delete'),
+            'canViewDeleted' => $request->user()->can('pedidos.view-deleted'),
+            'canRestore' => $request->user()->can('pedidos.restore'),
+            'canViewDetalle' => $request->user()->can('pedidos.view-detalle'),
             // Registering an abono also needs `update`, as AbonoController::store checks.
-            'canCreateAbono' => $request->user()->can("{$module}.update") && $request->user()->can("{$module}.create-abono"),
+            'canCreateAbono' => $request->user()->can('pedidos.update') && $request->user()->can('pedidos.create-abono'),
             // Same producto-level permissions the Productos listing already uses.
             'canViewPendiente' => $request->user()->can('productos.view-pendiente'),
             'canViewAlmacenP' => $request->user()->can('productos.view-almacen-p'),
         ];
-    }
-
-    /**
-     * The active module ("pedidos" or "pedidos-mayoristas"), derived from
-     * the matched route's name (e.g. "pedidos-mayoristas.index").
-     */
-    private function module(Request $request): string
-    {
-        return Str::before($request->route()->getName(), '.');
-    }
-
-    /**
-     * The tipo_precio this module is scoped to.
-     */
-    private function tipoPrecio(string $module): string
-    {
-        return $module === 'pedidos-mayoristas' ? 'MAYORISTA' : 'DETAL';
     }
 
     /**
@@ -402,7 +368,7 @@ class PedidoController extends Controller
      */
     public function restore(Request $request, PedidoService $pedidoService, Pedido $pedido): RedirectResponse
     {
-        return $this->restaurarRegistro($this->module($request), $pedido, __('Pedido restored.'), function (Pedido $pedido) use ($pedidoService): void {
+        return $this->restaurarRegistro('pedidos', $pedido, __('Pedido restored.'), function (Pedido $pedido) use ($pedidoService): void {
             DB::transaction(function () use ($pedido, $pedidoService): void {
                 $pedido->detalles()->onlyTrashed()->get()->each(function (DetallePedido $detalle) use ($pedido, $pedidoService): void {
                     $detalle->restore();

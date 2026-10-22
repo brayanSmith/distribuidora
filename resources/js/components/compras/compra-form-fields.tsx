@@ -43,6 +43,8 @@ type DetalleRow = {
     cantidad: number;
     precio_unitario: number;
     recibido: boolean;
+    /** Units that already arrived (a partial receipt kept when editing). */
+    cantidad_recibida?: number;
 };
 
 type DetalleGroup = {
@@ -128,6 +130,7 @@ export default function CompraFormFields({
             cantidad: Number(detalle.cantidad),
             precio_unitario: Number(detalle.precio_unitario),
             recibido: detalle.estado_entrega === 'RECIBIDA',
+            cantidad_recibida: Number(detalle.cantidad_recibida ?? 0),
         })),
     );
 
@@ -322,6 +325,22 @@ export default function CompraFormFields({
                             required
                         />
                         <InputError message={errors.fecha} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="fecha_vencimiento">Vence el</Label>
+                        <Input
+                            id="fecha_vencimiento"
+                            name="fecha_vencimiento"
+                            type="date"
+                            data-test="compra-fecha-vencimiento"
+                            defaultValue={compra?.fecha_vencimiento ?? ''}
+                        />
+                        <p className="text-muted-foreground text-xs">
+                            Vacío: la fecha más los días de crédito del
+                            proveedor.
+                        </p>
+                        <InputError message={errors.fecha_vencimiento} />
                     </div>
 
                     <div className="grid gap-2">
@@ -631,6 +650,13 @@ export default function CompraFormFields({
                         name={`detalles[${index}][recibido]`}
                         value={row.recibido ? '1' : '0'}
                     />
+                    {!row.recibido && row.cantidad_recibida ? (
+                        <input
+                            type="hidden"
+                            name={`detalles[${index}][cantidad_recibida]`}
+                            value={row.cantidad_recibida}
+                        />
+                    ) : null}
                 </Fragment>
             ))}
 

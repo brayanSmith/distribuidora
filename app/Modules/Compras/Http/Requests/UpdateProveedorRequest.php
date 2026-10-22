@@ -37,6 +37,7 @@ class UpdateProveedorRequest extends FormRequest
             'numero_cuenta_proveedor' => ['nullable', 'string', 'max:255'],
             'convenio' => ['nullable', 'string', 'max:255'],
             'tiempo_respuesta' => ['nullable', 'string', 'max:255'],
+            'dias_credito' => ['nullable', 'integer', 'min:0', 'max:365'],
             'fabricante' => ['nullable', 'string', 'max:255'],
             'flete' => ['boolean'],
             'valor_flete' => ['nullable', 'numeric', 'min:0'],

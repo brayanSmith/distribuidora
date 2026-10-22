@@ -14,7 +14,7 @@ use App\Modules\Ventas\Models\Pedido;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {
-    foreach (['clientes', 'proveedores', 'gastos', 'compras', 'pedidos', 'pedidos-mayoristas', 'productos'] as $recurso) {
+    foreach (['clientes', 'proveedores', 'gastos', 'compras', 'pedidos', 'productos'] as $recurso) {
         foreach (['view', 'delete'] as $accion) {
             Permission::findOrCreate("{$recurso}.{$accion}");
         }
@@ -106,12 +106,12 @@ test('a deleted pedido keeps its lines, and restoring it takes the stock out aga
     expect(Pedido::find($pedido->id)->detalles)->toHaveCount(1);
 });
 
-test('a deleted mayorista pedido is restored through its own module', function () {
+test('a deleted mayorista pedido is restored from pedidos general', function () {
     $pedido = Pedido::factory()->create(['tipo_precio' => 'MAYORISTA']);
     $pedido->delete();
 
     $this->actingAs($this->owner)
-        ->patch(route('pedidos-mayoristas.restore', [$pedido->id]))
+        ->patch(route('pedidos.restore', [$pedido->id]))
         ->assertRedirect();
 
     expect($pedido->fresh()->trashed())->toBeFalse();
@@ -214,12 +214,12 @@ test('viewing a pedido or a compra needs the view permission of its module', fun
     $miembro = User::factory()->create();
     asignarRol($miembro, 'Member');
 
-    $this->actingAs($miembro)->getJson(route('pedidos-mayoristas.show', [$pedido->id]))->assertForbidden();
+    $this->actingAs($miembro)->getJson(route('pedidos.show', [$pedido->id]))->assertForbidden();
     $this->actingAs($miembro)->getJson(route('compras.show', [$compra->id]))->assertForbidden();
 
     $miembro->givePermissionTo('compras.view');
     $this->actingAs($miembro)->getJson(route('compras.show', [$compra->id]))->assertOk();
-    $this->actingAs($miembro)->getJson(route('pedidos-mayoristas.show', [$pedido->id]))->assertForbidden();
+    $this->actingAs($miembro)->getJson(route('pedidos.show', [$pedido->id]))->assertForbidden();
 });
 
 test('the pedido detail never exposes what it cost or earned', function () {
@@ -231,10 +231,10 @@ test('the pedido detail never exposes what it cost or earned', function () {
     expect($json['detalles'][0])->not->toHaveKeys(['costo_unitario', 'costo_total', 'ganancia_total']);
 });
 
-test('a pedido voucher is served to whoever can view the pedidos of that module', function () {
+test('a pedido voucher is served to whoever can view the pedidos', function () {
     $pedido = Pedido::factory()->create(['tipo_precio' => 'MAYORISTA']);
 
-    $this->actingAs($this->owner)->getJson(route('pedidos-mayoristas.voucher', [$pedido->id]))
+    $this->actingAs($this->owner)->getJson(route('pedidos.voucher', [$pedido->id]))
         ->assertOk()
         ->assertJsonPath('pedido.id', $pedido->id);
 
@@ -243,5 +243,4 @@ test('a pedido voucher is served to whoever can view the pedidos of that module'
     $miembro->givePermissionTo('pedidos.view');
 
     $this->actingAs($miembro)->getJson(route('pedidos.voucher', [$pedido->id]))->assertOk();
-    $this->actingAs($miembro)->getJson(route('pedidos-mayoristas.voucher', [$pedido->id]))->assertForbidden();
 });

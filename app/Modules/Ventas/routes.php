@@ -2,6 +2,8 @@
 
 use App\Modules\Ventas\Http\Controllers\AbonoController;
 use App\Modules\Ventas\Http\Controllers\ClienteController;
+use App\Modules\Ventas\Http\Controllers\CuentasPorCobrarController;
+use App\Modules\Ventas\Http\Controllers\EntregaController;
 use App\Modules\Ventas\Http\Controllers\PedidoController;
 use App\Modules\Ventas\Http\Controllers\PosController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +20,11 @@ Route::get('pos/pedidos', [PosController::class, 'pedidos'])->name('pos.pedidos'
 Route::get('pos/pedidos/{pedido}/voucher', [PosController::class, 'voucher'])->name('pos.pedidos.voucher');
 Route::get('pos/clientes/{cliente}/pedidos', [PosController::class, 'clientePedidos'])->name('pos.clientes.pedidos');
 
+Route::get('pedidos/cuentas-por-cobrar', [CuentasPorCobrarController::class, 'index'])->name('pedidos.cuentas-por-cobrar');
+Route::get('entregas', [EntregaController::class, 'index'])->name('entregas.index');
+Route::patch('entregas/{entrega}', [EntregaController::class, 'update'])->name('entregas.update');
+Route::get('entregas/{entrega}/voucher', [EntregaController::class, 'voucher'])->name('entregas.voucher');
+Route::post('entregas/{entrega}/anular', [EntregaController::class, 'anular'])->name('entregas.anular');
 Route::get('pedidos', [PedidoController::class, 'index'])->name('pedidos.index');
 Route::get('pedidos/crear', [PedidoController::class, 'create'])->name('pedidos.create');
 Route::post('pedidos', [PedidoController::class, 'store'])->name('pedidos.store');
@@ -30,20 +37,3 @@ Route::patch('pedidos/{pedido}/restaurar', [PedidoController::class, 'restore'])
 Route::post('pedidos/{pedido}/abonos', [AbonoController::class, 'store'])->name('pedidos.abonos.store');
 Route::patch('pedidos/{pedido}/abonos/{abono}', [AbonoController::class, 'update'])->name('pedidos.abonos.update');
 Route::delete('pedidos/{pedido}/abonos/{abono}', [AbonoController::class, 'destroy'])->name('pedidos.abonos.destroy');
-
-// Same controllers as "pedidos" above; PedidoController/AbonoController scope
-
-// themselves to DETAL vs MAYORISTA by reading the matched route's name.
-
-Route::get('pedidos-mayoristas', [PedidoController::class, 'index'])->name('pedidos-mayoristas.index');
-Route::get('pedidos-mayoristas/crear', [PedidoController::class, 'create'])->name('pedidos-mayoristas.create');
-Route::post('pedidos-mayoristas', [PedidoController::class, 'store'])->name('pedidos-mayoristas.store');
-Route::get('pedidos-mayoristas/{pedido}/editar', [PedidoController::class, 'edit'])->name('pedidos-mayoristas.edit');
-Route::get('pedidos-mayoristas/{pedido}/ver', [PedidoController::class, 'show'])->withTrashed()->name('pedidos-mayoristas.show');
-Route::get('pedidos-mayoristas/{pedido}/voucher', [PedidoController::class, 'voucher'])->name('pedidos-mayoristas.voucher');
-Route::patch('pedidos-mayoristas/{pedido}', [PedidoController::class, 'update'])->name('pedidos-mayoristas.update');
-Route::delete('pedidos-mayoristas/{pedido}', [PedidoController::class, 'destroy'])->name('pedidos-mayoristas.destroy');
-Route::patch('pedidos-mayoristas/{pedido}/restaurar', [PedidoController::class, 'restore'])->withTrashed()->name('pedidos-mayoristas.restore');
-Route::post('pedidos-mayoristas/{pedido}/abonos', [AbonoController::class, 'store'])->name('pedidos-mayoristas.abonos.store');
-Route::patch('pedidos-mayoristas/{pedido}/abonos/{abono}', [AbonoController::class, 'update'])->name('pedidos-mayoristas.abonos.update');
-Route::delete('pedidos-mayoristas/{pedido}/abonos/{abono}', [AbonoController::class, 'destroy'])->name('pedidos-mayoristas.abonos.destroy');

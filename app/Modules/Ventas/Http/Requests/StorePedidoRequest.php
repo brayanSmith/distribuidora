@@ -23,7 +23,17 @@ class StorePedidoRequest extends FormRequest
             'tipo_precio' => ['required', 'string', 'in:DETAL,MAYORISTA,OTRO'],
             'facturacion_electronica' => ['nullable', 'boolean'],
             'aplica_turno' => ['nullable', 'boolean'],
-            'tipo_pago' => ['nullable', 'string', Rule::in(['CONTADO', 'SEPARADO', 'CREDITO'])],
+            'tipo_pago' => ['nullable', 'string', Rule::in(['CONTADO', 'SEPARADO', 'CREDITO', 'CONTRA_ENTREGA'])],
+            // Contra entrega: where it is delivered (paid on delivery).
+            'entrega' => ['nullable', 'array'],
+            'entrega.direccion' => ['required_if:tipo_pago,CONTRA_ENTREGA', 'nullable', 'string', 'max:255'],
+            'entrega.telefono' => ['required_if:tipo_pago,CONTRA_ENTREGA', 'nullable', 'string', 'max:50'],
+            'entrega.ciudad' => ['nullable', 'string', 'max:255'],
+            'entrega.recibe' => ['nullable', 'string', 'max:255'],
+            'entrega.nota' => ['nullable', 'string', 'max:255'],
+            'entrega.fecha_programada' => ['nullable', 'date', 'after_or_equal:today'],
+            // Only for CREDITO; empty: the date plus the days of credit of the cliente.
+            'fecha_vencimiento' => ['nullable', 'date'],
             'observacion' => ['nullable', 'string'],
             'observacion_pago' => ['nullable', 'string'],
             'flete' => ['nullable', 'numeric', 'min:0'],
@@ -41,6 +51,17 @@ class StorePedidoRequest extends FormRequest
             'detalles.*.cantidad' => ['required', 'numeric', 'min:0.01'],
             'detalles.*.tipo_precio' => ['nullable', 'in:DETAL,MAYORISTA,PERSONALIZADO'],
             'detalles.*.precio_unitario' => ['required', 'numeric', 'min:0'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'entrega.direccion.required_if' => 'La dirección de entrega es obligatoria para contra entrega.',
+            'entrega.telefono.required_if' => 'El teléfono de entrega es obligatorio para contra entrega.',
         ];
     }
 }

@@ -2,10 +2,9 @@ import type * as PedidosRoutesModule from '@/routes/pedidos';
 import type * as PedidosAbonosRoutesModule from '@/routes/pedidos/abonos';
 
 /**
- * Bundles the Wayfinder route helpers for a pedidos module ("pedidos" or
- * "pedidos-mayoristas") so shared components (PedidosTable, the abono
- * modals, etc.) can be reused by both without hardcoding either one's
- * routes — the page passes the right bundle in as a prop.
+ * Bundles the Wayfinder route helpers of the pedidos module, passed in by
+ * the page so shared components (PedidosTable, the abono modals, etc.) do
+ * not hardcode them.
  */
 export type PedidoRoutes = {
     pedidos: typeof PedidosRoutesModule;
@@ -27,6 +26,11 @@ export type ClienteOption = {
     telefono: string | null;
     ciudad: string | null;
     email: string | null;
+    /** Days of credit (the POS loads them). */
+    dias_credito?: number;
+    /** What the cliente owes, and how much of it is overdue (the POS loads them). */
+    deuda?: number;
+    deuda_vencida?: number;
 };
 
 export type VendedorOption = {
@@ -106,6 +110,9 @@ export type Pedido = {
     total_a_pagar: string;
     abono: string;
     saldo_pendiente: string;
+    /** Due date (Y-m-d) of a pedido on credit, and whether it is past it with a balance. */
+    fecha_vencimiento?: string | null;
+    vencido?: boolean;
     user_id: number;
     reteica: string;
     retefuente: string;

@@ -24,6 +24,8 @@ return new class extends Migration
             $table->string('novedad')->nullable();
             $table->string('rut_imagen')->nullable();
             $table->enum('retenedor_fuente', ['SI', 'NO'])->default('NO');
+            // Days the cliente is given to pay a pedido on credit.
+            $table->unsignedSmallInteger('dias_credito')->default(0);
             $table->timestamps();
             $table->softDeletes();
         });

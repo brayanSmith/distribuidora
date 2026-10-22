@@ -1,6 +1,19 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { TipoPagoPedido, TipoPrecioPedido } from '@/types';
 
+/** Delivery data of a contra entrega pedido. */
+export type PosEntrega = {
+    /** The cliente the data was taken from, to take it again when the cliente changes. */
+    clienteId: string;
+    direccion: string;
+    ciudad: string;
+    telefono: string;
+    recibe: string;
+    nota: string;
+    /** Day it should be delivered (Y-m-d); '' for as soon as possible. */
+    fecha_programada: string;
+};
+
 export type PosHeaderState = {
     clienteId: string;
     bodegaId: string;
@@ -11,6 +24,10 @@ export type PosHeaderState = {
     reteica: string;
     retefuente: string;
     tipoPago: TipoPagoPedido;
+    /** Due date (Y-m-d) of a pedido on credit; '' until one is picked. */
+    fechaVencimiento: string;
+    /** Where a contra entrega pedido goes (missing in carts saved before it existed). */
+    entrega?: PosEntrega;
     observacion: string;
     /** The observación de pago as edited by hand; null follows the abonos. */
     observacionPago: string | null;
@@ -37,6 +54,7 @@ export const defaultPosHeader = (
     reteica: '0',
     retefuente: '0',
     tipoPago: 'CONTADO',
+    fechaVencimiento: '',
     observacion: '',
     observacionPago: null,
     aplicaTurno: false,
