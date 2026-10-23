@@ -18,9 +18,13 @@ return new class extends Migration
             $table->string('telefono_empresa')->nullable();
             $table->string('email_empresa')->nullable();
             $table->string('nit_empresa')->nullable();
+            // The logo, for what is printed; its shape decides how it is printed.
             $table->string('logo_empresa')->nullable();
-            //$table->json('cuentas_bancarias')->nullable();
-            //$table->boolean('mostrar_productos_sin_inventario')->default(true);
+            $table->enum('formato_logo', ['CUADRADO', 'RECTANGULAR'])->default('RECTANGULAR');
+            // A square icon: browser tab, sidebar and notifications.
+            $table->string('icono_empresa')->nullable();
+            // $table->json('cuentas_bancarias')->nullable();
+            // $table->boolean('mostrar_productos_sin_inventario')->default(true);
             $table->timestamps();
         });
     }

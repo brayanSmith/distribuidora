@@ -51,6 +51,8 @@ export type PosVoucher = {
         telefono: string | null;
         nit: string | null;
         logo_url: string | null;
+        /** How the logo is printed. */
+        formato_logo: 'CUADRADO' | 'RECTANGULAR';
     };
     pedido: {
         id: number;

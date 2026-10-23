@@ -12,9 +12,23 @@ abstract class ModuleServiceProvider extends ServiceProvider
      */
     abstract protected function modulePath(): string;
 
+    /**
+     * The module's Artisan commands.
+     *
+     * @return list<class-string>
+     */
+    protected function consoleCommands(): array
+    {
+        return [];
+    }
+
     public function boot(): void
     {
         Route::middleware(['web', 'auth', 'verified'])
             ->group($this->modulePath().'/routes.php');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands($this->consoleCommands());
+        }
     }
 }

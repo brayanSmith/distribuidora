@@ -109,14 +109,20 @@ test('entregas needs its permission', function () {
 test('a delivery is dispatched with its messenger and then delivered', function () {
     Carbon::setTestNow('2026-10-21 10:00:00');
     $entrega = Entrega::factory()->create();
+    $pedro = User::factory()->create(['name' => 'Pedro']);
+
+    // Dispatching says who takes it.
+    $this->actingAs($this->owner)
+        ->patch(route('entregas.update', $entrega), ['estado' => Entrega::EN_CAMINO])
+        ->assertSessionHasErrors(['mensajero_id' => 'Indica quién lleva el pedido.']);
 
     $this->actingAs($this->owner)
-        ->patch(route('entregas.update', $entrega), ['estado' => Entrega::EN_CAMINO, 'mensajero' => 'Pedro'])
+        ->patch(route('entregas.update', $entrega), ['estado' => Entrega::EN_CAMINO, 'mensajero_id' => $pedro->id])
         ->assertSessionHasNoErrors();
 
     expect($entrega->fresh())
         ->estado->toBe(Entrega::EN_CAMINO)
-        ->mensajero->toBe('Pedro')
+        ->mensajero_id->toBe($pedro->id)
         ->despachada_at->toDateTimeString()->toBe('2026-10-21 10:00:00');
 
     Carbon::setTestNow('2026-10-21 12:30:00');
@@ -125,7 +131,7 @@ test('a delivery is dispatched with its messenger and then delivered', function 
 
     expect($entrega->fresh())
         ->estado->toBe(Entrega::ENTREGADO)
-        ->mensajero->toBe('Pedro')
+        ->mensajero_id->toBe($pedro->id)
         ->entregada_at->toDateTimeString()->toBe('2026-10-21 12:30:00');
 });
 
@@ -133,7 +139,7 @@ test('a delivery goes in order: dispatched, paid and then delivered', function (
     $pedido = Pedido::factory()->create(['total_a_pagar' => 50000, 'saldo_pendiente' => 50000]);
     $entrega = Entrega::factory()->for($pedido)->create();
     $marcar = fn (string $estado) => $this->actingAs($this->owner)
-        ->patch(route('entregas.update', $entrega), ['estado' => $estado]);
+        ->patch(route('entregas.update', $entrega), ['estado' => $estado, 'mensajero_id' => $this->owner->id]);
 
     $marcar(Entrega::ENTREGADO)->assertSessionHasErrors(['estado' => 'Primero despacha el pedido.']);
 
@@ -194,7 +200,7 @@ test('a delivery is rescheduled for another day and goes back to dispatch', func
     $entrega = Entrega::factory()->create([
         'estado' => Entrega::DEVUELTO,
         'motivo' => 'El cliente no estaba',
-        'mensajero' => 'Pedro',
+        'mensajero_id' => User::factory(),
         'despachada_at' => now(),
     ]);
 
@@ -304,7 +310,7 @@ test('the voucher of a delivery says where it goes and what to collect', functio
         'direccion' => 'Calle 10 # 5-20',
         'telefono' => '3001234567',
         'fecha_programada' => '2026-10-25',
-        'mensajero' => 'Pedro',
+        'mensajero_id' => User::factory()->create(['name' => 'Pedro'])->id,
     ]);
 
     $this->actingAs($miembro)->getJson(route('entregas.voucher', $entrega))

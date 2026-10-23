@@ -10,11 +10,13 @@ use App\Modules\Finanzas\Models\Puc;
 use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Ventas\Http\Requests\StorePedidoRequest;
 use App\Modules\Ventas\Models\Cliente;
+use App\Modules\Ventas\Models\Entrega;
 use App\Modules\Ventas\Models\Pedido;
 use App\Modules\Ventas\Services\PedidoService;
 use App\Modules\Ventas\Services\PedidoVoucher;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,6 +44,8 @@ class PosController extends Controller
             'productos' => $this->catalogoProductos(),
             'bodegas' => Bodega::permitidas()->orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
             'vendedores' => User::orderBy('name')->get(['id', 'name']),
+            // Who can take a contra entrega.
+            'mensajeros' => Entrega::mensajerosDisponibles(),
             'pucs' => Puc::orderBy('concatenar_subcuenta_concepto')->get(['id', 'concatenar_subcuenta_concepto']),
             'categorias' => Categoria::with('subCategorias:id,categoria_id,nombre_sub_categoria')->orderBy('nombre_categoria')->get(['id', 'nombre_categoria']),
             'canCreateProducto' => $request->user()->can('pos.create-producto'),
@@ -64,6 +68,31 @@ class PosController extends Controller
         Inertia::flash('pedido_creado', $voucher->toArray($pedido));
 
         return to_route('pos.index');
+    }
+
+    /**
+     * A POS sale sent in the background (the POS already closed it for the
+     * user). Sending it again — the internet dropped before the answer
+     * arrived — gives back the pedido created the first time.
+     */
+    public function sincronizar(StorePedidoRequest $request, PedidoService $pedidoService, PedidoVoucher $voucher): JsonResponse
+    {
+        Gate::authorize('pos.create');
+
+        $codigo = $request->validate(['codigo_sincronizacion' => ['required', 'uuid']])['codigo_sincronizacion'];
+
+        $pedido = Pedido::where('codigo_sincronizacion', $codigo)->first();
+
+        if ($pedido === null) {
+            try {
+                $pedido = $pedidoService->create([...$request->validated(), 'user_id' => $request->user()->id]);
+            } catch (UniqueConstraintViolationException) {
+                // The same sale arrived twice at once: the other request created it.
+                $pedido = Pedido::where('codigo_sincronizacion', $codigo)->firstOrFail();
+            }
+        }
+
+        return response()->json(['voucher' => $voucher->toArray($pedido)], $pedido->wasRecentlyCreated ? 201 : 200);
     }
 
     /**

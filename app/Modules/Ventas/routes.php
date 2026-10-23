@@ -17,6 +17,7 @@ Route::patch('clientes/{cliente}/restaurar', [ClienteController::class, 'restore
 
 Route::get('pos', [PosController::class, 'index'])->name('pos.index');
 Route::post('pos', [PosController::class, 'store'])->name('pos.store');
+Route::post('pos/sincronizar', [PosController::class, 'sincronizar'])->name('pos.sincronizar');
 Route::get('pos/pedidos', [PosController::class, 'pedidos'])->name('pos.pedidos');
 Route::get('pos/pedidos/{pedido}/voucher', [PosController::class, 'voucher'])->name('pos.pedidos.voucher');
 Route::get('pos/clientes/{cliente}/pedidos', [PosController::class, 'clientePedidos'])->name('pos.clientes.pedidos');

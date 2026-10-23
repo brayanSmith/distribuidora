@@ -3,11 +3,11 @@ import { usePage } from '@inertiajs/react';
 import AppLogoIcon from '@/components/app-logo-icon';
 
 export default function AppLogo() {
-    const { name, logoUrl } = usePage().props;
+    const { name, iconoUrl } = usePage().props;
 
     return (
         <>
-            {logoUrl ? (
+            {iconoUrl ? (
                 <AppLogoIcon className="aspect-square size-8 rounded-md" />
             ) : (
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md">

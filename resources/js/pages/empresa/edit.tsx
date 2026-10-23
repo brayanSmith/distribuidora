@@ -1,12 +1,14 @@
 import { Form, Head, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import Heading from '@/components/heading';
 import ImageField from '@/components/image-field';
+import type { FormatoRecorte } from '@/components/image-drop-cropper';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { edit, update } from '@/routes/empresa';
-import type { Empresa, EmpresaPermissions } from '@/types';
+import type { Empresa, EmpresaPermissions, FormatoLogo } from '@/types';
 
 type Props = {
     empresa: Empresa | null;
@@ -116,13 +118,31 @@ export default function EmpresaEdit({ empresa, permissions }: Props) {
                             </div>
 
                             {permissions.canUpdate ? (
-                                <ImageField
-                                    name="logo_empresa"
-                                    removeName="remove_logo_empresa"
-                                    label="Logo de la empresa"
-                                    value={empresa?.logo_empresa_url}
-                                    error={errors.logo_empresa}
-                                />
+                                <div className="grid gap-6 sm:grid-cols-2">
+                                    <div className="grid content-start gap-3">
+                                        <ImageField
+                                            name="icono_empresa"
+                                            removeName="remove_icono_empresa"
+                                            label="Ícono de la empresa"
+                                            value={empresa?.icono_empresa_url}
+                                            error={errors.icono_empresa}
+                                            maxLado={512}
+                                        />
+                                        <p className="text-muted-foreground text-xs">
+                                            Imagen cuadrada (ideal 512 × 512
+                                            px). Se usa en la pestaña del
+                                            navegador, el menú lateral y las
+                                            notificaciones. Si no subes uno, se
+                                            usa el logo.
+                                        </p>
+                                    </div>
+
+                                    <LogoCampo
+                                        empresa={empresa}
+                                        error={errors.logo_empresa}
+                                        errorFormato={errors.formato_logo}
+                                    />
+                                </div>
                             ) : null}
 
                             {permissions.canUpdate ? (
@@ -144,6 +164,60 @@ export default function EmpresaEdit({ empresa, permissions }: Props) {
     );
 }
 
+/** The shapes the logo can be cropped to. */
+const FORMATOS_LOGO: FormatoRecorte[] = [
+    { value: 'CUADRADO', label: 'Cuadrado', aspecto: 1 },
+    { value: 'RECTANGULAR', label: 'Rectangular', aspecto: 3 },
+    { value: 'ORIGINAL', label: 'Sin recortar', aspecto: null },
+];
+
+/**
+ * The logo, cropped to the shape it is printed with (vouchers): square
+ * prints as a block, wide as the ticket's width.
+ */
+function LogoCampo({
+    empresa,
+    error,
+    errorFormato,
+}: {
+    empresa: Empresa | null;
+    error?: string;
+    errorFormato?: string;
+}) {
+    const [formato, setFormato] = useState<FormatoLogo>(
+        empresa?.formato_logo ?? 'RECTANGULAR',
+    );
+
+    return (
+        <div className="grid content-start gap-3">
+            <ImageField
+                name="logo_empresa"
+                removeName="remove_logo_empresa"
+                label="Logo de la empresa"
+                value={empresa?.logo_empresa_url}
+                error={error}
+                formatos={FORMATOS_LOGO}
+                formatoInicial={formato}
+                maxLado={1200}
+                onFormatoChange={(_, aspecto) =>
+                    // Uncut, the image's own shape decides.
+                    setFormato(aspecto > 1.3 ? 'RECTANGULAR' : 'CUADRADO')
+                }
+            />
+            <input type="hidden" name="formato_logo" value={formato} />
+            <p className="text-muted-foreground text-xs">
+                Se usa en las impresiones. Al subirlo eliges si queda cuadrado,
+                rectangular o sin recortar.{' '}
+                <span className="font-medium" data-test="empresa-formato-logo">
+                    {formato === 'CUADRADO'
+                        ? 'Se imprime como un bloque cuadrado.'
+                        : 'Se imprime a lo ancho del ticket.'}
+                </span>
+            </p>
+            <InputError message={errorFormato} />
+        </div>
+    );
+}
 EmpresaEdit.layout = () => ({
     breadcrumbs: [
         {

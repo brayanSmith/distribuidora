@@ -14,6 +14,9 @@ return new class extends Migration
         Schema::create('pedidos', function (Blueprint $table) {
             $table->id();
             // $table->string('codigo')->unique()->nullable();
+            // Code the POS gives a sale sent in the background, so sending it
+            // again (unstable internet) never creates it twice.
+            $table->uuid('codigo_sincronizacion')->nullable()->unique();
             $table->foreignId('cliente_id')->constrained('clientes');
             $table->date('fecha');
             $table->enum('estado', ['PENDIENTE', 'COMPLETADO'])->default(value: 'PENDIENTE');

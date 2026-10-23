@@ -8,6 +8,7 @@ use App\Modules\Inventario\Models\StockBodega;
 use App\Modules\Ventas\Models\Cliente;
 use App\Modules\Ventas\Models\DetallePedido;
 use App\Modules\Ventas\Models\Pedido;
+use App\Modules\Ventas\Notifications\NuevaEntrega;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,7 @@ class PedidoService
             $aplicaTurno = (bool) ($data['aplica_turno'] ?? false);
 
             $pedido = Pedido::create([
+                'codigo_sincronizacion' => $data['codigo_sincronizacion'] ?? null,
                 'cliente_id' => $data['cliente_id'],
                 'fecha' => $data['fecha'],
                 'user_id' => $data['user_id'],
@@ -61,7 +63,7 @@ class PedidoService
 
             // Paid on delivery: where it goes, to dispatch it later.
             if (($data['tipo_pago'] ?? null) === 'CONTRA_ENTREGA') {
-                $pedido->entrega()->create($data['entrega']);
+                NuevaEntrega::avisar($pedido->entrega()->create($data['entrega']));
             }
             $pedido->registrarCambioDetalles(null);
 

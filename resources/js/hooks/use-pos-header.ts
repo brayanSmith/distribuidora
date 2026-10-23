@@ -12,6 +12,8 @@ export type PosEntrega = {
     nota: string;
     /** Day it should be delivered (Y-m-d); '' for as soon as possible. */
     fecha_programada: string;
+    /** The user who takes it; '' unassigned (everyone who delivers is told). Missing in carts saved before it existed. */
+    mensajero_id?: string;
 };
 
 export type PosHeaderState = {

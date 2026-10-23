@@ -17,7 +17,7 @@ class PedidoVoucher
      */
     public function toArray(Pedido $pedido): array
     {
-        $pedido->loadMissing(['cliente', 'user', 'detalles.producto', 'entrega']);
+        $pedido->loadMissing(['cliente', 'user', 'detalles.producto', 'entrega.mensajero']);
         $empresa = Empresa::first();
 
         return [
@@ -27,6 +27,7 @@ class PedidoVoucher
                 'telefono' => $empresa?->telefono_empresa,
                 'nit' => $empresa?->nit_empresa,
                 'logo_url' => $empresa?->logo_empresa_url,
+                'formato_logo' => $empresa?->formato_logo ?? 'RECTANGULAR',
             ],
             'pedido' => [
                 'id' => $pedido->id,
@@ -60,7 +61,7 @@ class PedidoVoucher
                 'recibe' => $pedido->entrega->recibe,
                 'nota' => $pedido->entrega->nota,
                 'fecha_programada' => $pedido->entrega->fecha_programada?->format('d/m/Y'),
-                'mensajero' => $pedido->entrega->mensajero,
+                'mensajero' => $pedido->entrega->mensajero?->name,
             ] : null,
             'detalles' => $pedido->detalles->map(fn ($detalle): array => [
                 'nombre' => $detalle->producto?->concatenar_codigo_nombre ?? $detalle->producto?->referencia_producto ?? 'Producto '.$detalle->producto_id,

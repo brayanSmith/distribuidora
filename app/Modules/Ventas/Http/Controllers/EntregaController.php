@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\Finanzas\Models\Puc;
 use App\Modules\Ventas\Models\Entrega;
+use App\Modules\Ventas\Notifications\EntregaAsignada;
 use App\Modules\Ventas\Services\PedidoService;
 use App\Modules\Ventas\Services\PedidoVoucher;
 use Illuminate\Http\JsonResponse;
@@ -48,6 +49,7 @@ class EntregaController extends Controller
                 'pedido' => fn ($query) => $query->withTrashed()->select(['id', 'cliente_id', 'user_id', 'bodega_id', 'fecha', 'tipo_pago', 'total_a_pagar', 'abono', 'saldo_pendiente', 'estado_pago']),
                 'pedido.cliente:id,razon_social',
                 'pedido.bodega:id,nombre_bodega',
+                'mensajero:id,name',
             ])
             ->orderByRaw("case estado when 'DEVUELTO' then 0 when 'POR_DESPACHAR' then 1 when 'EN_CAMINO' then 2 else 3 end")
             ->orderByRaw('fecha_programada is null, fecha_programada')
@@ -59,6 +61,7 @@ class EntregaController extends Controller
         return Inertia::render('entregas/index', [
             'entregas' => $entregas,
             'diasFinalizadas' => self::DIAS_FINALIZADAS,
+            'mensajeros' => Entrega::mensajerosDisponibles(),
             'canUpdate' => $usuario->can('entregas.update'),
             'canCobrar' => $puedeCobrar,
             'canAnular' => $usuario->can('entregas.update') && $usuario->can('pedidos.delete'),
@@ -88,11 +91,13 @@ class EntregaController extends Controller
 
         $datos = $request->validate([
             'estado' => ['required', Rule::in([Entrega::POR_DESPACHAR, Entrega::EN_CAMINO, Entrega::ENTREGADO, Entrega::DEVUELTO])],
-            'mensajero' => ['nullable', 'string', 'max:255'],
+            // Dispatching says who takes it.
+            'mensajero_id' => ['required_if:estado,'.Entrega::EN_CAMINO, 'nullable', 'integer', Rule::exists('users', 'id')],
             'motivo' => ['required_if:estado,'.Entrega::DEVUELTO, 'nullable', 'string', 'max:255'],
             // Back to por despachar means rescheduled: it needs the new day.
             'fecha_programada' => ['required_if:estado,'.Entrega::POR_DESPACHAR, 'nullable', 'date', 'after_or_equal:today'],
         ], [
+            'mensajero_id.required_if' => 'Indica quién lleva el pedido.',
             'motivo.required_if' => 'Indica el motivo de la devolución.',
             'fecha_programada.required_if' => 'Indica la nueva fecha de entrega.',
             'fecha_programada.after_or_equal' => 'La fecha de entrega no puede ser anterior a hoy.',
@@ -102,7 +107,7 @@ class EntregaController extends Controller
 
         $cambios = match ($datos['estado']) {
             Entrega::EN_CAMINO => [
-                'mensajero' => $datos['mensajero'] ?? $entrega->mensajero,
+                'mensajero_id' => $datos['mensajero_id'],
                 'despachada_at' => $entrega->despachada_at ?? now(),
             ],
             Entrega::ENTREGADO => ['entregada_at' => now()],
@@ -116,7 +121,13 @@ class EntregaController extends Controller
             ],
         };
 
+        $mensajeroAnterior = $entrega->mensajero_id;
         $entrega->update(['estado' => $datos['estado'], ...$cambios]);
+
+        // Handed to someone else than planned: they are told.
+        if ($entrega->mensajero_id !== null && $entrega->mensajero_id !== $mensajeroAnterior) {
+            EntregaAsignada::avisar($entrega);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Delivery updated.')]);
 

@@ -26,6 +26,8 @@ class EmpresaFactory extends Factory
             'email_empresa' => fake()->unique()->companyEmail(),
             'nit_empresa' => fake()->unique()->numerify('#########-#'),
             'logo_empresa' => null,
+            'formato_logo' => 'RECTANGULAR',
+            'icono_empresa' => null,
         ];
     }
 }

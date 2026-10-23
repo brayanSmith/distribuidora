@@ -13,6 +13,7 @@ use App\Modules\Compras\Models\Proveedor;
 use App\Modules\Compras\Services\RecepcionCompras;
 use App\Modules\Finanzas\Models\Puc;
 use App\Modules\Inventario\Models\Bodega;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -74,10 +75,55 @@ class CompraController extends Controller
     {
         Gate::authorize('compras.create');
 
-        $data = $request->validated();
+        $this->crear($request->validated(), $request->user()->id);
 
-        DB::transaction(function () use ($data, $request): void {
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Compra created.')]);
+
+        if ($request->boolean('stay_on_page')) {
+            return back();
+        }
+
+        return to_route('compras.index');
+    }
+
+    /**
+     * A Compras POS compra sent in the background (the POS already closed it
+     * for the user). Sending it again — the internet dropped before the answer
+     * arrived — gives back the compra created the first time.
+     */
+    public function sincronizar(StoreCompraRequest $request): JsonResponse
+    {
+        Gate::authorize('compras.create');
+
+        $codigo = $request->validate(['codigo_sincronizacion' => ['required', 'uuid']])['codigo_sincronizacion'];
+
+        $compra = Compra::where('codigo_sincronizacion', $codigo)->first();
+
+        if ($compra === null) {
+            try {
+                $compra = $this->crear($request->validated(), $request->user()->id);
+            } catch (UniqueConstraintViolationException) {
+                // The same compra arrived twice at once: the other request created it.
+                $compra = Compra::where('codigo_sincronizacion', $codigo)->firstOrFail();
+            }
+        }
+
+        return response()->json(
+            ['compra' => $compra->only(['id', 'factura', 'total_a_pagar'])],
+            $compra->wasRecentlyCreated ? 201 : 200,
+        );
+    }
+
+    /**
+     * Create a compra with its lines and payments.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function crear(array $data, int $userId): Compra
+    {
+        return DB::transaction(function () use ($data, $userId): Compra {
             $compra = Compra::create([
+                'codigo_sincronizacion' => $data['codigo_sincronizacion'] ?? null,
                 'factura' => $data['factura'],
                 'proveedor_id' => $data['proveedor_id'],
                 'fecha' => $data['fecha'],
@@ -91,17 +137,11 @@ class CompraController extends Controller
 
             $this->syncDetalles($compra, $data['detalles']);
             $compra->registrarCambioDetalles(null);
-            $this->registrarAbonos($compra, $data['abonos'] ?? [], $request->user()->id);
+            $this->registrarAbonos($compra, $data['abonos'] ?? [], $userId);
             $this->fijarTipoPago($compra->fresh(), $data['tipo_pago'] ?? null);
+
+            return $compra;
         });
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Compra created.')]);
-
-        if ($request->boolean('stay_on_page')) {
-            return back();
-        }
-
-        return to_route('compras.index');
     }
 
     /**

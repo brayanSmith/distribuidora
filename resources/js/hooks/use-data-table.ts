@@ -736,7 +736,7 @@ export function useDataTable<T>({
                 const subgroupCollapsedKey = subgroupKey(group, subgroup);
                 const subCollapsed = Boolean(
                     groupBySecondary &&
-                        collapsedGroups.has(subgroupCollapsedKey),
+                    collapsedGroups.has(subgroupCollapsedKey),
                 );
 
                 if (groupBySecondary) {

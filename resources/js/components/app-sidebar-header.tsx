@@ -1,8 +1,10 @@
 import { usePage, usePoll } from '@inertiajs/react';
 import { Upload } from 'lucide-react';
 import { useEffect } from 'react';
+import ActivarNotificacionesBoton from '@/components/activar-notificaciones-boton';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import ImportarModal from '@/components/importaciones/importar-modal';
+import ColaSincronizacionIndicador from '@/components/cola-sincronizacion-indicador';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
@@ -32,14 +34,16 @@ export function AppSidebarHeader({
     }, [puedeImportar, importacionesEnCurso, start, stop]);
 
     return (
-        <header className="border-sidebar-border/50 bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b px-6 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4">
+        <header className="border-sidebar-border/50 bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b px-6 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:rounded-t-xl md:px-4">
             <div className="flex items-center gap-2">
                 <SidebarTrigger className="-ml-1" />
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
 
-            {puedeImportar ? (
-                <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
+                <ActivarNotificacionesBoton />
+                <ColaSincronizacionIndicador />
+                {puedeImportar ? (
                     <ImportarModal>
                         <Button
                             variant="outline"
@@ -65,8 +69,8 @@ export function AppSidebarHeader({
                             ) : null}
                         </Button>
                     </ImportarModal>
-                </div>
-            ) : null}
+                ) : null}
+            </div>
         </header>
     );
 }

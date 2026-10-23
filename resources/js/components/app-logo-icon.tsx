@@ -1,17 +1,17 @@
 import { usePage } from '@inertiajs/react';
 import type { SVGAttributes } from 'react';
 
-/** The company logo from "Empresas" when there is one, else the default mark. */
+/** The company icon from "Empresas" (or its logo) when there is one, else the default mark. */
 export default function AppLogoIcon({
     className,
     ...props
 }: SVGAttributes<SVGElement>) {
-    const { logoUrl } = usePage().props;
+    const { iconoUrl } = usePage().props;
 
-    if (logoUrl) {
+    if (iconoUrl) {
         return (
             <img
-                src={logoUrl}
+                src={iconoUrl}
                 alt=""
                 className={`${className ?? ''} object-contain`}
             />

@@ -21,6 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { etiquetaTipoPago } from '@/lib/tipos-pago';
 import { cn } from '@/lib/utils';
 import { formatoFecha, plazo } from '@/lib/vencimiento';
 import * as pedidosAbonosRoutes from '@/routes/pedidos/abonos';
@@ -66,13 +67,6 @@ type Props = {
     canCreateAbono: boolean;
     pucs: PucOption[];
     vendedores: VendedorOption[];
-};
-
-const TIPOS_PAGO: Record<string, string> = {
-    CONTADO: 'Contado',
-    SEPARADO: 'Separado',
-    CREDITO: 'Crédito',
-    CONTRA_ENTREGA: 'Contra entrega',
 };
 
 /**
@@ -210,10 +204,9 @@ export default function CuentasPorCobrar({
                                                                 : '—'}
                                                         </TableCell>
                                                         <TableCell>
-                                                            {TIPOS_PAGO[
-                                                                pedido.tipo_pago ??
-                                                                    ''
-                                                            ] ?? '—'}
+                                                            {etiquetaTipoPago(
+                                                                pedido.tipo_pago,
+                                                            )}
                                                         </TableCell>
                                                         <TableCell>
                                                             <div>

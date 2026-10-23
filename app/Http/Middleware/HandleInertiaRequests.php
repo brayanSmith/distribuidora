@@ -50,9 +50,12 @@ class HandleInertiaRequests extends Middleware
             // The app is branded with the company saved in "Empresas".
             'name' => fn () => app(Branding::class)->name(),
             'logoUrl' => fn () => app(Branding::class)->logoUrl(),
+            'iconoUrl' => fn () => app(Branding::class)->iconoUrl(),
             'auth' => [
                 'user' => $user,
             ],
+            // Public VAPID key, for the browser to subscribe to push notifications.
+            'vapidPublicKey' => fn () => $user ? config('webpush.vapid.public_key') : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'tiposPrecioPermitidos' => fn () => $user?->tiposPrecioPermitidos() ?? [],
             'canViewRoles' => fn () => $user?->can('roles.view') ?? false,

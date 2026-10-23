@@ -27,6 +27,9 @@ class Compra extends Model
     use LogsDetalles;
     use SoftDeletes;
 
+    /** Days ahead counted as "due soon" (cuentas por pagar). */
+    public const DIAS_PROXIMOS_A_VENCER = 7;
+
     protected $casts = [
         'fecha' => 'datetime',
         'subtotal' => 'decimal:2',
@@ -40,6 +43,7 @@ class Compra extends Model
     protected $appends = ['vencida'];
 
     protected $fillable = [
+        'codigo_sincronizacion',
         'factura',
         'proveedor_id',
         'fecha',
@@ -165,6 +169,20 @@ class Compra extends Model
     public function scopeVencidas(Builder $query): Builder
     {
         return $query->where('saldo_pendiente', '>', 0)->whereDate('fecha_vencimiento', '<', today());
+    }
+
+    /**
+     * The compras that still owe something and are due within the next
+     * DIAS_PROXIMOS_A_VENCER days (today included).
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeProximasAVencer(Builder $query): Builder
+    {
+        return $query->where('saldo_pendiente', '>', 0)
+            ->whereDate('fecha_vencimiento', '>=', today())
+            ->whereDate('fecha_vencimiento', '<=', today()->addDays(self::DIAS_PROXIMOS_A_VENCER));
     }
 
     /**

@@ -16,15 +16,12 @@ use Inertia\Response;
  */
 class CuentasPorPagarController extends Controller
 {
-    /** Days ahead counted as "due soon". */
-    private const DIAS_PROXIMOS = 7;
-
     public function index(Request $request): Response
     {
         Gate::authorize('compras.view');
 
         $hoy = today();
-        $limiteProximas = $hoy->copy()->addDays(self::DIAS_PROXIMOS);
+        $limiteProximas = $hoy->copy()->addDays(Compra::DIAS_PROXIMOS_A_VENCER);
 
         $compras = Compra::query()
             ->where('saldo_pendiente', '>', 0)
@@ -65,7 +62,7 @@ class CuentasPorPagarController extends Controller
                 'total' => round((float) $compras->sum('saldo_pendiente'), 2),
                 'vencido' => round((float) $compras->where('vencida', true)->sum('saldo_pendiente'), 2),
                 'proximo' => round((float) $compras->filter($porVencer)->sum('saldo_pendiente'), 2),
-                'diasProximos' => self::DIAS_PROXIMOS,
+                'diasProximos' => Compra::DIAS_PROXIMOS_A_VENCER,
                 'facturas' => $compras->count(),
             ],
             'pucs' => $request->user()->can('compras.create-abono')

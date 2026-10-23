@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { Info, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Combobox from '@/components/combobox';
 import { Button } from '@/components/ui/button';
@@ -16,13 +16,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { PosAbono, PosNewAbono } from '@/hooks/use-pos-abonos';
 import type { PosEntrega, PosHeaderState } from '@/hooks/use-pos-header';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 import { calcularTotales } from '@/lib/pos-totals';
+import { TIPOS_PAGO } from '@/lib/tipos-pago';
 import { DIAS_RECOGIDA_SEPARADO, fechaMasDias } from '@/lib/vencimiento';
 import { cn } from '@/lib/utils';
-import type { ClienteOption, PucOption, TipoPagoPedido } from '@/types';
+import type {
+    ClienteOption,
+    PucOption,
+    TipoPagoPedido,
+    VendedorOption,
+} from '@/types';
 
 /** The id of the checkout `<form>`; the submit button lives in this modal. */
 export const POS_CHECKOUT_FORM_ID = 'pos-checkout-form';
@@ -31,6 +42,8 @@ type Props = {
     header: PosHeaderState;
     /** Days of credit of the cliente, for the suggested due date. */
     diasCredito: number;
+    /** Who can take a contra entrega. */
+    mensajeros: VendedorOption[];
     /** The cliente, to start the delivery data of a contra entrega with. */
     cliente: ClienteOption | null;
     onFieldChange: <K extends keyof PosHeaderState>(
@@ -51,13 +64,6 @@ type Props = {
     onClose: () => void;
 };
 
-const TIPOS_PAGO: { value: TipoPagoPedido; label: string }[] = [
-    { value: 'CONTADO', label: 'Contado' },
-    { value: 'SEPARADO', label: 'Separado' },
-    { value: 'CREDITO', label: 'Crédito' },
-    { value: 'CONTRA_ENTREGA', label: 'Contra entrega' },
-];
-
 const currencyFormatter = new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
@@ -70,9 +76,12 @@ const currencyFormatter = new Intl.NumberFormat('es-CO', {
 function entregaDelCliente(
     cliente: ClienteOption | null,
     clienteId: string,
+    /** Who takes it is kept: it doesn't depend on the cliente. */
+    mensajeroId = '',
 ): PosEntrega {
     return {
         clienteId,
+        mensajero_id: mensajeroId,
         direccion: cliente?.direccion ?? '',
         ciudad: cliente?.ciudad ?? '',
         telefono: cliente?.telefono ?? '',
@@ -91,6 +100,7 @@ function entregaDelCliente(
 export default function PosPagoModal({
     header,
     diasCredito,
+    mensajeros,
     cliente,
     onFieldChange,
     totalBruto,
@@ -116,7 +126,11 @@ export default function PosPagoModal({
         ) {
             onFieldChange(
                 'entrega',
-                entregaDelCliente(cliente, header.clienteId),
+                entregaDelCliente(
+                    cliente,
+                    header.clienteId,
+                    header.entrega?.mensajero_id,
+                ),
             );
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -253,15 +267,34 @@ export default function PosPagoModal({
                         data-test="pos-pago-tipo"
                     >
                         {TIPOS_PAGO.map((tipo) => (
-                            <ToggleGroupItem
-                                key={tipo.value}
-                                value={tipo.value}
-                                className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90"
-                            >
-                                {tipo.label}
-                            </ToggleGroupItem>
+                            <Tooltip key={tipo.value}>
+                                <TooltipTrigger asChild>
+                                    <ToggleGroupItem
+                                        value={tipo.value}
+                                        // The tooltip overwrites data-state, so the chosen one is styled by aria-checked.
+                                        className="aria-checked:bg-primary aria-checked:text-primary-foreground aria-checked:hover:bg-primary/90"
+                                    >
+                                        {tipo.label}
+                                    </ToggleGroupItem>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-64">
+                                    <p>{tipo.descripcion}</p>
+                                </TooltipContent>
+                            </Tooltip>
                         ))}
                     </ToggleGroup>
+                    {/* Touch screens have no hover: the chosen one explains itself here. */}
+                    <p
+                        className="text-muted-foreground flex gap-1.5 text-xs"
+                        data-test="pos-pago-tipo-descripcion"
+                    >
+                        <Info className="mt-px size-3.5 shrink-0" />
+                        {
+                            TIPOS_PAGO.find(
+                                (tipo) => tipo.value === header.tipoPago,
+                            )?.descripcion
+                        }
+                    </p>
                 </div>
 
                 {header.tipoPago === 'CONTRA_ENTREGA' && header.entrega ? (
@@ -278,10 +311,12 @@ export default function PosPagoModal({
                                           entregaDelCliente(
                                               cliente,
                                               header.clienteId,
+                                              header.entrega?.mensajero_id,
                                           ),
                                       )
                                 : undefined
                         }
+                        mensajeros={mensajeros}
                         errors={errors}
                     />
                 ) : null}

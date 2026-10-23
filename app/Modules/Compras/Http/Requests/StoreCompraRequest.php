@@ -19,6 +19,8 @@ class StoreCompraRequest extends FormRequest
             'factura' => ['required', 'string', 'max:255'],
             'proveedor_id' => ['required', 'integer', 'exists:proveedors,id'],
             'fecha' => ['required', 'date'],
+            // A Compras POS compra sent in the background: its code makes resending it harmless.
+            'codigo_sincronizacion' => ['nullable', 'uuid'],
             // Empty: the date of the compra plus the days of credit of the proveedor.
             'fecha_vencimiento' => ['nullable', 'date'],
             'observaciones' => ['nullable', 'string'],

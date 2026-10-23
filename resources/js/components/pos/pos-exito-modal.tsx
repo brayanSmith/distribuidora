@@ -11,10 +11,17 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    useColaSincronizacion,
+    useVoucherSincronizado,
+} from '@/lib/cola-sincronizacion';
 import type { PosVoucher } from '@/types';
 
 type Props = {
-    voucher: PosVoucher;
+    /** The voucher of a sale saved right away (with turno); null when it goes in the background. */
+    voucher: PosVoucher | null;
+    /** The code of a sale sent in the background: its voucher comes once the server takes it. */
+    codigoSincronizacion?: string | null;
     onClose: () => void;
 };
 
@@ -22,11 +29,27 @@ type Props = {
  * Shown after a sale is registered: the turno to call the customer with and
  * a button that renders the payment voucher as a PDF (in the browser, with
  * @react-pdf/renderer) and opens it in a new tab, ready to print.
+ *
+ * A sale sent in the background shows up at once; its remisión number and
+ * voucher appear as soon as the server takes it.
  */
-export default function PosExitoModal({ voucher, onClose }: Props) {
+export default function PosExitoModal({
+    voucher: voucherInmediato,
+    codigoSincronizacion = null,
+    onClose,
+}: Props) {
     const [generando, setGenerando] = useState(false);
+    const sincronizado = useVoucherSincronizado(codigoSincronizacion);
+    const enCola = useColaSincronizacion().find(
+        (venta) => venta.codigo === codigoSincronizacion,
+    );
+    const voucher = voucherInmediato ?? sincronizado;
 
     const imprimir = async () => {
+        if (!voucher) {
+            return;
+        }
+
         // Opened synchronously so the browser doesn't block it as a popup;
         // pointed at the PDF once it's rendered.
         const ventana = window.open('', '_blank');
@@ -54,7 +77,7 @@ export default function PosExitoModal({ voucher, onClose }: Props) {
         {
             key: 'F9',
             handler: () => {
-                if (!generando) {
+                if (!generando && voucher) {
                     void imprimir();
                 }
             },
@@ -73,12 +96,17 @@ export default function PosExitoModal({ voucher, onClose }: Props) {
                     <DialogTitle className="text-xl">
                         Registro de pedido exitoso
                     </DialogTitle>
-                    <DialogDescription>
-                        Remisión N° {voucher.pedido.id}
+                    <DialogDescription data-test="pos-exito-remision">
+                        {voucher
+                            ? `Remisión N° ${voucher.pedido.id}`
+                            : enCola?.estado === 'error'
+                              ? `El servidor rechazó la venta: ${enCola.problema}`
+                              : (enCola?.problema ??
+                                'Enviando al servidor... puedes seguir vendiendo.')}
                     </DialogDescription>
                 </DialogHeader>
 
-                {voucher.pedido.turno ? (
+                {voucher?.pedido.turno ? (
                     <div className="text-center">
                         <p className="text-muted-foreground text-xs tracking-widest">
                             TURNO
@@ -96,7 +124,8 @@ export default function PosExitoModal({ voucher, onClose }: Props) {
                     <Button
                         type="button"
                         onClick={imprimir}
-                        disabled={generando}
+                        disabled={generando || !voucher}
+                        loading={!voucher && enCola?.estado !== 'error'}
                         data-test="pos-imprimir-voucher"
                     >
                         <Printer />

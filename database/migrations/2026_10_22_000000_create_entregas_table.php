@@ -27,7 +27,8 @@ return new class extends Migration
             // Why it was returned or rescheduled the last time.
             $table->string('motivo')->nullable();
             $table->unsignedTinyInteger('reagendamientos')->default(0);
-            $table->string('mensajero')->nullable();
+            // Who takes it: a user, so the delivery's notifications go to them.
+            $table->foreignId('mensajero_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('despachada_at')->nullable();
             $table->timestamp('entregada_at')->nullable();
             $table->timestamps();

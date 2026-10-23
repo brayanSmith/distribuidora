@@ -50,6 +50,7 @@ class Pedido extends Model
         'fecha_vencimiento',
         'fecha_recogida',
         'recogido_at',
+        'codigo_sincronizacion',
         'user_id',
         'aplica_turno',
         'turno',

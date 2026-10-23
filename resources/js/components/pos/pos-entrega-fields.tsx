@@ -1,15 +1,19 @@
 import { RotateCcw, Truck } from 'lucide-react';
+import Combobox from '@/components/combobox';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { PosEntrega } from '@/hooks/use-pos-header';
+import type { VendedorOption } from '@/types';
 import { fechaMasDias } from '@/lib/vencimiento';
 
 type Props = {
     entrega: PosEntrega;
     onChange: (entrega: PosEntrega) => void;
     errors: Partial<Record<string, string>>;
+    /** Who can take it. */
+    mensajeros: VendedorOption[];
     /** Puts the cliente's data back, after it was changed by hand. */
     onUsarDatosCliente?: () => void;
 };
@@ -22,6 +26,7 @@ export default function PosEntregaFields({
     entrega,
     onChange,
     errors,
+    mensajeros,
     onUsarDatosCliente,
 }: Props) {
     const campo = <K extends keyof PosEntrega>(
@@ -85,6 +90,31 @@ export default function PosEntregaFields({
                     Déjalo vacío si se despacha lo antes posible.
                 </p>
                 <InputError message={errors['entrega.fecha_programada']} />
+            </div>
+
+            <div className="grid gap-2">
+                <Label htmlFor="pos-entrega-mensajero">Quién lo lleva</Label>
+                <Combobox
+                    options={[
+                        { value: '', label: 'Sin asignar' },
+                        ...mensajeros.map((mensajero) => ({
+                            value: String(mensajero.id),
+                            label: mensajero.name,
+                        })),
+                    ]}
+                    value={entrega.mensajero_id ?? ''}
+                    onValueChange={(valor) => campo('mensajero_id', valor)}
+                    placeholder="Sin asignar"
+                    searchPlaceholder="Buscar usuario..."
+                    emptyText="Ningún usuario puede hacer entregas."
+                    dataTest="pos-entrega-mensajero"
+                />
+                <p className="text-muted-foreground text-xs">
+                    {entrega.mensajero_id
+                        ? 'Solo a esta persona le llega el aviso de la entrega.'
+                        : 'Sin asignar, el aviso les llega a todos los que hacen entregas en la bodega.'}
+                </p>
+                <InputError message={errors['entrega.mensajero_id']} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">

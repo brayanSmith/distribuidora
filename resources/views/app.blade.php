@@ -31,9 +31,9 @@
         </style>
 
         @php($branding = app(\App\Support\Branding::class))
-        @if ($branding->logoUrl())
-            <link rel="icon" href="{{ $branding->logoUrl() }}">
-            <link rel="apple-touch-icon" href="{{ $branding->logoUrl() }}">
+        @if ($branding->iconoUrl())
+            <link rel="icon" href="{{ $branding->iconoUrl() }}">
+            <link rel="apple-touch-icon" href="{{ $branding->iconoUrl() }}">
         @else
             <link rel="icon" href="/favicon.ico" sizes="any">
             <link rel="icon" href="/favicon.svg" type="image/svg+xml">

@@ -16,6 +16,7 @@ import PasosEntrega from '@/components/entregas/pasos-entrega';
 import FiltroChips from '@/components/filtro-chips';
 import type { OpcionFiltro } from '@/components/filtro-chips';
 import Heading from '@/components/heading';
+import Combobox from '@/components/combobox';
 import InputError from '@/components/input-error';
 import RegistrarPagoModal from '@/components/pedidos/registrar-pago-modal';
 import VoucherButton from '@/components/pedidos/voucher-button';
@@ -64,7 +65,9 @@ type Entrega = {
     estado: EstadoEntrega;
     motivo: string | null;
     reagendamientos: number;
-    mensajero: string | null;
+    mensajero_id: number | null;
+    /** Who takes it. */
+    mensajero: { id: number; name: string } | null;
     despachada_at: string | null;
     entregada_at: string | null;
     pedido: Pick<
@@ -93,6 +96,8 @@ type Props = {
     canAnular: boolean;
     pucs: PucOption[];
     vendedores: VendedorOption[];
+    /** Who can take a delivery. */
+    mensajeros: VendedorOption[];
 };
 
 /** Which deliveries are listed: the pending ones (active + returned), one estado or all. */
@@ -203,6 +208,7 @@ export default function Entregas({
     canAnular,
     pucs,
     vendedores,
+    mensajeros,
 }: Props) {
     const [accion, setAccion] = useState<{
         tipo: Accion;
@@ -391,7 +397,7 @@ export default function Entregas({
                                         ) : null}
                                         {entrega.mensajero ? (
                                             <Dato icono={Truck}>
-                                                {entrega.mensajero}
+                                                {entrega.mensajero.name}
                                             </Dato>
                                         ) : null}
                                         {entrega.motivo ? (
@@ -536,6 +542,7 @@ export default function Entregas({
                     key={`${accion.tipo}-${accion.entrega.id}`}
                     tipo={accion.tipo}
                     entrega={accion.entrega}
+                    mensajeros={mensajeros}
                     onClose={() => setAccion(null)}
                 />
             ) : null}
@@ -586,13 +593,18 @@ function Dato({
 function AccionEntregaModal({
     tipo,
     entrega,
+    mensajeros,
     onClose,
 }: {
     tipo: Accion;
     entrega: Entrega;
+    mensajeros: VendedorOption[];
     onClose: () => void;
 }) {
-    const [mensajero, setMensajero] = useState(entrega.mensajero ?? '');
+    // Whoever was chosen at the sale comes already picked.
+    const [mensajeroId, setMensajeroId] = useState(
+        entrega.mensajero_id ? String(entrega.mensajero_id) : '',
+    );
     const [motivo, setMotivo] = useState('');
     const [fecha, setFecha] = useState(fechaMasDias(1));
     const [errores, setErrores] = useState<Record<string, string>>({});
@@ -641,7 +653,7 @@ function AccionEntregaModal({
         }
 
         const datos = {
-            DESPACHAR: { estado: 'EN_CAMINO', mensajero },
+            DESPACHAR: { estado: 'EN_CAMINO', mensajero_id: mensajeroId },
             DEVOLVER: { estado: 'DEVUELTO', motivo },
             REAGENDAR: {
                 estado: 'POR_DESPACHAR',
@@ -694,18 +706,24 @@ function AccionEntregaModal({
 
                     {tipo === 'DESPACHAR' ? (
                         <div className="grid gap-2">
-                            <Label htmlFor="entrega-mensajero">
-                                Mensajero / quién lo lleva
-                            </Label>
-                            <Input
-                                id="entrega-mensajero"
-                                value={mensajero}
-                                onChange={(event) =>
-                                    setMensajero(event.target.value)
-                                }
-                                autoFocus
-                                data-test="entrega-mensajero"
+                            <Label required>Quién lo lleva</Label>
+                            <Combobox
+                                options={mensajeros.map((mensajero) => ({
+                                    value: String(mensajero.id),
+                                    label: mensajero.name,
+                                }))}
+                                value={mensajeroId}
+                                onValueChange={setMensajeroId}
+                                placeholder="Elige quién lo lleva"
+                                searchPlaceholder="Buscar usuario..."
+                                emptyText="Ningún usuario puede hacer entregas."
+                                dataTest="entrega-mensajero"
                             />
+                            <p className="text-muted-foreground text-xs">
+                                Le llega un aviso con la dirección y lo que debe
+                                cobrar.
+                            </p>
+                            <InputError message={errores.mensajero_id} />
                         </div>
                     ) : null}
 

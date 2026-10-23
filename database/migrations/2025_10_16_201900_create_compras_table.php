@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::create('compras', function (Blueprint $table) {
             $table->id();
+            // Code the Compras POS gives a compra sent in the background, so
+            // sending it again (unstable internet) never creates it twice.
+            $table->uuid('codigo_sincronizacion')->nullable()->unique();
             $table->string('factura');
             $table->foreignId('proveedor_id')->constrained('proveedors');
             $table->dateTime('fecha')->nullable();

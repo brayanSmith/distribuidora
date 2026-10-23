@@ -6,6 +6,7 @@ use App\Models\User;
 use Database\Factories\EntregaFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -64,7 +65,7 @@ class Entrega extends Model
         'estado',
         'motivo',
         'reagendamientos',
-        'mensajero',
+        'mensajero_id',
         'despachada_at',
         'entregada_at',
     ];
@@ -88,6 +89,27 @@ class Entrega extends Model
             $usuario->idsBodegasPermitidas(),
             fn ($query, array $bodegaIds) => $query->whereIn('bodega_id', $bodegaIds),
         ));
+    }
+
+    /**
+     * The users who can take a delivery: the ones who see the deliveries (so
+     * they get its notifications and can move it along).
+     *
+     * @return Collection<int, User>
+     */
+    public static function mensajerosDisponibles(): Collection
+    {
+        return User::permission('entregas.view')->orderBy('name')->get(['id', 'name']);
+    }
+
+    /**
+     * Who takes it.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function mensajero(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'mensajero_id');
     }
 
     /**

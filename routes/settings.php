@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PushSuscripcionController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -10,6 +11,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // Push notifications of this device.
+    Route::post('push-suscripciones', [PushSuscripcionController::class, 'store'])->name('push-suscripciones.store');
+    Route::delete('push-suscripciones', [PushSuscripcionController::class, 'destroy'])->name('push-suscripciones.destroy');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

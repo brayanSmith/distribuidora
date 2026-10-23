@@ -24,7 +24,12 @@ import { Input } from '@/components/ui/input';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 import { usePersistedState } from '@/hooks/use-persisted-state';
 import { fechaMasDias } from '@/lib/vencimiento';
-import { pos, store } from '@/routes/compras';
+import {
+    encolar,
+    nuevoCodigoSincronizacion,
+    tomarParaReabrir,
+} from '@/lib/cola-sincronizacion';
+import { pos } from '@/routes/compras';
 import { precios } from '@/routes/productos';
 import type {
     BodegaOption,
@@ -35,6 +40,15 @@ import type {
     ProveedorPos,
     PucOption,
 } from '@/types';
+
+/** A compra as it was in this POS, to reopen it if the server rejects it. */
+type BorradorCompra = {
+    encabezado: CompraPosEncabezado;
+    lineas: CompraPosLinea[];
+    pagos: PagoCompra[];
+    tipoPago: TipoPagoCompra;
+    vencimiento: string;
+};
 
 type Props = {
     productos: CompraPosProducto[];
@@ -307,10 +321,13 @@ export default function ComprasPos({
             return;
         }
 
-        router.post(
-            store.url(),
-            {
-                stay_on_page: true,
+        // The compra is closed right away and sent in the background, so slow
+        // internet never holds whoever registers it.
+        encolar({
+            tipo: 'compra',
+            codigo: nuevoCodigoSincronizacion(),
+            creadaEn: new Date().toISOString(),
+            datos: {
                 proveedor_id: encabezado.proveedorId,
                 factura: encabezado.factura.trim(),
                 fecha: new Date().toISOString(),
@@ -334,15 +351,77 @@ export default function ComprasPos({
                     recibido: encabezado.recibido,
                 })),
             },
-            {
-                preserveScroll: true,
-                onStart: () => setProcesando(true),
-                onFinish: () => setProcesando(false),
-                onError: (errors) => setErrores(errors),
-                onSuccess: () => limpiar(),
+            resumen: {
+                tercero: proveedor?.nombre_proveedor ?? 'Sin proveedor',
+                total: totalCompra,
+                productos: lineas.length,
             },
-        );
+            borrador: {
+                encabezado,
+                lineas,
+                pagos,
+                tipoPago,
+                vencimiento,
+            } satisfies BorradorCompra,
+        });
+        limpiar();
+        toast.success('Compra registrada', {
+            description: 'Se está enviando al servidor; puedes seguir.',
+        });
     };
+
+    // Compras the server rejected come back here, to fix them and register them again.
+    useEffect(() => {
+        const abrirRechazadas = () =>
+            tomarParaReabrir('compra').forEach((rechazada) => {
+                const borrador = rechazada.borrador as BorradorCompra;
+                setEncabezado(borrador.encabezado);
+                setLineas(borrador.lineas);
+                setPagos(borrador.pagos);
+                setTipoPago(borrador.tipoPago);
+                setVencimiento(borrador.vencimiento);
+                toast.error(
+                    `Compra de ${rechazada.resumen.tercero} reabierta: ${rechazada.problema ?? 'el servidor la rechazó'}`,
+                );
+            });
+
+        abrirRechazadas();
+        window.addEventListener('cola-sincronizacion:reabrir', abrirRechazadas);
+
+        return () =>
+            window.removeEventListener(
+                'cola-sincronizacion:reabrir',
+                abrirRechazadas,
+            );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Once compras reach the server, the catalog (stock and costs) is
+    // refreshed, once for a burst of them.
+    useEffect(() => {
+        let espera: number | undefined;
+        const refrescar = (event: Event) => {
+            if ((event as CustomEvent<string>).detail !== 'compra') {
+                return;
+            }
+
+            window.clearTimeout(espera);
+            espera = window.setTimeout(
+                () => router.reload({ only: ['productos', 'navCounts'] }),
+                1500,
+            );
+        };
+
+        window.addEventListener('cola-sincronizacion:enviada', refrescar);
+
+        return () => {
+            window.clearTimeout(espera);
+            window.removeEventListener(
+                'cola-sincronizacion:enviada',
+                refrescar,
+            );
+        };
+    }, []);
 
     useHotkeys(
         [

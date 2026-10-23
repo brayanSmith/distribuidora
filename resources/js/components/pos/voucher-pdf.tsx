@@ -31,7 +31,21 @@ const styles = StyleSheet.create({
     },
     center: { textAlign: 'center' },
     bold: { fontFamily: 'Helvetica-Bold' },
-    logo: { width: 90, alignSelf: 'center', marginBottom: 4 },
+    // Square logos print as a block; wide ones take the ticket's width.
+    logoCuadrado: {
+        width: 80,
+        height: 80,
+        objectFit: 'contain',
+        alignSelf: 'center',
+        marginBottom: 4,
+    },
+    logoRectangular: {
+        width: 180,
+        maxHeight: 70,
+        objectFit: 'contain',
+        alignSelf: 'center',
+        marginBottom: 4,
+    },
     empresa: {
         fontFamily: 'Helvetica-Bold',
         fontSize: 13,
@@ -142,7 +156,16 @@ function VoucherDocument({
                 size={{ width: PAGE_WIDTH, height: alturaPagina(voucher) }}
                 style={styles.page}
             >
-                {logo ? <Image src={logo} style={styles.logo} /> : null}
+                {logo ? (
+                    <Image
+                        src={logo}
+                        style={
+                            empresa.formato_logo === 'CUADRADO'
+                                ? styles.logoCuadrado
+                                : styles.logoRectangular
+                        }
+                    />
+                ) : null}
                 <Text style={styles.empresa}>
                     {(empresa.nombre ?? '').toUpperCase()}
                 </Text>

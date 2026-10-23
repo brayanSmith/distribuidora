@@ -22,6 +22,10 @@ class UpdateEmpresaRequest extends FormRequest
             'nit_empresa' => ['nullable', 'string', 'max:255'],
             'logo_empresa' => ['nullable', 'image', 'max:4096'],
             'remove_logo_empresa' => ['boolean'],
+            'formato_logo' => ['sometimes', 'in:CUADRADO,RECTANGULAR'],
+            // Square, and big enough for phones (they show it at 192 px).
+            'icono_empresa' => ['nullable', 'image', 'max:2048', 'dimensions:min_width=64,min_height=64'],
+            'remove_icono_empresa' => ['boolean'],
         ];
     }
 }

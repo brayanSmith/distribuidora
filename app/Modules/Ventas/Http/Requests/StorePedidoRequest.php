@@ -18,6 +18,8 @@ class StorePedidoRequest extends FormRequest
         return [
             'cliente_id' => ['required', 'integer', 'exists:clientes,id'],
             'fecha' => ['required', 'date'],
+            // A POS sale sent in the background: its code makes resending it harmless.
+            'codigo_sincronizacion' => ['nullable', 'uuid'],
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'bodega_id' => ['required', 'integer', 'exists:bodegas,id'],
             'tipo_precio' => ['required', 'string', 'in:DETAL,MAYORISTA,OTRO'],
@@ -32,6 +34,8 @@ class StorePedidoRequest extends FormRequest
             'entrega.recibe' => ['nullable', 'string', 'max:255'],
             'entrega.nota' => ['nullable', 'string', 'max:255'],
             'entrega.fecha_programada' => ['nullable', 'date', 'after_or_equal:today'],
+            // Who takes it (optional): then only they get the notification.
+            'entrega.mensajero_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             // Only for CREDITO; empty: the date plus the days of credit of the cliente.
             'fecha_vencimiento' => ['nullable', 'date'],
             // Separado: the day the cliente comes for it.

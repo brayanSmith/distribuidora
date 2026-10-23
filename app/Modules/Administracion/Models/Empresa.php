@@ -2,9 +2,9 @@
 
 namespace App\Modules\Administracion\Models;
 
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use App\Models\Concerns\LogsCambios;
 use Database\Factories\EmpresaFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +20,7 @@ class Empresa extends Model
 
     protected $appends = [
         'logo_empresa_url',
+        'icono_empresa_url',
     ];
 
     protected $fillable = [
@@ -29,7 +30,21 @@ class Empresa extends Model
         'email_empresa',
         'nit_empresa',
         'logo_empresa',
+        'formato_logo',
+        'icono_empresa',
     ];
+
+    /**
+     * The square icon (browser tab, sidebar, notifications).
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function iconoEmpresaUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->icono_empresa ? Storage::disk('public')->url($this->icono_empresa) : null,
+        );
+    }
 
     /**
      * @return Attribute<string|null, never>

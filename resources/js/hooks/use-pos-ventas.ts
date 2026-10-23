@@ -173,6 +173,25 @@ export function usePosVentas(storageKey: string) {
             };
         });
 
+    /** Opens a sale again as a new tab (one the server rejected), keeping its cart. */
+    const reabrir = (venta: Omit<PosVenta, 'id' | 'nombre'>) =>
+        setState((prev) => ({
+            ventas: [
+                // An untouched empty tab is replaced instead of piling up.
+                ...prev.ventas.filter(
+                    (item) =>
+                        item.lines.length > 0 || item.header.clienteId !== '',
+                ),
+                {
+                    ...venta,
+                    id: prev.siguiente,
+                    nombre: `Venta ${prev.siguiente} (reabierta)`,
+                },
+            ],
+            activaId: prev.siguiente,
+            siguiente: prev.siguiente + 1,
+        }));
+
     /** Drops cart lines whose product no longer exists in the catalog. */
     const depurar = (productoIds: Set<number>) =>
         setState((prev) => ({
@@ -194,6 +213,7 @@ export function usePosVentas(storageKey: string) {
         seleccionar,
         nuevaVenta,
         cerrar,
+        reabrir,
         depurar,
     };
 }

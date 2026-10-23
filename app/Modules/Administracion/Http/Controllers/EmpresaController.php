@@ -37,17 +37,10 @@ class EmpresaController extends Controller
         Gate::authorize('empresa.update');
 
         $empresa = Empresa::first();
-        $data = $request->safe()->except(['logo_empresa', 'remove_logo_empresa']);
+        $data = $request->safe()->except(['logo_empresa', 'remove_logo_empresa', 'icono_empresa', 'remove_icono_empresa']);
 
-        if ($request->hasFile('logo_empresa')) {
-            if ($empresa?->logo_empresa) {
-                Storage::disk('public')->delete($empresa->logo_empresa);
-            }
-
-            $data['logo_empresa'] = $request->file('logo_empresa')->store('empresa', 'public');
-        } elseif ($request->boolean('remove_logo_empresa') && $empresa?->logo_empresa) {
-            Storage::disk('public')->delete($empresa->logo_empresa);
-            $data['logo_empresa'] = null;
+        foreach (['logo_empresa', 'icono_empresa'] as $campo) {
+            $data = [...$data, ...$this->imagen($request, $empresa, $campo)];
         }
 
         if ($empresa) {
@@ -59,5 +52,30 @@ class EmpresaController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Company profile updated.')]);
 
         return to_route('empresa.edit');
+    }
+
+    /**
+     * A new image for the field (the old file is deleted), or none when it
+     * was removed; nothing when it did not change.
+     *
+     * @return array<string, string|null>
+     */
+    private function imagen(UpdateEmpresaRequest $request, ?Empresa $empresa, string $campo): array
+    {
+        if ($request->hasFile($campo)) {
+            if ($empresa?->{$campo}) {
+                Storage::disk('public')->delete($empresa->{$campo});
+            }
+
+            return [$campo => $request->file($campo)->store('empresa', 'public')];
+        }
+
+        if ($request->boolean('remove_'.$campo) && $empresa?->{$campo}) {
+            Storage::disk('public')->delete($empresa->{$campo});
+
+            return [$campo => null];
+        }
+
+        return [];
     }
 }

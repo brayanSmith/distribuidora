@@ -26,6 +26,7 @@ import {
     TotalRow,
 } from '@/components/record-view';
 import { cn } from '@/lib/utils';
+import { etiquetaTipoPago } from '@/lib/tipos-pago';
 import { formatoFecha } from '@/lib/vencimiento';
 import type { Pedido, PedidoRoutes } from '@/types';
 
@@ -78,7 +79,7 @@ type PedidoDetalleCompleto = Omit<Pedido, 'detalles' | 'abonos'> & {
         recibe: string | null;
         nota: string | null;
         estado: string;
-        mensajero: string | null;
+        mensajero: { name: string } | null;
     } | null;
 };
 
@@ -176,9 +177,7 @@ export default function VerPedidoModal({ pedido, routes, onClose }: Props) {
                                 {record.cliente?.direccion}
                             </Field>
                             <Field label="Tipo de pago">
-                                {record.tipo_pago === 'CONTRA_ENTREGA'
-                                    ? 'Contra entrega'
-                                    : record.tipo_pago}
+                                {etiquetaTipoPago(record.tipo_pago)}
                             </Field>
                             {record.entrega ? (
                                 <>
@@ -200,7 +199,7 @@ export default function VerPedidoModal({ pedido, routes, onClose }: Props) {
                                             ' ',
                                         )}
                                         {record.entrega.mensajero
-                                            ? ` · ${record.entrega.mensajero}`
+                                            ? ` · ${record.entrega.mensajero.name}`
                                             : ''}
                                     </Field>
                                     {record.entrega.nota ? (

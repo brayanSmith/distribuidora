@@ -7,19 +7,43 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { getCroppedImageFile } from '@/lib/crop-image';
 import { cn } from '@/lib/utils';
+
+/** A shape the image can be cropped to. */
+export type FormatoRecorte = {
+    value: string;
+    label: string;
+    /** Width / height; null keeps the image's own shape (nothing cut). */
+    aspecto: number | null;
+};
+
+export const RECORTE_CUADRADO: FormatoRecorte = {
+    value: 'CUADRADO',
+    label: 'Cuadrado',
+    aspecto: 1,
+};
 
 type Props = {
     label: string;
     value?: string | null;
     onChange: (file: File | null, removed: boolean) => void;
     error?: string;
+    /** The shapes to choose from; one alone is used without asking. Square by default. */
+    formatos?: FormatoRecorte[];
+    /** The shape chosen first (the one the current image has). */
+    formatoInicial?: string;
+    /** The shape applied, and its width / height. */
+    onFormatoChange?: (formato: string, aspecto: number) => void;
+    /** The longest side of the uploaded image, in px. */
+    maxLado?: number;
 };
 
 export default function ImageDropCropper({
@@ -27,15 +51,34 @@ export default function ImageDropCropper({
     value,
     onChange,
     error,
+    formatos = [RECORTE_CUADRADO],
+    formatoInicial,
+    onFormatoChange,
+    maxLado,
 }: Props) {
     const [preview, setPreview] = useState<string | null>(value ?? null);
     const [cropSrc, setCropSrc] = useState<string | null>(null);
+    const [tipoOriginal, setTipoOriginal] = useState<string>('');
     const [cropOpen, setCropOpen] = useState(false);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(
         null,
     );
+    const [formato, setFormato] = useState(
+        formatos.find((opcion) => opcion.value === formatoInicial)?.value ??
+            formatos[0].value,
+    );
+    /** The shape of the loaded image, for the "keep its shape" option. */
+    const [aspectoImagen, setAspectoImagen] = useState(1);
+    /** The shape the preview box takes (the last image applied). */
+    const [aspectoPreview, setAspectoPreview] = useState(
+        formatos.find((opcion) => opcion.value === formato)?.aspecto ?? 1,
+    );
+
+    const elegido =
+        formatos.find((opcion) => opcion.value === formato) ?? formatos[0];
+    const aspecto = elegido.aspecto ?? aspectoImagen;
 
     useEffect(() => {
         setPreview(value ?? null);
@@ -49,6 +92,7 @@ export default function ImageDropCropper({
         }
 
         setCropSrc(URL.createObjectURL(file));
+        setTipoOriginal(file.type);
         setCrop({ x: 0, y: 0 });
         setZoom(1);
         setCropOpen(true);
@@ -80,10 +124,13 @@ export default function ImageDropCropper({
             cropSrc,
             croppedAreaPixels,
             'imagen.jpg',
+            { tipoOriginal, maxLado },
         );
 
         setPreview(URL.createObjectURL(file));
+        setAspectoPreview(aspecto);
         onChange(file, false);
+        onFormatoChange?.(formato, aspecto);
         closeCropDialog();
     };
 
@@ -100,7 +147,9 @@ export default function ImageDropCropper({
             <div
                 {...getRootProps()}
                 className={cn(
-                    'relative flex h-40 w-40 cursor-pointer items-center justify-center overflow-hidden rounded-md border-2 border-dashed transition-colors',
+                    'relative flex h-40 cursor-pointer items-center justify-center overflow-hidden rounded-md border-2 border-dashed transition-colors',
+                    // Wide images get a wide box, so the preview is not cut.
+                    aspectoPreview > 1.3 ? 'w-72 max-w-full' : 'w-40',
                     isDragActive
                         ? 'border-primary bg-primary/5'
                         : 'border-input hover:bg-accent/50',
@@ -113,7 +162,7 @@ export default function ImageDropCropper({
                         <img
                             src={preview}
                             alt=""
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-contain"
                         />
                         <button
                             type="button"
@@ -144,10 +193,41 @@ export default function ImageDropCropper({
                     }
                 }}
             >
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Ajustar imagen</DialogTitle>
+                        <DialogDescription>
+                            Arrastra la imagen y usa el zoom para elegir qué
+                            parte queda.
+                        </DialogDescription>
                     </DialogHeader>
+
+                    {formatos.length > 1 ? (
+                        <ToggleGroup
+                            type="single"
+                            variant="outline"
+                            value={formato}
+                            onValueChange={(valor) => {
+                                if (valor) {
+                                    setFormato(valor);
+                                    setCrop({ x: 0, y: 0 });
+                                    setZoom(1);
+                                }
+                            }}
+                            className="justify-start"
+                            data-test="crop-formato"
+                        >
+                            {formatos.map((opcion) => (
+                                <ToggleGroupItem
+                                    key={opcion.value}
+                                    value={opcion.value}
+                                    className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground px-3"
+                                >
+                                    {opcion.label}
+                                </ToggleGroupItem>
+                            ))}
+                        </ToggleGroup>
+                    ) : null}
 
                     <div className="bg-muted relative h-72 w-full overflow-hidden rounded-md">
                         {cropSrc ? (
@@ -155,9 +235,17 @@ export default function ImageDropCropper({
                                 image={cropSrc}
                                 crop={crop}
                                 zoom={zoom}
-                                aspect={1}
+                                minZoom={elegido.aspecto === null ? 1 : 0.5}
+                                aspect={aspecto}
+                                restrictPosition={elegido.aspecto === null}
                                 onCropChange={setCrop}
                                 onZoomChange={setZoom}
+                                onMediaLoaded={(media) =>
+                                    setAspectoImagen(
+                                        media.naturalWidth /
+                                            media.naturalHeight,
+                                    )
+                                }
                                 onCropComplete={(_, pixels) =>
                                     setCroppedAreaPixels(pixels)
                                 }
@@ -171,9 +259,9 @@ export default function ImageDropCropper({
                         </span>
                         <input
                             type="range"
-                            min={1}
+                            min={elegido.aspecto === null ? 1 : 0.5}
                             max={3}
-                            step={0.1}
+                            step={0.05}
                             value={zoom}
                             onChange={(event) =>
                                 setZoom(Number(event.target.value))

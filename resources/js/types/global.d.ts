@@ -13,6 +13,8 @@ declare module '@inertiajs/core' {
             name: string;
             /** The company logo from "Empresas", when one was uploaded. */
             logoUrl: string | null;
+            /** The company icon (or its logo while there is none): tab, sidebar, notifications. */
+            iconoUrl: string | null;
             auth: Auth;
             sidebarOpen: boolean;
             /** Product prices the user may see: valor_detal, valor_mayorista, costo. */
@@ -41,6 +43,8 @@ declare module '@inertiajs/core' {
             canRecibirCompras: boolean;
             canViewEntregas: boolean;
             canViewSeparados: boolean;
+            /** Public VAPID key for push notifications (null signed out). */
+            vapidPublicKey: string | null;
             canViewPedidos: boolean;
             canViewStockIniciales: boolean;
             canViewStockBodegas: boolean;

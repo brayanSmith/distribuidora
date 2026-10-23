@@ -14,6 +14,7 @@ type Props = {
     productos: PosCatalogoProducto[];
     bodegas: BodegaOption[];
     vendedores: VendedorOption[];
+    mensajeros: VendedorOption[];
     pucs: PucOption[];
     categorias: CategoriaOption[];
     canCreateProducto: boolean;

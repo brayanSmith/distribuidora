@@ -15,6 +15,7 @@ Route::delete('proveedores/{proveedor}', [ProveedorController::class, 'destroy']
 Route::patch('proveedores/{proveedor}/restaurar', [ProveedorController::class, 'restore'])->withTrashed()->name('proveedores.restore');
 
 Route::get('compras/pos', [ComprasPosController::class, 'index'])->name('compras.pos');
+Route::post('compras/sincronizar', [CompraController::class, 'sincronizar'])->name('compras.sincronizar');
 Route::get('compras/cuentas-por-pagar', [CuentasPorPagarController::class, 'index'])->name('compras.cuentas-por-pagar');
 Route::get('compras/pendientes', [RecepcionCompraController::class, 'index'])->name('compras.pendientes');
 Route::post('compras/{compra}/recepciones', [RecepcionCompraController::class, 'store'])->name('compras.recepciones.store');

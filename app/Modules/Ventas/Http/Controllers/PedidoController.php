@@ -194,7 +194,7 @@ class PedidoController extends Controller
             'detalles' => fn ($query) => $query->withTrashed()
                 ->with(['producto:id,referencia_producto,descripcion_producto,marca', 'bodega:id,nombre_bodega']),
             'abonos' => fn ($query) => $query->with(['puc:id,concatenar_subcuenta_concepto', 'vendedor:id,name']),
-            'entrega',
+            'entrega.mensajero:id,name',
         ]);
 
         // What the pedido cost and earned is not for this view.

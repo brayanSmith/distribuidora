@@ -35,6 +35,12 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import {
+    encolar,
+    nuevoCodigoSincronizacion,
+    tomarParaReabrir,
+} from '@/lib/cola-sincronizacion';
+import type { PosVenta } from '@/hooks/use-pos-ventas';
 import { calcularTotales } from '@/lib/pos-totals';
 import { DIAS_RECOGIDA_SEPARADO, fechaMasDias } from '@/lib/vencimiento';
 import { pedidos as pedidosPos, store } from '@/routes/pos';
@@ -55,6 +61,8 @@ type Props = {
     productos: PosCatalogoProducto[];
     bodegas: BodegaOption[];
     vendedores: VendedorOption[];
+    /** Who can take a contra entrega. */
+    mensajeros: VendedorOption[];
     pucs: PucOption[];
     categorias: CategoriaOption[];
     canCreateProducto: boolean;
@@ -74,6 +82,7 @@ export default function PosPage({
     productos,
     bodegas,
     vendedores,
+    mensajeros,
     pucs,
     categorias,
     canCreateProducto,
@@ -101,6 +110,52 @@ export default function PosPage({
         (observacion) => setField('observacionPago', observacion),
     );
 
+    // Sales the server rejected come back here as tabs, to fix and charge them again.
+    useEffect(() => {
+        const abrirRechazadas = () =>
+            tomarParaReabrir('venta').forEach((rechazada) => {
+                ventas.reabrir(
+                    rechazada.borrador as Omit<PosVenta, 'id' | 'nombre'>,
+                );
+                toast.error(
+                    `Venta de ${rechazada.resumen.tercero} reabierta: ${rechazada.problema ?? 'el servidor la rechazó'}`,
+                );
+            });
+
+        abrirRechazadas();
+        window.addEventListener('cola-sincronizacion:reabrir', abrirRechazadas);
+
+        return () =>
+            window.removeEventListener(
+                'cola-sincronizacion:reabrir',
+                abrirRechazadas,
+            );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Once background sales reach the server, the catalog's stock is refreshed
+    // (once for a burst of them).
+    useEffect(() => {
+        let espera: number | undefined;
+        const refrescar = () => {
+            window.clearTimeout(espera);
+            espera = window.setTimeout(
+                () => router.reload({ only: ['productos', 'navCounts'] }),
+                1500,
+            );
+        };
+
+        window.addEventListener('cola-sincronizacion:enviada', refrescar);
+
+        return () => {
+            window.clearTimeout(espera);
+            window.removeEventListener(
+                'cola-sincronizacion:enviada',
+                refrescar,
+            );
+        };
+    }, []);
+
     const { depurar } = ventas;
     useEffect(() => {
         depurar(new Set(productos.map((producto) => producto.id)));
@@ -111,6 +166,8 @@ export default function PosPage({
     const [pagoOpen, setPagoOpen] = useState(false);
     const [pedidosOpen, setPedidosOpen] = useState(false);
     const [voucher, setVoucher] = useState<PosVoucher | null>(null);
+    /** The sale just sent in the background, for the success modal. */
+    const [codigoEnCola, setCodigoEnCola] = useState<string | null>(null);
     const [ayudaOpen, setAyudaOpen] = useState(false);
     const [actualizando, setActualizando] = useState(false);
     const searchRef = useRef<HTMLInputElement>(null);
@@ -449,6 +506,36 @@ export default function PosPage({
                     preserveScroll: true,
                     only: ['productos', 'navCounts'],
                 }}
+                // Without turno nothing has to come back from the server at
+                // once: the sale is closed right away and sent in the
+                // background, so slow internet never holds the cashier.
+                onBefore={(visit) => {
+                    if (header.aplicaTurno) {
+                        return;
+                    }
+
+                    const codigo = nuevoCodigoSincronizacion();
+                    encolar({
+                        tipo: 'venta',
+                        codigo,
+                        creadaEn: new Date().toISOString(),
+                        datos: visit.data as Record<string, unknown>,
+                        resumen: {
+                            tercero: cliente?.razon_social ?? 'Sin cliente',
+                            total: totalVenta,
+                            productos: cart.lines.length,
+                        },
+                        borrador: {
+                            header: ventas.activa.header,
+                            lines: ventas.activa.lines,
+                            abonos: ventas.activa.abonos,
+                        },
+                    });
+                    finalizarVenta();
+                    setCodigoEnCola(codigo);
+
+                    return false;
+                }}
                 onStart={() => setProcessing(true)}
                 onFinish={() => setProcessing(false)}
                 onSuccess={(page) => {
@@ -637,6 +724,7 @@ export default function PosPage({
                     header={header}
                     onFieldChange={setField}
                     diasCredito={cliente?.dias_credito ?? 0}
+                    mensajeros={mensajeros}
                     cliente={cliente}
                     totalBruto={cart.totalBruto}
                     pucs={pucs}
@@ -658,10 +746,15 @@ export default function PosPage({
                 <PosAtajosModal onClose={() => setAyudaOpen(false)} />
             ) : null}
 
-            {voucher ? (
+            {voucher || codigoEnCola ? (
                 <PosExitoModal
+                    key={codigoEnCola ?? voucher?.pedido.id}
                     voucher={voucher}
-                    onClose={() => setVoucher(null)}
+                    codigoSincronizacion={codigoEnCola}
+                    onClose={() => {
+                        setVoucher(null);
+                        setCodigoEnCola(null);
+                    }}
                 />
             ) : null}
 
