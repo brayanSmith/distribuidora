@@ -48,6 +48,8 @@ class Pedido extends Model
         'abono',
         'saldo_pendiente',
         'fecha_vencimiento',
+        'fecha_recogida',
+        'recogido_at',
         'user_id',
         'aplica_turno',
         'turno',
@@ -75,11 +77,16 @@ class Pedido extends Model
         );
     }
 
+    /** Days a separado waits for the cliente unless another day is given. */
+    public const DIAS_RECOGIDA_SEPARADO = 7;
+
     protected $appends = ['vencido'];
 
     protected $casts = [
         'fecha' => 'datetime',
         'fecha_vencimiento' => 'date:Y-m-d',
+        'fecha_recogida' => 'date:Y-m-d',
+        'recogido_at' => 'datetime',
         'fecha_ultimo_abono' => 'datetime',
         'reteica' => 'decimal:2',
         'retefuente' => 'decimal:2',
@@ -205,6 +212,17 @@ class Pedido extends Model
                 && $this->fecha_vencimiento !== null
                 && $this->fecha_vencimiento->lt(today()),
         );
+    }
+
+    /**
+     * The separados the cliente has not picked up yet.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeSeparadosPorRecoger(Builder $query): Builder
+    {
+        return $query->where('tipo_pago', 'SEPARADO')->whereNull('recogido_at');
     }
 
     /**

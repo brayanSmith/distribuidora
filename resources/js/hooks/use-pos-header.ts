@@ -26,6 +26,8 @@ export type PosHeaderState = {
     tipoPago: TipoPagoPedido;
     /** Due date (Y-m-d) of a pedido on credit; '' until one is picked. */
     fechaVencimiento: string;
+    /** Day a separado is picked up (Y-m-d); '' for the default (missing in carts saved before it existed). */
+    fechaRecogida?: string;
     /** Where a contra entrega pedido goes (missing in carts saved before it existed). */
     entrega?: PosEntrega;
     observacion: string;

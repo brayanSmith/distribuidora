@@ -71,6 +71,7 @@ class HandleInertiaRequests extends Middleware
             'canCreateCompras' => fn () => $user?->can('compras.create') ?? false,
             'canRecibirCompras' => fn () => $user?->can('compras.recibir') ?? false,
             'canViewEntregas' => fn () => $user?->can('entregas.view') ?? false,
+            'canViewSeparados' => fn () => $user?->can('separados.view') ?? false,
             'canViewPedidos' => fn () => $user?->can('pedidos.view') ?? false,
             'canViewProductos' => fn () => $user?->can('productos.view') ?? false,
             // What the user may import from a file (productos, medios de pago...).
@@ -96,7 +97,7 @@ class HandleInertiaRequests extends Middleware
      * the modules the user can open. Compras also carries how many of them
      * are still PENDIENTE.
      *
-     * @return array{pedidos: int, pedidosPorCobrar: int, pedidosVencidos: int, compras: int, comprasPendientes: int, comprasPorPagar: int, comprasVencidas: int, entregasActivas: int, entregasDevueltas: int}
+     * @return array{pedidos: int, pedidosPorCobrar: int, pedidosVencidos: int, compras: int, comprasPendientes: int, comprasPorPagar: int, comprasVencidas: int, entregasActivas: int, entregasDevueltas: int, separadosPorRecoger: int, separadosVencidos: int}
      */
     private function navCounts(?User $user): array
     {
@@ -129,6 +130,13 @@ class HandleInertiaRequests extends Middleware
                 : 0,
             'entregasDevueltas' => $user?->can('entregas.view')
                 ? Entrega::visiblesPara($user)->where('estado', Entrega::DEVUELTO)->count()
+                : 0,
+            // Separados the cliente has not picked up, and those past their pickup day.
+            'separadosPorRecoger' => $user?->can('separados.view')
+                ? Pedido::separadosPorRecoger()->when($user->idsBodegasPermitidas(), fn ($query, array $bodegaIds) => $query->whereIn('bodega_id', $bodegaIds))->count()
+                : 0,
+            'separadosVencidos' => $user?->can('separados.view')
+                ? Pedido::separadosPorRecoger()->when($user->idsBodegasPermitidas(), fn ($query, array $bodegaIds) => $query->whereIn('bodega_id', $bodegaIds))->whereDate('fecha_recogida', '<', today())->count()
                 : 0,
             // Compras that still owe something to the proveedor, and those past their due date.
             'comprasPorPagar' => $user?->can('compras.view')

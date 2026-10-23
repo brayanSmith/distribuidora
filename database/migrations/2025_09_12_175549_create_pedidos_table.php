@@ -33,6 +33,9 @@ return new class extends Migration
             $table->decimal('saldo_pendiente', 12, 2)->default(0);
             // When a pedido on credit must be paid; past it with a balance it is overdue.
             $table->date('fecha_vencimiento')->nullable();
+            // Separado: the day the cliente comes for it, and when it was handed over.
+            $table->date('fecha_recogida')->nullable();
+            $table->timestamp('recogido_at')->nullable();
             $table->foreignId('user_id')->constrained('users')->nullable();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->boolean('aplica_turno')->default(false);

@@ -36,6 +36,7 @@ class PermissionSeeder extends Seeder
         'dashboard' => ['widget-productos', 'widget-ganancia', 'widget-ajustes', 'tabla-bodegas', 'chart-categorias', 'chart-top-productos', 'chart-pedidos', 'alerta-stock'],
         'traslados' => ['view', 'create', 'update', 'delete'],
         'entregas' => ['view', 'update'],
+        'separados' => ['view', 'update'],
     ];
 
     /**

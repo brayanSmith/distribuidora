@@ -27,6 +27,7 @@ import {
     Wallet,
     Warehouse,
     Bike,
+    ShoppingBag,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AppLogo from '@/components/app-logo';
@@ -53,6 +54,7 @@ import {
 } from '@/routes/compras';
 import { index as cotizadorIndex } from '@/routes/cotizador';
 import { index as entregasIndex } from '@/routes/entregas';
+import { index as separadosIndex } from '@/routes/separados';
 import { edit as empresaEdit } from '@/routes/empresa';
 import { index as gastosIndex } from '@/routes/gastos';
 import { index as historialIndex } from '@/routes/historial';
@@ -166,6 +168,15 @@ export function AppSidebar() {
                     page.props.navCounts?.entregasActivas || undefined,
                     page.props.navCounts?.entregasDevueltas || undefined,
                     'Entregas devueltas sin resolver',
+                ),
+                ...entry(
+                    page.props.canViewSeparados,
+                    'Separados',
+                    separadosIndex,
+                    ShoppingBag,
+                    page.props.navCounts?.separadosPorRecoger || undefined,
+                    page.props.navCounts?.separadosVencidos || undefined,
+                    'Separados que no vinieron a tiempo',
                 ),
             ],
         },

@@ -467,8 +467,7 @@ export default function DataTable<T>({
                             }
 
                             if (entry.kind === 'subgroup') {
-                                const { group, parentGroup, collapsed } =
-                                    entry;
+                                const { group, parentGroup, collapsed } = entry;
 
                                 return (
                                     <TableRow
@@ -498,9 +497,8 @@ export default function DataTable<T>({
                                                 ) : (
                                                     <ChevronDown className="size-3.5" />
                                                 )}
-                                                {groupSecondaryLabel?.(
-                                                    group,
-                                                ) ?? group}
+                                                {groupSecondaryLabel?.(group) ??
+                                                    group}
                                                 <span className="text-muted-foreground text-xs font-normal">
                                                     {table.subgroupCounts
                                                         .get(parentGroup)

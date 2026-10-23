@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/sheet';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { calcularTotales } from '@/lib/pos-totals';
+import { DIAS_RECOGIDA_SEPARADO, fechaMasDias } from '@/lib/vencimiento';
 import { pedidos as pedidosPos, store } from '@/routes/pos';
 import { voucher as voucherRoute } from '@/routes/pos/pedidos';
 import type {
@@ -517,6 +518,16 @@ export default function PosPage({
                                   />
                               ))
                         : null}
+                    {header.tipoPago === 'SEPARADO' ? (
+                        <input
+                            type="hidden"
+                            name="fecha_recogida"
+                            value={
+                                header.fechaRecogida ||
+                                fechaMasDias(DIAS_RECOGIDA_SEPARADO)
+                            }
+                        />
+                    ) : null}
                     {header.tipoPago === 'CREDITO' &&
                     header.fechaVencimiento ? (
                         <input

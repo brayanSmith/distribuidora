@@ -22,9 +22,11 @@ export default function ProductoImageUpload({
 }: Props) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [items, setItems] = useState<Item[]>(() =>
-        existentes.map(
-            ({ id, url }): Item => ({ kind: 'existente', id, src: url }),
-        ),
+        existentes.map(({ id, url }): Item => ({
+            kind: 'existente',
+            id,
+            src: url,
+        })),
     );
     const [quitadas, setQuitadas] = useState<number[]>([]);
 
@@ -54,13 +56,11 @@ export default function ProductoImageUpload({
     const onDrop = useCallback((acceptedFiles: File[]) => {
         setItems((actuales) => [
             ...actuales,
-            ...acceptedFiles.map(
-                (file): Item => ({
-                    kind: 'nueva',
-                    file,
-                    src: URL.createObjectURL(file),
-                }),
-            ),
+            ...acceptedFiles.map((file): Item => ({
+                kind: 'nueva',
+                file,
+                src: URL.createObjectURL(file),
+            })),
         ]);
     }, []);
 

@@ -34,6 +34,8 @@ class StorePedidoRequest extends FormRequest
             'entrega.fecha_programada' => ['nullable', 'date', 'after_or_equal:today'],
             // Only for CREDITO; empty: the date plus the days of credit of the cliente.
             'fecha_vencimiento' => ['nullable', 'date'],
+            // Separado: the day the cliente comes for it.
+            'fecha_recogida' => ['nullable', 'date', 'after_or_equal:today'],
             'observacion' => ['nullable', 'string'],
             'observacion_pago' => ['nullable', 'string'],
             'flete' => ['nullable', 'numeric', 'min:0'],
@@ -60,6 +62,7 @@ class StorePedidoRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'fecha_recogida.after_or_equal' => 'La fecha de recogida no puede ser anterior a hoy.',
             'entrega.direccion.required_if' => 'La dirección de entrega es obligatoria para contra entrega.',
             'entrega.telefono.required_if' => 'El teléfono de entrega es obligatorio para contra entrega.',
         ];

@@ -31,6 +31,7 @@ const RESOURCE_LABELS: Record<string, string> = {
     historial: 'Historial de cambios',
     traslados: 'Traslados',
     entregas: 'Entregas (contra entrega)',
+    separados: 'Separados (recoger en tienda)',
     dashboard: 'Panel',
     team: 'Equipo',
 };

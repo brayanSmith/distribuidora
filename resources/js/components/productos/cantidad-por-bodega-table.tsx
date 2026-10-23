@@ -74,7 +74,10 @@ export default function CantidadPorBodegaTable({
             { key: 'total', label: 'Total' },
         ];
 
-        const cantidadDe = (fila: CantidadPorBodegaFila, key: string): number =>
+        const cantidadDe = (
+            fila: CantidadPorBodegaFila,
+            key: string,
+        ): number =>
             key === 'total' ? fila.total : (fila.cantidades[key] ?? 0);
 
         return [

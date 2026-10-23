@@ -13,6 +13,8 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { ReactNode } from 'react';
 import PasosEntrega from '@/components/entregas/pasos-entrega';
+import FiltroChips from '@/components/filtro-chips';
+import type { OpcionFiltro } from '@/components/filtro-chips';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import RegistrarPagoModal from '@/components/pedidos/registrar-pago-modal';
@@ -96,7 +98,7 @@ type Props = {
 /** Which deliveries are listed: the pending ones (active + returned), one estado or all. */
 type Filtro = 'PENDIENTES' | EstadoEntrega | 'TODAS';
 
-const FILTROS: { value: Filtro; label: string; className: string }[] = [
+const FILTROS: OpcionFiltro<Filtro>[] = [
     {
         value: 'PENDIENTES',
         label: 'Pendientes',
@@ -259,38 +261,13 @@ export default function Entregas({
                     />
                 </div>
 
-                <div
-                    className="flex flex-wrap gap-2"
-                    data-test="entregas-filtros"
-                >
-                    {FILTROS.map((opcion) => (
-                        <button
-                            key={opcion.value}
-                            type="button"
-                            onClick={() => setFiltro(opcion.value)}
-                            aria-pressed={filtro === opcion.value}
-                            className={cn(
-                                'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition-colors',
-                                filtro === opcion.value
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : 'bg-card hover:bg-accent',
-                            )}
-                            data-test={`entregas-filtro-${opcion.value}`}
-                        >
-                            {opcion.label}
-                            <span
-                                className={cn(
-                                    'rounded-full px-1.5 text-xs font-semibold',
-                                    filtro === opcion.value
-                                        ? 'bg-primary-foreground/20'
-                                        : opcion.className,
-                                )}
-                            >
-                                {conteos[opcion.value]}
-                            </span>
-                        </button>
-                    ))}
-                </div>
+                <FiltroChips
+                    opciones={FILTROS}
+                    valor={filtro}
+                    conteos={conteos}
+                    onChange={setFiltro}
+                    dataTest="entregas-filtros"
+                />
 
                 {filtro === 'ENTREGADO' ||
                 filtro === 'ANULADO' ||

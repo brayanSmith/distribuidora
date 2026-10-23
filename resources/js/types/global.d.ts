@@ -40,6 +40,7 @@ declare module '@inertiajs/core' {
             canCreateCompras: boolean;
             canRecibirCompras: boolean;
             canViewEntregas: boolean;
+            canViewSeparados: boolean;
             canViewPedidos: boolean;
             canViewStockIniciales: boolean;
             canViewStockBodegas: boolean;
@@ -57,6 +58,8 @@ declare module '@inertiajs/core' {
                 pedidosVencidos: number;
                 entregasActivas: number;
                 entregasDevueltas: number;
+                separadosPorRecoger: number;
+                separadosVencidos: number;
             };
             [key: string]: unknown;
         };

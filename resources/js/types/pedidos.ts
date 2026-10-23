@@ -112,6 +112,9 @@ export type Pedido = {
     saldo_pendiente: string;
     /** Due date (Y-m-d) of a pedido on credit, and whether it is past it with a balance. */
     fecha_vencimiento?: string | null;
+    /** Separado: the day the cliente comes for it, and when it was handed over. */
+    fecha_recogida?: string | null;
+    recogido_at?: string | null;
     vencido?: boolean;
     user_id: number;
     reteica: string;

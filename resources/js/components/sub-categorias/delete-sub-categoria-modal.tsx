@@ -45,9 +45,8 @@ export default function DeleteSubCategoriaModal({
                     <DialogTitle>Eliminar subcategoría</DialogTitle>
                     <DialogDescription>
                         ¿Estás seguro de eliminar{' '}
-                        <strong>"{subCategoria?.nombre_sub_categoria}"</strong>
-                        ? Solo se puede eliminar si no tiene productos
-                        asociados.
+                        <strong>"{subCategoria?.nombre_sub_categoria}"</strong>?
+                        Solo se puede eliminar si no tiene productos asociados.
                     </DialogDescription>
                 </DialogHeader>
 

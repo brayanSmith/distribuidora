@@ -49,10 +49,7 @@ export default function EditCategoriaModal({
                             </DialogHeader>
 
                             <div className="grid gap-2">
-                                <Label
-                                    required
-                                    htmlFor="edit_nombre_categoria"
-                                >
+                                <Label required htmlFor="edit_nombre_categoria">
                                     Nombre
                                 </Label>
                                 <Input

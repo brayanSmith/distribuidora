@@ -210,6 +210,14 @@ export default function VerPedidoModal({ pedido, routes, onClose }: Props) {
                                     ) : null}
                                 </>
                             ) : null}
+                            {record.fecha_recogida ? (
+                                <Field label="Recoge el">
+                                    {formatoFecha(record.fecha_recogida)}
+                                    {record.recogido_at
+                                        ? ` · recogido el ${new Date(record.recogido_at).toLocaleDateString('es-CO')}`
+                                        : ' · por recoger'}
+                                </Field>
+                            ) : null}
                             {record.fecha_vencimiento ? (
                                 <Field label="Vence el">
                                     <span

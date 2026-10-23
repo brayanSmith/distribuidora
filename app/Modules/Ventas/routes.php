@@ -6,6 +6,7 @@ use App\Modules\Ventas\Http\Controllers\CuentasPorCobrarController;
 use App\Modules\Ventas\Http\Controllers\EntregaController;
 use App\Modules\Ventas\Http\Controllers\PedidoController;
 use App\Modules\Ventas\Http\Controllers\PosController;
+use App\Modules\Ventas\Http\Controllers\SeparadoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('clientes', [ClienteController::class, 'index'])->name('clientes.index');
@@ -21,6 +22,11 @@ Route::get('pos/pedidos/{pedido}/voucher', [PosController::class, 'voucher'])->n
 Route::get('pos/clientes/{cliente}/pedidos', [PosController::class, 'clientePedidos'])->name('pos.clientes.pedidos');
 
 Route::get('pedidos/cuentas-por-cobrar', [CuentasPorCobrarController::class, 'index'])->name('pedidos.cuentas-por-cobrar');
+Route::get('separados', [SeparadoController::class, 'index'])->name('separados.index');
+Route::patch('separados/{pedido}', [SeparadoController::class, 'update'])->name('separados.update');
+Route::post('separados/{pedido}/entregar', [SeparadoController::class, 'entregar'])->name('separados.entregar');
+Route::post('separados/{pedido}/anular', [SeparadoController::class, 'anular'])->name('separados.anular');
+Route::get('separados/{pedido}/voucher', [SeparadoController::class, 'voucher'])->name('separados.voucher');
 Route::get('entregas', [EntregaController::class, 'index'])->name('entregas.index');
 Route::patch('entregas/{entrega}', [EntregaController::class, 'update'])->name('entregas.update');
 Route::get('entregas/{entrega}/voucher', [EntregaController::class, 'voucher'])->name('entregas.voucher');

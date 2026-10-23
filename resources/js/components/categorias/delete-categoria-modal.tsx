@@ -46,8 +46,8 @@ export default function DeleteCategoriaModal({
                     <DialogDescription>
                         ¿Estás seguro de eliminar{' '}
                         <strong>"{categoria?.nombre_categoria}"</strong>? Solo
-                        se puede eliminar si no tiene subcategorías ni
-                        productos asociados.
+                        se puede eliminar si no tiene subcategorías ni productos
+                        asociados.
                     </DialogDescription>
                 </DialogHeader>
 

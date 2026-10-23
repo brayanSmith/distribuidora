@@ -543,7 +543,8 @@ export default function ProductoDetalleModal({
                                 </div>
                             </div>
 
-                            {!esSinStock && producto.stock_por_bodega != null ? (
+                            {!esSinStock &&
+                            producto.stock_por_bodega != null ? (
                                 <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
                                     {bodegas.map((bodega) => (
                                         <div

@@ -43,6 +43,9 @@ class PedidoService
                 'fecha_vencimiento' => ($data['tipo_pago'] ?? 'CONTADO') === 'CREDITO'
                     ? ($data['fecha_vencimiento'] ?? Pedido::vencimientoPorDefecto('CREDITO', Cliente::find($data['cliente_id']), $data['fecha']))
                     : null,
+                'fecha_recogida' => ($data['tipo_pago'] ?? 'CONTADO') === 'SEPARADO'
+                    ? ($data['fecha_recogida'] ?? Carbon::parse($data['fecha'])->addDays(Pedido::DIAS_RECOGIDA_SEPARADO)->toDateString())
+                    : null,
                 'observacion' => $data['observacion'] ?? null,
                 'observacion_pago' => $data['observacion_pago'] ?? null,
                 'flete' => $data['flete'] ?? 0,

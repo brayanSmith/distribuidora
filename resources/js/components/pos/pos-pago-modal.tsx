@@ -11,6 +11,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import PosEntregaFields from '@/components/pos/pos-entrega-fields';
+import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,7 +20,7 @@ import type { PosAbono, PosNewAbono } from '@/hooks/use-pos-abonos';
 import type { PosEntrega, PosHeaderState } from '@/hooks/use-pos-header';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 import { calcularTotales } from '@/lib/pos-totals';
-import { fechaMasDias } from '@/lib/vencimiento';
+import { DIAS_RECOGIDA_SEPARADO, fechaMasDias } from '@/lib/vencimiento';
 import { cn } from '@/lib/utils';
 import type { ClienteOption, PucOption, TipoPagoPedido } from '@/types';
 
@@ -283,6 +284,35 @@ export default function PosPagoModal({
                         }
                         errors={errors}
                     />
+                ) : null}
+
+                {header.tipoPago === 'SEPARADO' ? (
+                    <div className="grid gap-2 rounded-md border border-violet-200 bg-violet-50 p-3 dark:border-violet-900 dark:bg-violet-950/30">
+                        <Label htmlFor="pos-pago-recogida">
+                            El cliente lo recoge el
+                        </Label>
+                        <Input
+                            id="pos-pago-recogida"
+                            type="date"
+                            min={fechaMasDias(0)}
+                            value={
+                                header.fechaRecogida ||
+                                fechaMasDias(DIAS_RECOGIDA_SEPARADO)
+                            }
+                            onChange={(event) =>
+                                onFieldChange(
+                                    'fechaRecogida',
+                                    event.target.value,
+                                )
+                            }
+                            data-test="pos-pago-recogida"
+                        />
+                        <InputError message={errors.fecha_recogida} />
+                        <p className="text-muted-foreground text-xs">
+                            Queda en Separados hasta que lo recoja y lo pague
+                            todo.
+                        </p>
+                    </div>
                 ) : null}
 
                 {header.tipoPago === 'CREDITO' ? (

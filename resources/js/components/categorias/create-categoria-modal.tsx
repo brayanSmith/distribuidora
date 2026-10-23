@@ -35,8 +35,8 @@ export default function CreateCategoriaModal({ children }: PropsWithChildren) {
                             <DialogHeader>
                                 <DialogTitle>Nueva categoría</DialogTitle>
                                 <DialogDescription>
-                                    Crea una nueva categoría para el catálogo
-                                    de productos.
+                                    Crea una nueva categoría para el catálogo de
+                                    productos.
                                 </DialogDescription>
                             </DialogHeader>
 
