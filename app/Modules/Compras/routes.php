@@ -22,7 +22,8 @@ Route::post('compras/{compra}/recepciones', [RecepcionCompraController::class, '
 Route::get('compras', [CompraController::class, 'index'])->name('compras.index');
 Route::get('compras/crear', [CompraController::class, 'create'])->name('compras.create');
 Route::post('compras', [CompraController::class, 'store'])->name('compras.store');
-Route::get('compras/{compra}/editar', [CompraController::class, 'edit'])->name('compras.edit');
+// Editing a compra opens the Compras POS in edit mode.
+Route::get('compras/{compra}/editar', [ComprasPosController::class, 'editar'])->name('compras.edit');
 Route::get('compras/{compra}/ver', [CompraController::class, 'show'])->withTrashed()->name('compras.show');
 Route::patch('compras/{compra}', [CompraController::class, 'update'])->name('compras.update');
 Route::delete('compras/{compra}', [CompraController::class, 'destroy'])->name('compras.destroy');

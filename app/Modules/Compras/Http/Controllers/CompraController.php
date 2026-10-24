@@ -161,20 +161,6 @@ class CompraController extends Controller
     }
 
     /**
-     * Show the form for editing the specified compra.
-     */
-    public function edit(Request $request, Compra $compra): Response
-    {
-        Gate::authorize('compras.update');
-
-        return Inertia::render('compras/edit', [
-            'compra' => $compra->load(['proveedor', 'detallesCompra.producto', 'detallesCompra.bodega']),
-            ...$this->formData(),
-            'permissions' => ['canDelete' => $request->user()->can('compras.delete')],
-        ]);
-    }
-
-    /**
      * Update the specified compra.
      */
     public function update(UpdateCompraRequest $request, Compra $compra): RedirectResponse

@@ -26,7 +26,20 @@ const moneda = new Intl.NumberFormat('es-CO', {
     maximumFractionDigits: 0,
 });
 
+/**
+ * Editing a saved compra: its title and what of each line already arrived
+ * (that part can't be undone by lowering the quantity or moving it).
+ */
+export type CompraPanelEdicion = {
+    /** E.g. "Editando compra FAC-55". */
+    titulo: string;
+    /** Units already received of each line, by its key. */
+    recibidas: Map<string, number>;
+};
+
 type Props = {
+    /** Present while editing a saved compra. */
+    edicion?: CompraPanelEdicion;
     /** The proveedor picked, if any. */
     proveedor: ProveedorPos | null;
     /** Opens the proveedor picker. */
@@ -51,6 +64,7 @@ type Props = {
  * lines (quantity, unit cost and bodega each) and the totals.
  */
 export default function CompraPanel({
+    edicion,
     proveedor,
     onElegirProveedor,
     bodegas,
@@ -81,7 +95,7 @@ export default function CompraPanel({
             <div className="bg-primary text-primary-foreground flex shrink-0 items-center justify-between p-4">
                 <span className="flex items-center gap-2 font-semibold">
                     <PackagePlus className="size-4" />
-                    Nueva compra
+                    {edicion ? edicion.titulo : 'Nueva compra'}
                 </span>
                 <span className="font-semibold">
                     {unidades} {unidades === 1 ? 'unidad' : 'unidades'}
@@ -156,7 +170,7 @@ export default function CompraPanel({
                 <div className="grid gap-1">
                     <div className="flex items-center justify-between">
                         <Label>Productos</Label>
-                        {lineas.length > 0 ? (
+                        {lineas.length > 0 && !edicion ? (
                             <button
                                 type="button"
                                 onClick={onLimpiar}
@@ -175,96 +189,121 @@ export default function CompraPanel({
                         </p>
                     ) : (
                         <div>
-                            {lineas.map((linea) => (
-                                <div
-                                    key={linea.key}
-                                    className="space-y-1.5 border-b py-2 last:border-b-0"
-                                    data-test="compras-pos-linea"
-                                >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <p className="text-sm font-medium break-words">
-                                            {linea.nombre}
-                                        </p>
-                                        <button
-                                            type="button"
-                                            aria-label="Quitar"
-                                            onClick={() => onQuitar(linea.key)}
-                                            className="text-muted-foreground hover:text-destructive"
-                                        >
-                                            <X className="size-4" />
-                                        </button>
-                                    </div>
-                                    <div className="grid grid-cols-[4rem_1fr_1fr] gap-2">
-                                        <Input
-                                            type="number"
-                                            min={1}
-                                            aria-label="Cantidad"
-                                            value={linea.cantidad}
-                                            onChange={(event) =>
-                                                onLinea(linea.key, {
-                                                    cantidad: Math.max(
-                                                        Number(
-                                                            event.target.value,
-                                                        ) || 1,
-                                                        1,
-                                                    ),
-                                                })
-                                            }
-                                            className="h-8 text-right"
-                                            data-test="compras-pos-linea-cantidad"
-                                        />
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            aria-label="Costo unitario"
-                                            value={linea.costoUnitario}
-                                            onChange={(event) =>
-                                                onLinea(linea.key, {
-                                                    costoUnitario:
-                                                        Number(
-                                                            event.target.value,
-                                                        ) || 0,
-                                                })
-                                            }
-                                            className="h-8 text-right"
-                                            data-test="compras-pos-linea-costo"
-                                        />
-                                        <Select
-                                            value={String(linea.bodegaId)}
-                                            onValueChange={(valor) =>
-                                                onLinea(linea.key, {
-                                                    bodegaId: Number(valor),
-                                                })
-                                            }
-                                        >
-                                            <SelectTrigger
-                                                className="h-8 w-full"
-                                                aria-label="Bodega de la línea"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {bodegas.map((bodega) => (
-                                                    <SelectItem
-                                                        key={bodega.id}
-                                                        value={String(
-                                                            bodega.id,
-                                                        )}
+                            {lineas.map((linea) => {
+                                // What already arrived can't be undone here.
+                                const recibida =
+                                    edicion?.recibidas.get(linea.key) ?? 0;
+
+                                return (
+                                    <div
+                                        key={linea.key}
+                                        className="space-y-1.5 border-b py-2 last:border-b-0"
+                                        data-test="compras-pos-linea"
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium break-words">
+                                                    {linea.nombre}
+                                                </p>
+                                                {edicion && recibida > 0 ? (
+                                                    <p
+                                                        className="text-xs text-emerald-700 dark:text-emerald-400"
+                                                        data-test="compras-pos-linea-recibida"
                                                     >
-                                                        {bodega.nombre_bodega}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                                        Recibido {recibida} de{' '}
+                                                        {linea.cantidad}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                aria-label="Quitar"
+                                                onClick={() =>
+                                                    onQuitar(linea.key)
+                                                }
+                                                className="text-muted-foreground hover:text-destructive"
+                                            >
+                                                <X className="size-4" />
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-[4rem_1fr_1fr] gap-2">
+                                            <Input
+                                                type="number"
+                                                min={Math.max(1, recibida)}
+                                                aria-label="Cantidad"
+                                                value={linea.cantidad}
+                                                onChange={(event) =>
+                                                    onLinea(linea.key, {
+                                                        cantidad: Math.max(
+                                                            Number(
+                                                                event.target
+                                                                    .value,
+                                                            ) || 1,
+                                                            1,
+                                                            recibida,
+                                                        ),
+                                                    })
+                                                }
+                                                className="h-8 text-right"
+                                                data-test="compras-pos-linea-cantidad"
+                                            />
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                aria-label="Costo unitario"
+                                                value={linea.costoUnitario}
+                                                onChange={(event) =>
+                                                    onLinea(linea.key, {
+                                                        costoUnitario:
+                                                            Number(
+                                                                event.target
+                                                                    .value,
+                                                            ) || 0,
+                                                    })
+                                                }
+                                                className="h-8 text-right"
+                                                data-test="compras-pos-linea-costo"
+                                            />
+                                            <Select
+                                                disabled={recibida > 0}
+                                                value={String(linea.bodegaId)}
+                                                onValueChange={(valor) =>
+                                                    onLinea(linea.key, {
+                                                        bodegaId: Number(valor),
+                                                    })
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    className="h-8 w-full"
+                                                    aria-label="Bodega de la línea"
+                                                >
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {bodegas.map((bodega) => (
+                                                        <SelectItem
+                                                            key={bodega.id}
+                                                            value={String(
+                                                                bodega.id,
+                                                            )}
+                                                        >
+                                                            {
+                                                                bodega.nombre_bodega
+                                                            }
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <p className="text-muted-foreground text-right text-xs">
+                                            {moneda.format(
+                                                linea.cantidad *
+                                                    linea.costoUnitario,
+                                            )}
+                                        </p>
                                     </div>
-                                    <p className="text-muted-foreground text-right text-xs">
-                                        {moneda.format(
-                                            linea.cantidad *
-                                                linea.costoUnitario,
-                                        )}
-                                    </p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                     <InputError message={errores.detalles} />
@@ -273,11 +312,13 @@ export default function CompraPanel({
                 <div className="flex items-center justify-between gap-4 rounded-md border p-3">
                     <div>
                         <Label htmlFor="compras-pos-recibido">
-                            Mercancía recibida
+                            {edicion
+                                ? 'Los productos nuevos ya llegaron'
+                                : 'Mercancía recibida'}
                         </Label>
                         <p className="text-muted-foreground text-xs">
                             {encabezado.recibido
-                                ? 'El stock se suma al registrar.'
+                                ? 'El stock se suma al guardar.'
                                 : 'Queda pendiente por recibir.'}
                         </p>
                     </div>
@@ -346,7 +387,7 @@ export default function CompraPanel({
                         loading={procesando}
                         data-test="compras-pos-registrar"
                     >
-                        Registrar compra
+                        {edicion ? 'Revisar y guardar' : 'Registrar compra'}
                         <kbd className="text-xs opacity-70">F9</kbd>
                     </Button>
                     <Button
@@ -356,7 +397,7 @@ export default function CompraPanel({
                         className="text-destructive hover:text-destructive"
                     >
                         <RotateCcw className="size-4" />
-                        Limpiar
+                        {edicion ? 'Descartar cambios' : 'Limpiar'}
                         <kbd className="text-xs opacity-70">F8</kbd>
                     </Button>
                 </div>
