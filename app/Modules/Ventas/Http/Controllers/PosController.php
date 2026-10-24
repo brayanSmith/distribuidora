@@ -71,6 +71,75 @@ class PosController extends Controller
     }
 
     /**
+     * The POS in edit mode: a saved pedido loaded in the cart, to change it
+     * with the same screen it was sold with.
+     */
+    public function editar(Request $request, Pedido $pedido): Response|RedirectResponse
+    {
+        Gate::authorize('pedidos.update');
+
+        $usuario = $request->user();
+        $bodegaIds = $usuario->idsBodegasPermitidas();
+        abort_if($bodegaIds !== null && ! in_array($pedido->bodega_id, $bodegaIds, true), 403);
+
+        if ($motivo = $pedido->motivoNoEditable()) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => $motivo]);
+
+            return to_route('pedidos.index');
+        }
+
+        $pedido->load(['detalles:id,pedido_id,producto_id,bodega_id,cantidad,tipo_precio,precio_unitario', 'abonos.puc', 'abonos.vendedor', 'cliente', 'user', 'bodega']);
+
+        return Inertia::render('pedidos/editar', [
+            'pedido' => $pedido,
+            'clientes' => $this->clientesConDeuda(),
+            // Its lines show their productos even if they were deleted since.
+            'productos' => $this->conStockDelPedido($this->catalogoProductos($pedido->detalles->pluck('producto_id')->all()), $pedido),
+            'bodegas' => Bodega::permitidas()->orderBy('nombre_bodega')->get(['id', 'nombre_bodega']),
+            'vendedores' => User::orderBy('name')->get(['id', 'name']),
+            'pucs' => Puc::orderBy('concatenar_subcuenta_concepto')->get(['id', 'concatenar_subcuenta_concepto']),
+            'categorias' => Categoria::with('subCategorias:id,categoria_id,nombre_sub_categoria')->orderBy('nombre_categoria')->get(['id', 'nombre_categoria']),
+            'canCreateProducto' => $usuario->can('pos.create-producto'),
+            'canCreateCliente' => $usuario->can('pos.create-cliente'),
+            'permissions' => [
+                'canCreateAbono' => $usuario->can('pedidos.create-abono'),
+                'canUpdateAbono' => $usuario->can('pedidos.update-abono'),
+                'canDeleteAbono' => $usuario->can('pedidos.delete-abono'),
+                'canCreateDetalle' => $usuario->can('pedidos.create-detalle'),
+                'canUpdateDetalle' => $usuario->can('pedidos.update-detalle'),
+                'canDeleteDetalle' => $usuario->can('pedidos.delete-detalle'),
+                'canUpdateDatos' => $usuario->can('pedidos.update-datos'),
+            ],
+        ]);
+    }
+
+    /**
+     * The catalog as the edited pedido sees it: what the pedido already took
+     * from each bodega is available again for it.
+     *
+     * @param  array<int, array<string, mixed>>  $catalogo
+     * @return array<int, array<string, mixed>>
+     */
+    private function conStockDelPedido(array $catalogo, Pedido $pedido): array
+    {
+        $apartado = $pedido->detalles->groupBy('producto_id');
+
+        return array_map(function (array $producto) use ($apartado, $pedido): array {
+            if (! $producto['inventariable'] || ! $apartado->has($producto['id'])) {
+                return $producto;
+            }
+
+            foreach ($apartado[$producto['id']] as $detalle) {
+                $bodegaId = $detalle->bodega_id ?? $pedido->bodega_id;
+                $producto['stock_por_bodega'][$bodegaId] = ($producto['stock_por_bodega'][$bodegaId] ?? 0) + (float) $detalle->cantidad;
+                $producto['stock_total'] += (float) $detalle->cantidad;
+            }
+
+            return $producto;
+        }, $catalogo);
+    }
+
+    /**
      * A POS sale sent in the background (the POS already closed it for the
      * user). Sending it again — the internet dropped before the answer
      * arrived — gives back the pedido created the first time.
@@ -223,14 +292,18 @@ class PosController extends Controller
      * out-of-stock products are still sellable, so this is not filtered to
      * stock > 0.
      *
+     * @param  list<int>  $tambienEliminados  Deleted productos to list anyway (the lines of an edited pedido).
      * @return array<int, array<string, mixed>>
      */
-    private function catalogoProductos(): array
+    private function catalogoProductos(array $tambienEliminados = []): array
     {
         $usuario = auth()->user();
 
         // Servicios are not inventariable but are sold like any other producto.
         return Producto::query()
+            ->when($tambienEliminados !== [], fn ($query) => $query->withTrashed()->where(fn ($query) => $query
+                ->whereNull('deleted_at')
+                ->orWhereIn('id', $tambienEliminados)))
             ->select(['id', 'categoria_id', 'sub_categoria_id', 'referencia_producto', 'descripcion_producto', 'marca', 'inventariable', 'sku', 'valor_detal', 'valor_mayorista', 'costo_producto'])
             ->with(['stockBodegas:id,producto_id,bodega_id,stock', 'categoria:id,nombre_categoria', 'subCategoria:id,nombre_sub_categoria', 'imagenes:id,producto_id,imagen_producto'])
             ->orderBy('referencia_producto')

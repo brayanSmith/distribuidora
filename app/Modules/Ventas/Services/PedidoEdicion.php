@@ -50,11 +50,13 @@ class PedidoEdicion
             return array_values($enviados);
         }
 
-        $enviadosPorProducto = collect($enviados)->keyBy('producto_id');
+        // A producto may be sold from several bodegas: a line is a producto in a bodega.
+        $linea = fn (int|string $productoId, int|string|null $bodegaId): string => $productoId.'-'.($bodegaId ?? $pedido->bodega_id);
+        $enviadosPorLinea = collect($enviados)->keyBy(fn (array $enviado): string => $linea($enviado['producto_id'], $enviado['bodega_id'] ?? null));
         $resultado = [];
 
         foreach ($pedido->detalles as $existente) {
-            $enviado = $enviadosPorProducto->get($existente->producto_id);
+            $enviado = $enviadosPorLinea->get($linea($existente->producto_id, $existente->bodega_id));
 
             if ($enviado === null) {
                 // The line was removed in the form.
@@ -74,10 +76,10 @@ class PedidoEdicion
         }
 
         if ($puedeAgregar) {
-            $existentes = $pedido->detalles->pluck('producto_id');
+            $existentes = $pedido->detalles->map(fn (object $detalle): string => $linea($detalle->producto_id, $detalle->bodega_id));
 
-            foreach ($enviadosPorProducto as $productoId => $enviado) {
-                if (! $existentes->contains($productoId)) {
+            foreach ($enviadosPorLinea as $clave => $enviado) {
+                if (! $existentes->contains($clave)) {
                     $resultado[] = $enviado;
                 }
             }
@@ -95,6 +97,7 @@ class PedidoEdicion
             'producto_id' => $detalle->producto_id,
             'bodega_id' => $detalle->bodega_id,
             'cantidad' => $detalle->cantidad,
+            'tipo_precio' => $detalle->tipo_precio,
             'precio_unitario' => $detalle->precio_unitario,
         ];
     }

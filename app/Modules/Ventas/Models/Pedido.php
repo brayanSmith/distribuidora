@@ -216,6 +216,34 @@ class Pedido extends Model
     }
 
     /**
+     * Why the pedido can no longer be changed, or null when it can: what was
+     * already handed over (or is on its way) must stay as it went.
+     */
+    public function motivoNoEditable(): ?string
+    {
+        if ($this->trashed()) {
+            return 'El pedido está anulado.';
+        }
+
+        $entrega = $this->entrega;
+
+        if ($entrega !== null) {
+            return match ($entrega->estado) {
+                Entrega::EN_CAMINO => 'La entrega va en camino: no se puede modificar el pedido.',
+                Entrega::ENTREGADO => 'El pedido ya se entregó.',
+                Entrega::ANULADO => 'La entrega del pedido está anulada.',
+                default => null,
+            };
+        }
+
+        if ($this->tipo_pago === 'SEPARADO' && $this->recogido_at !== null) {
+            return 'El cliente ya recogió este separado.';
+        }
+
+        return null;
+    }
+
+    /**
      * The separados the cliente has not picked up yet.
      *
      * @param  Builder<self>  $query

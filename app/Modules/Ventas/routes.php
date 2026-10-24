@@ -35,7 +35,8 @@ Route::post('entregas/{entrega}/anular', [EntregaController::class, 'anular'])->
 Route::get('pedidos', [PedidoController::class, 'index'])->name('pedidos.index');
 Route::get('pedidos/crear', [PedidoController::class, 'create'])->name('pedidos.create');
 Route::post('pedidos', [PedidoController::class, 'store'])->name('pedidos.store');
-Route::get('pedidos/{pedido}/editar', [PedidoController::class, 'edit'])->name('pedidos.edit');
+// Editing a pedido opens the POS in edit mode.
+Route::get('pedidos/{pedido}/editar', [PosController::class, 'editar'])->name('pedidos.edit');
 Route::get('pedidos/{pedido}/ver', [PedidoController::class, 'show'])->withTrashed()->name('pedidos.show');
 Route::get('pedidos/{pedido}/voucher', [PedidoController::class, 'voucher'])->name('pedidos.voucher');
 Route::patch('pedidos/{pedido}', [PedidoController::class, 'update'])->name('pedidos.update');

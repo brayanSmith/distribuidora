@@ -49,7 +49,23 @@ type CartApi = {
     totalBruto: number;
 };
 
+/**
+ * Editing a pedido already saved: what may change, the turno it keeps and
+ * the actions of the edit instead of paying.
+ */
+export type PosCartEdicion = {
+    /** E.g. "Editando pedido #120". */
+    titulo: string;
+    turno: string | null;
+    /** Cliente, bodega, tipo de precio and facturación (pedidos.update-datos). */
+    puedeCambiarDatos: boolean;
+    lineaEditable: (line: PosCartLine) => boolean;
+    lineaRemovible: (line: PosCartLine) => boolean;
+};
+
 type Props = {
+    /** Present while editing a saved pedido. */
+    edicion?: PosCartEdicion;
     /** The unit price of a product sold at a tipo de precio. */
     precioDeLinea: (
         productoId: number,
@@ -87,6 +103,7 @@ const currencyFormatter = new Intl.NumberFormat('es-CO', {
  * always in reach however long the cart gets.
  */
 export default function PosCartPanel({
+    edicion,
     precioDeLinea,
     cliente,
     onOpenClientePicker,
@@ -122,13 +139,14 @@ export default function PosCartPanel({
     );
 
     const { subtotal, total } = calcularTotales(cart.totalBruto, header);
+    const datosBloqueados = edicion !== undefined && !edicion.puedeCambiarDatos;
 
     return (
         <div className="bg-card flex flex-col overflow-hidden rounded-lg border lg:max-h-[calc(100svh-6rem)]">
             <div className="bg-primary text-primary-foreground flex shrink-0 items-center justify-between p-4">
                 <span className="flex items-center gap-2 font-semibold">
                     <ShoppingCart className="size-4" />
-                    Facturar
+                    {edicion ? edicion.titulo : 'Facturar'}
                 </span>
                 <span className="font-semibold">
                     {currencyFormatter.format(total)}
@@ -144,6 +162,7 @@ export default function PosCartPanel({
                             variant="outline"
                             className="flex-1 justify-start"
                             onClick={onOpenClientePicker}
+                            disabled={datosBloqueados}
                             data-test="pos-cliente"
                         >
                             <UserRound className="size-4" />
@@ -173,16 +192,30 @@ export default function PosCartPanel({
                 <div className="grid grid-cols-2 gap-2">
                     <div className="grid gap-2">
                         <Label required>Bodega</Label>
-                        <Combobox
-                            options={bodegaOptions}
-                            value={header.bodegaId}
-                            onValueChange={(value) =>
-                                onFieldChange('bodegaId', value)
-                            }
-                            searchPlaceholder="Buscar bodega..."
-                            emptyText="No se encontraron bodegas."
-                            dataTest="pos-bodega"
-                        />
+                        {datosBloqueados ? (
+                            <Input
+                                value={
+                                    bodegaOptions.find(
+                                        (option) =>
+                                            option.value === header.bodegaId,
+                                    )?.label ?? ''
+                                }
+                                readOnly
+                                className="bg-muted/40"
+                                data-test="pos-bodega"
+                            />
+                        ) : (
+                            <Combobox
+                                options={bodegaOptions}
+                                value={header.bodegaId}
+                                onValueChange={(value) =>
+                                    onFieldChange('bodegaId', value)
+                                }
+                                searchPlaceholder="Buscar bodega..."
+                                emptyText="No se encontraron bodegas."
+                                dataTest="pos-bodega"
+                            />
+                        )}
                         <InputError message={errors.bodega_id} />
                     </div>
 
@@ -207,6 +240,7 @@ export default function PosCartPanel({
                 <div className="grid gap-2">
                     <Label required>Tipo de precio</Label>
                     <Select
+                        disabled={datosBloqueados}
                         value={header.tipoPrecio}
                         onValueChange={(value) =>
                             onFieldChange(
@@ -241,7 +275,7 @@ export default function PosCartPanel({
                 <div className="grid gap-1">
                     <div className="flex items-center justify-between">
                         <Label>Productos agregados</Label>
-                        {cart.lines.length > 0 ? (
+                        {cart.lines.length > 0 && !edicion ? (
                             <button
                                 type="button"
                                 onClick={cart.clear}
@@ -286,6 +320,12 @@ export default function PosCartPanel({
                                     }
                                     onEdit={() => onEditLine(line)}
                                     onRemove={() => cart.removeLine(line.key)}
+                                    editable={
+                                        edicion?.lineaEditable(line) ?? true
+                                    }
+                                    removible={
+                                        edicion?.lineaRemovible(line) ?? true
+                                    }
                                 />
                             ))}
                         </div>
@@ -294,20 +334,29 @@ export default function PosCartPanel({
                 </div>
 
                 <div className="flex items-center justify-between gap-4">
-                    <Label
-                        htmlFor="pos-aplica-turno"
-                        className="flex items-center gap-2"
-                    >
-                        <Switch
-                            id="pos-aplica-turno"
-                            checked={header.aplicaTurno}
-                            onCheckedChange={(checked) =>
-                                onFieldChange('aplicaTurno', checked)
-                            }
-                            data-test="pos-aplica-turno"
-                        />
-                        Aplica turno
-                    </Label>
+                    {edicion ? (
+                        // An edited pedido keeps its turno.
+                        <span className="text-muted-foreground text-sm">
+                            {edicion.turno
+                                ? `Turno ${edicion.turno}`
+                                : 'Sin turno'}
+                        </span>
+                    ) : (
+                        <Label
+                            htmlFor="pos-aplica-turno"
+                            className="flex items-center gap-2"
+                        >
+                            <Switch
+                                id="pos-aplica-turno"
+                                checked={header.aplicaTurno}
+                                onCheckedChange={(checked) =>
+                                    onFieldChange('aplicaTurno', checked)
+                                }
+                                data-test="pos-aplica-turno"
+                            />
+                            Aplica turno
+                        </Label>
+                    )}
 
                     <Label
                         htmlFor="pos-facturacion-electronica"
@@ -315,6 +364,7 @@ export default function PosCartPanel({
                     >
                         <Checkbox
                             id="pos-facturacion-electronica"
+                            disabled={datosBloqueados}
                             checked={header.facturacionElectronica}
                             onCheckedChange={(checked) =>
                                 onFieldChange(
@@ -368,7 +418,7 @@ export default function PosCartPanel({
                         onClick={onProceedToPay}
                         data-test="pos-proceder-pago"
                     >
-                        Proceder al Pago
+                        {edicion ? 'Revisar y guardar' : 'Proceder al Pago'}
                         <kbd className="text-xs opacity-70">F9</kbd>
                     </Button>
 
@@ -381,7 +431,7 @@ export default function PosCartPanel({
                         data-test="pos-resetear-pedido"
                     >
                         <RotateCcw className="size-4" />
-                        Resetear pedido
+                        {edicion ? 'Descartar cambios' : 'Resetear pedido'}
                         <kbd className="text-xs opacity-70">F8</kbd>
                     </Button>
                 </div>

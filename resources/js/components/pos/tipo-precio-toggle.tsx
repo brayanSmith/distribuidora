@@ -8,6 +8,7 @@ type Props = {
     /** `compact` shows D / M (cart lines); `full` the whole names. */
     size?: 'compact' | 'full';
     dataTest?: string;
+    disabled?: boolean;
 };
 
 const OPCIONES = [
@@ -40,6 +41,7 @@ export default function TipoPrecioToggle({
     onChange,
     size = 'compact',
     dataTest = 'tipo-precio-toggle',
+    disabled = false,
 }: Props) {
     const { puedeDetal, puedeMayorista } = useTiposPrecio();
     // A hand-typed price is always possible; the list prices only when seen.
@@ -74,12 +76,13 @@ export default function TipoPrecioToggle({
                             ? 'Precio personalizado'
                             : `Vender al ${opcion.nombre.toLowerCase()}`
                     }
+                    disabled={disabled}
                     onClick={() =>
                         value !== opcion.value && onChange(opcion.value)
                     }
                     data-test={`${dataTest}-${opcion.value}`}
                     className={cn(
-                        'transition-colors',
+                        'transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                         size === 'compact' ? 'w-7' : 'flex-1',
                         value === opcion.value
                             ? opcion.activo

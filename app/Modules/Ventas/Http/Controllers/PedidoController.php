@@ -24,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -215,44 +216,16 @@ class PedidoController extends Controller
     }
 
     /**
-     * Show the form for editing the specified pedido.
-     */
-    public function edit(Request $request, Pedido $pedido): Response
-    {
-
-        Gate::authorize('pedidos.update');
-
-        return Inertia::render('pedidos/edit', [
-            'pedido' => $pedido->load([
-                'cliente',
-                'detalles.producto',
-                'detalles.bodega:id,nombre_bodega',
-                'abonos.puc',
-                'abonos.vendedor',
-                'user',
-                'bodega',
-            ]),
-            ...$this->formData($request, $pedido),
-            'permissions' => [
-                'canDelete' => $request->user()->can('pedidos.delete'),
-                'canCreateAbono' => $request->user()->can('pedidos.create-abono'),
-                'canUpdateAbono' => $request->user()->can('pedidos.update-abono'),
-                'canDeleteAbono' => $request->user()->can('pedidos.delete-abono'),
-                'canCreateDetalle' => $request->user()->can('pedidos.create-detalle'),
-                'canUpdateDetalle' => $request->user()->can('pedidos.update-detalle'),
-                'canDeleteDetalle' => $request->user()->can('pedidos.delete-detalle'),
-                'canUpdateDatos' => $request->user()->can('pedidos.update-datos'),
-            ],
-        ]);
-    }
-
-    /**
      * Update the specified pedido.
      */
     public function update(UpdatePedidoRequest $request, PedidoService $pedidoService, PedidoEdicion $edicion, Pedido $pedido): RedirectResponse
     {
 
         Gate::authorize('pedidos.update');
+
+        if ($motivo = $pedido->motivoNoEditable()) {
+            throw ValidationException::withMessages(['pedido' => $motivo]);
+        }
 
         // Only what the user is allowed to change (data, products) is applied.
         $data = $edicion->restringir($pedido, $request->validated(), $request->user(), 'pedidos');

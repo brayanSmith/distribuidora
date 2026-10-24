@@ -13,6 +13,10 @@ type Props = {
     onTipoPrecioChange: (tipoPrecio: TipoPrecioLinea) => void;
     onEdit: () => void;
     onRemove: () => void;
+    /** Quantity, price and tipo can change (editing a pedido may not allow it). */
+    editable?: boolean;
+    /** It can be taken out of the cart. */
+    removible?: boolean;
 };
 
 const ETIQUETAS: Record<TipoPrecioLinea, string> = {
@@ -35,6 +39,8 @@ export default function PosCartItem({
     onTipoPrecioChange,
     onEdit,
     onRemove,
+    editable = true,
+    removible = true,
 }: Props) {
     // What is being typed in the quantity field; null shows the line's own.
     const [cantidadTexto, setCantidadTexto] = useState<string | null>(null);
@@ -47,9 +53,14 @@ export default function PosCartItem({
             <button
                 type="button"
                 onClick={onEdit}
-                title="Editar cantidad, valor o bodega"
+                disabled={!editable}
+                title={
+                    editable
+                        ? 'Editar cantidad, valor o bodega'
+                        : 'No tienes permiso para modificar esta línea'
+                }
                 data-test="pos-cart-item-edit"
-                className="hover:bg-accent min-w-0 flex-1 rounded p-1 text-left"
+                className="hover:bg-accent min-w-0 flex-1 rounded p-1 text-left disabled:hover:bg-transparent"
             >
                 <p
                     className="text-sm font-medium break-words"
@@ -69,6 +80,7 @@ export default function PosCartItem({
                 value={tipoPrecio}
                 onChange={onTipoPrecioChange}
                 dataTest="pos-cart-item-tipo"
+                disabled={!editable}
             />
 
             <Input
@@ -88,6 +100,7 @@ export default function PosCartItem({
                 }}
                 onBlur={() => setCantidadTexto(null)}
                 className="h-8 w-16 text-right"
+                disabled={!editable}
                 data-test="pos-cart-item-cantidad"
             />
 
@@ -99,18 +112,23 @@ export default function PosCartItem({
                     onPrecioChange(Number(event.target.value) || 0)
                 }
                 className="h-8 w-24 text-right"
+                disabled={!editable}
                 data-test="pos-cart-item-precio"
             />
 
-            <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onRemove}
-                data-test="pos-cart-item-remove"
-            >
-                <X className="size-4" />
-            </Button>
+            {removible ? (
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onRemove}
+                    data-test="pos-cart-item-remove"
+                >
+                    <X className="size-4" />
+                </Button>
+            ) : (
+                <span className="w-9" />
+            )}
         </div>
     );
 }
