@@ -90,4 +90,6 @@ export type PosVoucher = {
         mensajero: string | null;
     } | null;
     detalles: { nombre: string; cantidad: number; total: number }[];
+    /** The company's voucher design as saved (null: the default one). */
+    diseno?: unknown;
 };

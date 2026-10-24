@@ -23,6 +23,8 @@ return new class extends Migration
             $table->enum('formato_logo', ['CUADRADO', 'RECTANGULAR'])->default('RECTANGULAR');
             // A square icon: browser tab, sidebar and notifications.
             $table->string('icono_empresa')->nullable();
+            // How the printed voucher is laid out (blocks, order, texts); null: the default.
+            $table->json('diseno_voucher')->nullable();
             // $table->json('cuentas_bancarias')->nullable();
             // $table->boolean('mostrar_productos_sin_inventario')->default(true);
             $table->timestamps();

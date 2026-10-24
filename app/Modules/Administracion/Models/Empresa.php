@@ -32,6 +32,11 @@ class Empresa extends Model
         'logo_empresa',
         'formato_logo',
         'icono_empresa',
+        'diseno_voucher',
+    ];
+
+    protected $casts = [
+        'diseno_voucher' => 'array',
     ];
 
     /**

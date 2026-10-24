@@ -29,6 +29,8 @@ class PedidoVoucher
                 'logo_url' => $empresa?->logo_empresa_url,
                 'formato_logo' => $empresa?->formato_logo ?? 'RECTANGULAR',
             ],
+            // The company's layout of the voucher; null prints the default one.
+            'diseno' => $empresa?->diseno_voucher,
             'pedido' => [
                 'id' => $pedido->id,
                 'turno' => $pedido->turno,

@@ -6,6 +6,7 @@ use App\Modules\Administracion\Http\Controllers\HistorialController;
 use App\Modules\Administracion\Http\Controllers\InicioSesionController;
 use App\Modules\Administracion\Http\Controllers\RoleController;
 use App\Modules\Administracion\Http\Controllers\UsuarioController;
+use App\Modules\Administracion\Http\Controllers\VoucherDisenoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -28,3 +29,5 @@ Route::get('inicios-sesion', [InicioSesionController::class, 'index'])->name('in
 
 Route::get('empresa', [EmpresaController::class, 'edit'])->name('empresa.edit');
 Route::patch('empresa', [EmpresaController::class, 'update'])->name('empresa.update');
+Route::get('empresa/voucher', [VoucherDisenoController::class, 'edit'])->name('empresa.voucher.edit');
+Route::put('empresa/voucher', [VoucherDisenoController::class, 'update'])->name('empresa.voucher.update');
