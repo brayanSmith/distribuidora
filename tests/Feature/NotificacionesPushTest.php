@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Modules\Administracion\Models\Empresa;
 use App\Modules\Administracion\Models\Role;
+use App\Modules\Catalogo\Models\Importacion;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Compras\Models\Compra;
 use App\Modules\Compras\Notifications\CuentasPorPagarPorVencer;
@@ -12,8 +13,12 @@ use App\Modules\Ventas\Models\Entrega;
 use App\Modules\Ventas\Notifications\EntregaAsignada;
 use App\Modules\Ventas\Notifications\EntregasPendientes;
 use App\Modules\Ventas\Notifications\NuevaEntrega;
+use App\Support\Importaciones\ImportacionTerminada;
+use App\Support\Importaciones\ImportarArchivoJob;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     Carbon::setTestNow('2026-10-23 07:00:00');
@@ -216,4 +221,56 @@ test('the notifications show the company logo, or the app icon without one', fun
     app()->forgetScopedInstances();
 
     expect($aviso->toWebPush($this->owner, $aviso)->toArray()['icon'])->toBe('/storage/logos/empresa.png');
+});
+
+test('whoever starts an import is told when it finishes, with what it did', function () {
+    Storage::fake('local');
+    conNotificaciones($this->owner);
+
+    $csv = "sku,referencia,valor_detal\nA-1,Llanta,1000\nA-2,Rin,2000\n";
+
+    $this->actingAs($this->owner)->post(route('importaciones.store'), [
+        'tipo' => 'productos',
+        'archivo' => UploadedFile::fake()->createWithContent('productos.csv', $csv),
+    ])->assertSessionHasNoErrors();
+
+    Notification::assertSentTo($this->owner, ImportacionTerminada::class, function (ImportacionTerminada $aviso) {
+        $mensaje = $aviso->toWebPush($this->owner, $aviso)->toArray();
+
+        return $mensaje['title'] === 'Importación de Productos completada'
+            && $mensaje['body'] === "productos.csv\n2 creados · 0 actualizados"
+            && $mensaje['data']['url'] === '/dashboard?importaciones=1';
+    });
+});
+
+test('a failed import tells why', function () {
+    conNotificaciones($this->owner);
+    $importacion = Importacion::create([
+        'user_id' => $this->owner->id,
+        'tipo' => 'productos',
+        'archivo' => 'importaciones/no-existe.csv',
+        'nombre_original' => 'productos.csv',
+        'estado' => Importacion::PROCESANDO,
+    ]);
+
+    (new ImportarArchivoJob($importacion->id))->failed(new RuntimeException('El archivo está dañado.'));
+
+    expect($importacion->fresh()->estado)->toBe(Importacion::FALLIDA);
+    Notification::assertSentTo($this->owner, ImportacionTerminada::class, function (ImportacionTerminada $aviso) {
+        $mensaje = $aviso->toWebPush($this->owner, $aviso)->toArray();
+
+        return $mensaje['title'] === 'Falló la importación de Productos'
+            && $mensaje['body'] === "productos.csv\nEl archivo está dañado.";
+    });
+});
+
+test('no import notification for whoever did not turn notifications on', function () {
+    Storage::fake('local');
+
+    $this->actingAs($this->owner)->post(route('importaciones.store'), [
+        'tipo' => 'productos',
+        'archivo' => UploadedFile::fake()->createWithContent('productos.csv', "sku,referencia\nA-1,Llanta\n"),
+    ])->assertSessionHasNoErrors();
+
+    Notification::assertNothingSent();
 });

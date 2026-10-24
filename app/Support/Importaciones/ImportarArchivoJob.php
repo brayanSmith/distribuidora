@@ -31,10 +31,18 @@ class ImportarArchivoJob implements ShouldQueue
 
     public function failed(Throwable $e): void
     {
-        Importacion::whereKey($this->importacionId)->update([
+        $importacion = Importacion::find($this->importacionId);
+
+        if ($importacion === null) {
+            return;
+        }
+
+        $importacion->update([
             'estado' => Importacion::FALLIDA,
             'terminada_at' => now(),
-            'errores' => json_encode([['fila' => 0, 'mensaje' => $e->getMessage()]]),
+            'errores' => [['fila' => 0, 'mensaje' => $e->getMessage()]],
         ]);
+
+        ImportacionTerminada::avisar($importacion);
     }
 }

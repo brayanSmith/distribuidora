@@ -4,7 +4,8 @@ namespace App\Modules\Ventas\Services;
 
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Inventario\Models\StockBodega;
+use App\Modules\Inventario\Models\MovimientoStock;
+use App\Modules\Inventario\Services\Kardex;
 use App\Modules\Ventas\Models\Cliente;
 use App\Modules\Ventas\Models\DetallePedido;
 use App\Modules\Ventas\Models\Pedido;
@@ -197,26 +198,18 @@ class PedidoService
 
     /**
      * Apply (sign -1) or revert (sign +1) a detalle's quantity on the
-     * pedido's warehouse stock. Servicios and productos without stock control
-     * have no stock to move.
+     * pedido's warehouse stock, leaving it in the kardex.
      */
     public function adjustStock(DetallePedido $detalle, Pedido $pedido, int $sign): void
     {
-        if (Producto::withTrashed()->whereKey($detalle->producto_id)
-            ->where('inventariable', false)
-            ->exists()) {
-            return;
-        }
-
-        $stockBodega = StockBodega::firstOrNew([
-            'bodega_id' => $detalle->bodega_id ?? $pedido->bodega_id,
-            'producto_id' => $detalle->producto_id,
-        ]);
-
-        $cantidad = (float) $detalle->cantidad;
-
-        $stockBodega->salidas = (float) ($stockBodega->salidas ?? 0) + ($sign < 0 ? $cantidad : 0);
-        $stockBodega->stock = (float) ($stockBodega->stock ?? 0) + $sign * $cantidad;
-        $stockBodega->save();
+        app(Kardex::class)->mover(
+            $detalle->producto_id,
+            $detalle->bodega_id ?? $pedido->bodega_id,
+            $sign * (float) $detalle->cantidad,
+            MovimientoStock::VENTA,
+            ['pedido', $pedido->id],
+            reverso: $sign > 0,
+            costoUnitario: (float) $detalle->costo_unitario,
+        );
     }
 }

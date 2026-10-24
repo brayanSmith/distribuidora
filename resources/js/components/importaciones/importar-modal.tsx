@@ -96,6 +96,18 @@ export default function ImportarModal({ children }: PropsWithChildren) {
         { autoStart: false },
     );
 
+    // Coming from an "import finished" notification (`?importaciones=1`):
+    // open with the result on screen, and drop the flag so a reload doesn't.
+    useEffect(() => {
+        const url = new URL(window.location.href);
+
+        if (url.searchParams.has('importaciones')) {
+            url.searchParams.delete('importaciones');
+            window.history.replaceState(window.history.state, '', url);
+            setOpen(true);
+        }
+    }, []);
+
     // The list is only requested while the dialog is open. With unread
     // notifications it opens straight on them.
     useEffect(() => {

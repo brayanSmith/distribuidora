@@ -1,4 +1,5 @@
-import { Link, useHttp } from '@inertiajs/react';
+import { Link, useHttp, usePage } from '@inertiajs/react';
+import KardexModal from '@/components/inventario/kardex-modal';
 import { Cargando } from '@/components/record-view';
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import {
@@ -7,6 +8,7 @@ import {
     ArrowUpDown,
     DollarSign,
     ExternalLink,
+    History,
     Image as ImageIcon,
     Ruler,
     Warehouse,
@@ -312,6 +314,8 @@ export default function ProductoDetalleModal({
 }: Props) {
     const { puedeCosto, puedeDetal, puedeMayorista } = useTiposPrecio();
     const { submit } = useHttp();
+    const { canViewStockBodegas } = usePage().props;
+    const [kardexOpen, setKardexOpen] = useState(false);
 
     const [pedidosPage, setPedidosPage] = useState(1);
     const [comprasPage, setComprasPage] = useState(1);
@@ -510,6 +514,19 @@ export default function ProductoDetalleModal({
                             icon={Warehouse}
                             title={esSinStock ? 'Ventas' : 'Stock por bodega'}
                         >
+                            {!esSinStock && canViewStockBodegas ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="mb-3"
+                                    onClick={() => setKardexOpen(true)}
+                                    data-test="producto-ver-movimientos"
+                                >
+                                    <History />
+                                    Ver movimientos
+                                </Button>
+                            ) : null}
                             <div className="flex flex-wrap gap-4">
                                 {!esSinStock && producto.stock_total != null ? (
                                     <div className="grid gap-1">
@@ -870,6 +887,19 @@ export default function ProductoDetalleModal({
                     </div>
                 </div>
             </DialogContent>
+
+            {kardexOpen && producto ? (
+                <KardexModal
+                    productoId={producto.id}
+                    nombre={
+                        producto.concatenar_codigo_nombre ??
+                        producto.referencia_producto ??
+                        `Producto ${producto.id}`
+                    }
+                    bodegas={bodegas}
+                    onClose={() => setKardexOpen(false)}
+                />
+            ) : null}
         </Dialog>
     );
 }

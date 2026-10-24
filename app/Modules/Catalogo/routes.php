@@ -1,7 +1,6 @@
 <?php
 
 use App\Modules\Catalogo\Http\Controllers\CategoriaController;
-use App\Modules\Catalogo\Http\Controllers\CotizadorController;
 use App\Modules\Catalogo\Http\Controllers\ExportacionProductosController;
 use App\Modules\Catalogo\Http\Controllers\ImportacionController;
 use App\Modules\Catalogo\Http\Controllers\ProductoController;
@@ -18,8 +17,6 @@ Route::get('sub-categorias', [SubCategoriaController::class, 'index'])->name('su
 Route::post('sub-categorias', [SubCategoriaController::class, 'store'])->name('sub-categorias.store');
 Route::patch('sub-categorias/{sub_categoria}', [SubCategoriaController::class, 'update'])->name('sub-categorias.update');
 Route::delete('sub-categorias/{sub_categoria}', [SubCategoriaController::class, 'destroy'])->name('sub-categorias.destroy');
-
-Route::get('cotizador', [CotizadorController::class, 'index'])->name('cotizador.index');
 
 Route::post('importaciones/previa', [ImportacionController::class, 'previa'])->name('importaciones.previa');
 Route::post('importaciones', [ImportacionController::class, 'store'])->name('importaciones.store');

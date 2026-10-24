@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import CreateTrasladoModal from '@/components/traslados/create-traslado-modal';
 import Heading from '@/components/heading';
+import KardexModal from '@/components/inventario/kardex-modal';
 import StockBodegasTable from '@/components/stock-bodegas/stock-bodegas-table';
 import { index } from '@/routes/stock-bodegas';
 import type { Bodega, StockBodega } from '@/types';
@@ -27,6 +28,12 @@ export default function StockBodegasIndex({
     const [trasladoProductoId, setTrasladoProductoId] = useState<number | null>(
         null,
     );
+    const [kardexProductoId, setKardexProductoId] = useState<number | null>(
+        null,
+    );
+    const productoKardex = productos.find(
+        (producto) => producto.id === kardexProductoId,
+    );
 
     return (
         <>
@@ -47,8 +54,22 @@ export default function StockBodegasIndex({
                     onTraslado={
                         canCreateTraslado ? setTrasladoProductoId : undefined
                     }
+                    onMovimientos={setKardexProductoId}
                 />
             </div>
+
+            {productoKardex ? (
+                <KardexModal
+                    productoId={productoKardex.id}
+                    nombre={
+                        productoKardex.concatenar_codigo_nombre ??
+                        productoKardex.referencia_producto ??
+                        `Producto ${productoKardex.id}`
+                    }
+                    bodegas={bodegas}
+                    onClose={() => setKardexProductoId(null)}
+                />
+            ) : null}
 
             {canCreateTraslado ? (
                 <CreateTrasladoModal

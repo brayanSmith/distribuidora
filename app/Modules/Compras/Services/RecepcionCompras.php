@@ -2,10 +2,10 @@
 
 namespace App\Modules\Compras\Services;
 
-use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Compras\Models\Compra;
 use App\Modules\Compras\Models\DetalleCompra;
-use App\Modules\Inventario\Models\StockBodega;
+use App\Modules\Inventario\Models\MovimientoStock;
+use App\Modules\Inventario\Services\Kardex;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -61,22 +61,19 @@ class RecepcionCompras
     }
 
     /**
-     * Add (or, negative, take back) units of a line to the stock of its bodega.
-     * Servicios and productos marked as not inventariable never carry stock.
+     * Add (or, negative, take back) units of a line to the stock of its
+     * bodega, leaving it in the kardex.
      */
     public function moverStock(DetalleCompra $detalle, float $cantidad): void
     {
-        if ($cantidad == 0.0 || Producto::withTrashed()->whereKey($detalle->producto_id)->where('inventariable', false)->exists()) {
-            return;
-        }
-
-        $stockBodega = StockBodega::firstOrNew([
-            'bodega_id' => $detalle->bodega_id,
-            'producto_id' => $detalle->producto_id,
-        ]);
-
-        $stockBodega->entradas = (float) ($stockBodega->entradas ?? 0) + $cantidad;
-        $stockBodega->stock = (float) ($stockBodega->stock ?? 0) + $cantidad;
-        $stockBodega->save();
+        app(Kardex::class)->mover(
+            $detalle->producto_id,
+            $detalle->bodega_id,
+            $cantidad,
+            MovimientoStock::COMPRA,
+            ['compra', $detalle->compra_id],
+            reverso: $cantidad < 0,
+            costoUnitario: (float) $detalle->precio_unitario,
+        );
     }
 }

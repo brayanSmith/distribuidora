@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 
 /**
  * Short-lived cache for the big product/stock listings many users open at
- * once (the POS catalog, the stock per bodega, the cotizador). They are
+ * once (the POS catalog, the stock per bodega). They are
  * shared by every user, and they are dropped as soon as any stock, product
  * or bodega changes (see AppServiceProvider), so what people see is never
  * stale after a sale, a purchase or an edit. The TTL is only a safety net.

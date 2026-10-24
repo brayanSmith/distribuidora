@@ -7,8 +7,9 @@ use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Inventario\Http\Requests\StoreTrasladoRequest;
 use App\Modules\Inventario\Http\Requests\UpdateTrasladoRequest;
 use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Inventario\Models\StockBodega;
+use App\Modules\Inventario\Models\MovimientoStock;
 use App\Modules\Inventario\Models\Traslado;
+use App\Modules\Inventario\Services\Kardex;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -101,36 +102,16 @@ class TrasladoController extends Controller
     }
 
     /**
-     * Apply (or revert, with sign -1) a traslado's quantity to both warehouses' stock.
+     * Apply (or revert, with sign -1) a traslado: out of one bodega and into
+     * the other, both in the kardex.
      */
     private function applyTraslado(Traslado $traslado, int $sign): void
     {
-        $cantidad = (float) $traslado->cantidad;
+        $cantidad = $sign * (float) $traslado->cantidad;
+        $kardex = app(Kardex::class);
+        $documento = ['traslado', $traslado->id];
 
-        $this->adjustStockBodega((int) $traslado->bodega_donante_id, (int) $traslado->producto_id, 0, $sign * $cantidad);
-        $this->adjustStockBodega((int) $traslado->bodega_destino_id, (int) $traslado->producto_id, $sign * $cantidad, 0);
-    }
-
-    /**
-     * Apply entradas/salidas deltas to a warehouse's stock.
-     */
-    private function adjustStockBodega(int $bodegaId, int $productoId, float $entradasDelta, float $salidasDelta): void
-    {
-        // Servicios (and any producto marked as not inventariable) never carry stock.
-        if (Producto::withTrashed()->whereKey($productoId)
-            ->where('inventariable', false)
-            ->exists()) {
-            return;
-        }
-
-        $stockBodega = StockBodega::firstOrNew([
-            'bodega_id' => $bodegaId,
-            'producto_id' => $productoId,
-        ]);
-
-        $stockBodega->entradas = (float) ($stockBodega->entradas ?? 0) + $entradasDelta;
-        $stockBodega->salidas = (float) ($stockBodega->salidas ?? 0) + $salidasDelta;
-        $stockBodega->stock = (float) ($stockBodega->stock ?? 0) + $entradasDelta - $salidasDelta;
-        $stockBodega->save();
+        $kardex->mover((int) $traslado->producto_id, (int) $traslado->bodega_donante_id, -$cantidad, MovimientoStock::TRASLADO_SALIDA, $documento, reverso: $sign < 0);
+        $kardex->mover((int) $traslado->producto_id, (int) $traslado->bodega_destino_id, $cantidad, MovimientoStock::TRASLADO_ENTRADA, $documento, reverso: $sign < 0);
     }
 }

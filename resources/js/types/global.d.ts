@@ -36,7 +36,6 @@ declare module '@inertiajs/core' {
             importacionesSinLeer: number;
             /** Imports of the user still queued or running. */
             importacionesEnCurso: number;
-            canViewCotizador: boolean;
             canViewPos: boolean;
             canViewCompras: boolean;
             canCreateCompras: boolean;
@@ -49,6 +48,7 @@ declare module '@inertiajs/core' {
             canViewStockIniciales: boolean;
             canViewStockBodegas: boolean;
             canViewTraslados: boolean;
+            canViewAjustesInventario: boolean;
             canViewHistorial: boolean;
             canViewIniciosSesion: boolean;
             /** Record totals shown as sidebar badges. */

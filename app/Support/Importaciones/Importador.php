@@ -133,6 +133,8 @@ abstract class Importador
         $importacion->save();
 
         Storage::disk('local')->delete($importacion->archivo);
+
+        ImportacionTerminada::avisar($importacion);
     }
 
     /**

@@ -7,8 +7,9 @@ use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Inventario\Http\Requests\StoreStockInicialRequest;
 use App\Modules\Inventario\Http\Requests\UpdateStockInicialRequest;
 use App\Modules\Inventario\Models\Bodega;
-use App\Modules\Inventario\Models\StockBodega;
+use App\Modules\Inventario\Models\MovimientoStock;
 use App\Modules\Inventario\Models\StockInicial;
+use App\Modules\Inventario\Services\Kardex;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -49,9 +50,9 @@ class StockInicialController extends Controller
         $data = $request->validated();
 
         DB::transaction(function () use ($data): void {
-            StockInicial::create($data);
+            $stockInicial = StockInicial::create($data);
 
-            $this->adjustStockBodega((int) $data['bodega_id'], (int) $data['producto_id'], (float) $data['cantidad']);
+            $this->aplicar($stockInicial, 1);
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Stock inicial created.')]);
@@ -69,11 +70,11 @@ class StockInicialController extends Controller
         $data = $request->validated();
 
         DB::transaction(function () use ($stock_inicial, $data): void {
-            $this->adjustStockBodega((int) $stock_inicial->bodega_id, (int) $stock_inicial->producto_id, -(float) $stock_inicial->cantidad);
+            $this->aplicar($stock_inicial, -1);
 
             $stock_inicial->update($data);
 
-            $this->adjustStockBodega((int) $data['bodega_id'], (int) $data['producto_id'], (float) $data['cantidad']);
+            $this->aplicar($stock_inicial, 1);
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Stock inicial updated.')]);
@@ -89,7 +90,7 @@ class StockInicialController extends Controller
         Gate::authorize('stock-iniciales.delete');
 
         DB::transaction(function () use ($stock_inicial): void {
-            $this->adjustStockBodega((int) $stock_inicial->bodega_id, (int) $stock_inicial->producto_id, -(float) $stock_inicial->cantidad);
+            $this->aplicar($stock_inicial, -1);
 
             $stock_inicial->delete();
         });
@@ -100,24 +101,17 @@ class StockInicialController extends Controller
     }
 
     /**
-     * Apply (or revert) a stock inicial quantity to the warehouse stock.
+     * Apply (or revert, with sign -1) a stock inicial to its bodega, in the kardex.
      */
-    private function adjustStockBodega(int $bodegaId, int $productoId, float $cantidad): void
+    private function aplicar(StockInicial $stockInicial, int $sign): void
     {
-        // Servicios (and any producto marked as not inventariable) never carry stock.
-        if (Producto::withTrashed()->whereKey($productoId)
-            ->where('inventariable', false)
-            ->exists()) {
-            return;
-        }
-
-        $stockBodega = StockBodega::firstOrNew([
-            'bodega_id' => $bodegaId,
-            'producto_id' => $productoId,
-        ]);
-
-        $stockBodega->stock_inicial = (float) ($stockBodega->stock_inicial ?? 0) + $cantidad;
-        $stockBodega->stock = (float) ($stockBodega->stock ?? 0) + $cantidad;
-        $stockBodega->save();
+        app(Kardex::class)->mover(
+            (int) $stockInicial->producto_id,
+            (int) $stockInicial->bodega_id,
+            $sign * (float) $stockInicial->cantidad,
+            MovimientoStock::STOCK_INICIAL,
+            ['stock_inicial', $stockInicial->id],
+            reverso: $sign < 0,
+        );
     }
 }

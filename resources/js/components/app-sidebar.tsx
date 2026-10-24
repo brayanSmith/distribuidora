@@ -5,6 +5,7 @@ import {
     Building2,
     Calculator,
     ClipboardList,
+    ClipboardPen,
     FileText,
     HandCoins,
     History,
@@ -14,7 +15,6 @@ import {
     Package,
     PackageOpen,
     PackagePlus,
-    Quote,
     Receipt,
     Search,
     Shield,
@@ -52,7 +52,6 @@ import {
     pendientes as comprasPendientes,
     pos as comprasPos,
 } from '@/routes/compras';
-import { index as cotizadorIndex } from '@/routes/cotizador';
 import { index as entregasIndex } from '@/routes/entregas';
 import { index as separadosIndex } from '@/routes/separados';
 import { edit as empresaEdit } from '@/routes/empresa';
@@ -68,6 +67,7 @@ import { index as proveedoresIndex } from '@/routes/proveedores';
 import { index as pucsIndex } from '@/routes/pucs';
 import { index as rolesIndex } from '@/routes/roles';
 import { index as stockBodegasIndex } from '@/routes/stock-bodegas';
+import { index as ajustesInventarioIndex } from '@/routes/ajustes-inventario';
 import { index as stockInicialesIndex } from '@/routes/stock-iniciales';
 import { index as trasladosIndex } from '@/routes/traslados';
 import { index as usuariosIndex } from '@/routes/usuarios';
@@ -115,12 +115,6 @@ export function AppSidebar() {
         {
             label: 'Sistema',
             items: [
-                ...entry(
-                    page.props.canViewCotizador,
-                    'Cotizar',
-                    cotizadorIndex,
-                    Quote,
-                ),
                 ...entry(
                     page.props.canViewPos,
                     'POS',
@@ -265,6 +259,12 @@ export function AppSidebar() {
                     'Traslados',
                     trasladosIndex,
                     ArrowLeftRight,
+                ),
+                ...entry(
+                    page.props.canViewAjustesInventario,
+                    'Ajustes de inventario',
+                    ajustesInventarioIndex,
+                    ClipboardPen,
                 ),
             ],
         },

@@ -7,6 +7,7 @@ import {
     Minus,
     Plus,
     Search,
+    History,
     Truck,
     X,
 } from 'lucide-react';
@@ -60,6 +61,8 @@ type Props = {
     canViewInversion: boolean;
     /** Given only to whoever may create traslados: adds a "Traslado" button per row. */
     onTraslado?: (productoId: number) => void;
+    /** Opens the producto's kardex (its movements). */
+    onMovimientos?: (productoId: number) => void;
 };
 
 type Vista = 'stock' | 'inversion';
@@ -178,7 +181,7 @@ const VALOR_TOTAL_INVERSION_COLUMN: ColumnMeta = {
 };
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-    acciones: 140,
+    acciones: 250,
     producto: 260,
     stockTotal: 110,
     valorVenta: 140,
@@ -570,6 +573,7 @@ export default function StockBodegasTable({
     bodegas: bodegasProp,
     canViewInversion,
     onTraslado,
+    onMovimientos,
 }: Props) {
     const storageKey = 'table:stock-bodegas';
     const session = { scope: 'session' } as const;
@@ -580,7 +584,10 @@ export default function StockBodegasTable({
     );
     const vista: Vista = canViewInversion ? vistaElegida : 'stock';
     // As in the previous system, the traslado is offered in the stock view only.
-    const showTraslado = onTraslado !== undefined && vista === 'stock';
+    // The actions column: the kardex for everyone, traslados with permission.
+    const showTraslado =
+        (onTraslado !== undefined || onMovimientos !== undefined) &&
+        vista === 'stock';
     const [search, setSearch] = usePersistedState(
         `${storageKey}:search`,
         '',
@@ -1332,20 +1339,38 @@ export default function StockBodegasTable({
                                             {showTraslado ? (
                                                 <TableCell>
                                                     <ActionsCell className="justify-center">
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            data-test="stock-bodega-traslado"
-                                                            onClick={() =>
-                                                                onTraslado?.(
-                                                                    row.productoId,
-                                                                )
-                                                            }
-                                                        >
-                                                            <Truck className="size-4" />
-                                                            Traslado
-                                                        </Button>
+                                                        {onMovimientos ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                data-test="stock-bodega-movimientos"
+                                                                onClick={() =>
+                                                                    onMovimientos(
+                                                                        row.productoId,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <History className="size-4" />
+                                                                Movimientos
+                                                            </Button>
+                                                        ) : null}
+                                                        {onTraslado ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                data-test="stock-bodega-traslado"
+                                                                onClick={() =>
+                                                                    onTraslado(
+                                                                        row.productoId,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Truck className="size-4" />
+                                                                Traslado
+                                                            </Button>
+                                                        ) : null}
                                                     </ActionsCell>
                                                 </TableCell>
                                             ) : null}

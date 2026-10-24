@@ -1,6 +1,8 @@
 <?php
 
+use App\Modules\Inventario\Http\Controllers\AjusteInventarioController;
 use App\Modules\Inventario\Http\Controllers\BodegaController;
+use App\Modules\Inventario\Http\Controllers\KardexController;
 use App\Modules\Inventario\Http\Controllers\StockBodegaController;
 use App\Modules\Inventario\Http\Controllers\StockInicialController;
 use App\Modules\Inventario\Http\Controllers\TrasladoController;
@@ -17,6 +19,12 @@ Route::patch('stock-iniciales/{stock_inicial}', [StockInicialController::class, 
 Route::delete('stock-iniciales/{stock_inicial}', [StockInicialController::class, 'destroy'])->name('stock-iniciales.destroy');
 
 Route::get('stock-bodegas', [StockBodegaController::class, 'index'])->name('stock-bodegas.index');
+// The kardex: every movement of a producto's stock.
+Route::get('kardex', [KardexController::class, 'index'])->name('kardex.index');
+
+// Manual corrections of the stock (counts, damaged or lost goods).
+Route::get('ajustes-inventario', [AjusteInventarioController::class, 'index'])->name('ajustes-inventario.index');
+Route::post('ajustes-inventario', [AjusteInventarioController::class, 'store'])->name('ajustes-inventario.store');
 
 Route::get('traslados', [TrasladoController::class, 'index'])->name('traslados.index');
 Route::post('traslados', [TrasladoController::class, 'store'])->name('traslados.store');

@@ -221,7 +221,7 @@ class PosController extends Controller
      * Everything sellable on a pedido, with the image, extra price and stock
      * fields the catalog cards need. Stock is informational only —
      * out-of-stock products are still sellable, so this is not filtered to
-     * stock > 0 (unlike the Cotizador catalog).
+     * stock > 0.
      *
      * @return array<int, array<string, mixed>>
      */
