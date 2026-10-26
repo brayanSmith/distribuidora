@@ -28,7 +28,7 @@ test('authenticated users can visit the dashboard', function () {
     $response->assertOk();
 });
 
-test('the dashboard counts units per bodega and categoria, grouping mayorista orders apart', function () {
+test('the dashboard counts units per bodega and categoria, wholesale sales in their own bodega', function () {
     $user = User::factory()->create();
     asignarRol($user);
     $bodega = Bodega::factory()->create(['nombre_bodega' => 'Central']);
@@ -52,14 +52,13 @@ test('the dashboard counts units per bodega and categoria, grouping mayorista or
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
+            ->has('cantidadPorBodega.filas', 1)
             ->where('cantidadPorBodega.filas.0.almacen', 'Central')
             ->where('cantidadPorBodega.categorias', ['Llantas', 'Servicios'])
-            ->where('cantidadPorBodega.filas.0.cantidades.Llantas', 3)
+            ->where('cantidadPorBodega.filas.0.cantidades.Llantas', 13)
             ->where('cantidadPorBodega.filas.0.cantidades.Servicios', 2)
-            ->where('cantidadPorBodega.filas.0.total', 5)
+            ->where('cantidadPorBodega.filas.0.total', 15)
             ->where('cantidadPorBodega.filas.0.valores.total', fn ($valor) => $valor > 0)
-            ->where('cantidadPorBodega.filas.1.almacen', 'Mayorista')
-            ->where('cantidadPorBodega.filas.1.cantidades.Llantas', 10)
             ->where('cantidadPorBodega.totales.total', 15)
         );
 });
@@ -182,7 +181,7 @@ test('the product filter only lists products that have orders or purchases', fun
         );
 });
 
-test('mayorista works as one more bodega in the filter', function () {
+test('filtering by a bodega counts all its sales, wholesale ones too', function () {
     $user = User::factory()->create();
     asignarRol($user);
     $central = Bodega::factory()->create(['nombre_bodega' => 'Central']);
@@ -197,27 +196,17 @@ test('mayorista works as one more bodega in the filter', function () {
     $consultar = fn (array $bodegas) => $this->actingAs($user)
         ->get(route('dashboard', ['bodega_ids' => $bodegas]));
 
-    $consultar(['mayorista'])->assertInertia(fn ($page) => $page
-        ->has('cantidadPorBodega.filas', 1)
-        ->where('cantidadPorBodega.filas.0.almacen', 'Mayorista')
-        ->where('resumen.productosVendidos.cantidad', 7)
-        ->where('resumen.valorPedidos.valor', 700)
-        ->where('resumen.gastos', 0)
-    );
-
     $consultar([(string) $central->id])->assertInertia(fn ($page) => $page
         ->has('cantidadPorBodega.filas', 1)
-        ->where('cantidadPorBodega.filas.0.total', 1)
-        ->where('resumen.productosVendidos.cantidad', 1)
-        ->where('resumen.valorPedidos.valor', 100)
+        ->where('cantidadPorBodega.filas.0.almacen', 'Central')
+        ->where('cantidadPorBodega.filas.0.total', 8)
+        ->where('resumen.productosVendidos.cantidad', 8)
+        ->where('resumen.valorPedidos.valor', 800)
         ->where('resumen.gastos', 30)
     );
 
-    $consultar([(string) $central->id, 'mayorista'])->assertInertia(fn ($page) => $page
-        ->has('cantidadPorBodega.filas', 2)
-        ->where('resumen.productosVendidos.cantidad', 8)
-        ->where('resumen.valorPedidos.valor', 800)
-    );
+    // "Mayorista" is no longer a bodega to filter by.
+    $consultar(['mayorista'])->assertSessionHasErrors('bodega_ids.0');
 });
 
 test('the dashboard feeds the charts with categories, best sellers and orders per date', function () {
@@ -329,7 +318,7 @@ test('the hasta date keeps the orders of that whole day, also when desde is the 
     Gasto::factory()->create(['bodega_id' => $bodega->id, 'monto' => 30, 'fecha_gasto' => '2026-05-10']);
 
     $this->actingAs($user)
-        ->get(route('dashboard', ['bodega_ids' => ['mayorista'], 'desde' => '2026-05-10', 'hasta' => '2026-05-10']))
+        ->get(route('dashboard', ['bodega_ids' => [$bodega->id], 'desde' => '2026-05-10', 'hasta' => '2026-05-10']))
         ->assertInertia(fn ($page) => $page
             ->where('resumen.productosVendidos.cantidad', 7)
             ->where('resumen.valorPedidos.valor', 700)

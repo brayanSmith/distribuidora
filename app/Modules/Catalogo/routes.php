@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Catalogo\Http\Controllers\CatalogoPdfController;
+use App\Modules\Catalogo\Http\Controllers\CatalogoPlantillaController;
 use App\Modules\Catalogo\Http\Controllers\CategoriaController;
 use App\Modules\Catalogo\Http\Controllers\ExportacionProductosController;
 use App\Modules\Catalogo\Http\Controllers\ImportacionController;
@@ -24,6 +26,21 @@ Route::get('importaciones/plantilla', [ImportacionController::class, 'plantilla'
 Route::patch('importaciones/leidas', [ImportacionController::class, 'marcarTodasLeidas'])->name('importaciones.leidas');
 Route::patch('importaciones/{importacion}/leida', [ImportacionController::class, 'marcarLeida'])->name('importaciones.leida');
 Route::get('productos/exportar', ExportacionProductosController::class)->name('productos.exportar');
+
+// The product catalog as PDF, generated in the background.
+Route::get('catalogo-pdf', [CatalogoPdfController::class, 'index'])->name('catalogo-pdf.index');
+Route::post('catalogo-pdf', [CatalogoPdfController::class, 'store'])->name('catalogo-pdf.store');
+Route::get('catalogo-pdf/vista-previa', [CatalogoPdfController::class, 'vistaPrevia'])->name('catalogo-pdf.vista-previa');
+Route::get('catalogo-pdf/{catalogo}', [CatalogoPdfController::class, 'show'])->name('catalogo-pdf.show');
+Route::get('catalogo-pdf/{catalogo}/descargar', [CatalogoPdfController::class, 'descargar'])->name('catalogo-pdf.descargar');
+
+// Designs of the catalog, made of blocks.
+Route::get('catalogo-plantillas/crear', [CatalogoPlantillaController::class, 'create'])->name('catalogo-plantillas.create');
+Route::post('catalogo-plantillas', [CatalogoPlantillaController::class, 'store'])->name('catalogo-plantillas.store');
+Route::post('catalogo-plantillas/vista-previa', [CatalogoPlantillaController::class, 'vistaPrevia'])->name('catalogo-plantillas.vista-previa');
+Route::get('catalogo-plantillas/{plantilla}/editar', [CatalogoPlantillaController::class, 'edit'])->name('catalogo-plantillas.edit');
+Route::put('catalogo-plantillas/{plantilla}', [CatalogoPlantillaController::class, 'update'])->name('catalogo-plantillas.update');
+Route::delete('catalogo-plantillas/{plantilla}', [CatalogoPlantillaController::class, 'destroy'])->name('catalogo-plantillas.destroy');
 
 Route::get('productos', [ProductoController::class, 'index'])->name('productos.index');
 Route::get('productos/crear', [ProductoController::class, 'create'])->name('productos.create');

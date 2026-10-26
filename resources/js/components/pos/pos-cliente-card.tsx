@@ -12,23 +12,56 @@ type Props = {
     cliente: ClienteOption;
 };
 
-function Dato({ label, value }: { label: string; value: string | null }) {
-    return (
-        <div className="min-w-0">
-            <span className="text-muted-foreground">{label}: </span>
-            <span className="break-words">{value || '—'}</span>
-        </div>
-    );
+/** The first letters of a name, for the avatar. */
+export function iniciales(nombre: string): string {
+    return nombre
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((palabra) => palabra[0]?.toUpperCase())
+        .join('');
 }
 
-/** The selected cliente's data, shown under the "Seleccionar cliente" button. */
+/**
+ * The selected cliente, compact: who it is and how to reach them, plus a
+ * warning when it still owes money.
+ */
 export default function PosClienteCard({ cliente }: Props) {
+    const contacto = [
+        cliente.numero_documento,
+        cliente.telefono,
+        cliente.ciudad,
+    ].filter(Boolean);
+
     return (
         <div
-            className="bg-muted/40 grid gap-1 rounded-md border p-3 text-sm"
+            className="bg-muted/40 grid gap-2 rounded-md border p-3 text-sm"
             data-test="pos-cliente-card"
         >
-            <p className="font-semibold">{cliente.razon_social}</p>
+            <div className="flex items-center gap-3">
+                <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+                    {iniciales(cliente.razon_social)}
+                </span>
+                <div className="min-w-0">
+                    <p className="truncate font-semibold">
+                        {cliente.razon_social}
+                    </p>
+                    <p className="text-muted-foreground truncate text-xs">
+                        {contacto.length > 0
+                            ? contacto.join(' · ')
+                            : 'Sin datos de contacto'}
+                    </p>
+                    {cliente.direccion ? (
+                        <p
+                            className="text-muted-foreground truncate text-xs"
+                            title={cliente.direccion}
+                        >
+                            {cliente.direccion}
+                        </p>
+                    ) : null}
+                </div>
+            </div>
+
             {cliente.deuda ? (
                 <div
                     data-test="pos-cliente-deuda"
@@ -52,11 +85,6 @@ export default function PosClienteCard({ cliente }: Props) {
                     </span>
                 </div>
             ) : null}
-            <Dato label="Documento" value={cliente.numero_documento} />
-            <Dato label="Teléfono" value={cliente.telefono} />
-            <Dato label="Ciudad" value={cliente.ciudad} />
-            <Dato label="Dirección" value={cliente.direccion} />
-            <Dato label="Email" value={cliente.email} />
         </div>
     );
 }

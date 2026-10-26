@@ -49,7 +49,7 @@ class DashboardController extends Controller
     {
         $datos = $request->validate([
             'bodega_ids' => ['nullable', 'array'],
-            'bodega_ids.*' => ['regex:/^(\d+|mayorista)$/'],
+            'bodega_ids.*' => ['integer'],
             'desde' => ['nullable', 'date'],
             'hasta' => ['nullable', 'date'],
             'producto_ids' => ['nullable', 'array'],
@@ -57,42 +57,11 @@ class DashboardController extends Controller
         ]);
 
         return [
-            // "mayorista" is only offered to whoever may see the mayorista price.
-            'bodega_ids' => array_values(array_filter(
-                array_map('strval', $datos['bodega_ids'] ?? []),
-                fn (string $id) => $id !== 'mayorista' || $request->user()->puedeVerPrecio('valor_mayorista'),
-            )),
+            'bodega_ids' => array_map('strval', $datos['bodega_ids'] ?? []),
             'desde' => (string) ($datos['desde'] ?? ''),
             'hasta' => (string) ($datos['hasta'] ?? ''),
             'producto_ids' => array_map('strval', $datos['producto_ids'] ?? []),
         ];
-    }
-
-    /**
-     * Keeps the rows of the selected bodegas. "mayorista" acts as one more
-     * bodega: those orders are kept only when it is selected, and leave the
-     * regular bodegas out of the count.
-     *
-     * @template TQuery of \Illuminate\Contracts\Database\Query\Builder
-     *
-     * @param  TQuery  $query
-     * @param  array<string, mixed>  $filtros
-     * @return TQuery
-     */
-    private function limitarPorBodegas($query, array $filtros, string $columnaBodega)
-    {
-        $ids = array_values(array_filter($filtros['bodega_ids'], fn (string $id) => $id !== 'mayorista'));
-        $incluyeMayorista = in_array('mayorista', $filtros['bodega_ids'], true);
-
-        return $query->where(function ($grupo) use ($ids, $incluyeMayorista, $columnaBodega) {
-            $grupo->where(fn ($regular) => $regular
-                ->where('pedidos.tipo_precio', '<>', 'MAYORISTA')
-                ->whereIn(DB::raw($columnaBodega), array_map('intval', $ids)));
-
-            if ($incluyeMayorista) {
-                $grupo->orWhere('pedidos.tipo_precio', 'MAYORISTA');
-            }
-        });
     }
 
     /**
@@ -115,7 +84,8 @@ class DashboardController extends Controller
             ->join('pedidos', 'pedidos.id', '=', 'detalle_pedidos.pedido_id')
             ->join('productos', 'productos.id', '=', 'detalle_pedidos.producto_id')
             ->whereNull('pedidos.deleted_at')
-            ->when($filtros['bodega_ids'] !== [], fn (Builder $query) => $this->limitarPorBodegas($query, $filtros, 'COALESCE(detalle_pedidos.bodega_id, pedidos.bodega_id)'))
+            // Every sale counts in the bodega it left from, wholesale ones too.
+            ->when($filtros['bodega_ids'] !== [], fn (Builder $query) => $query->whereIn(DB::raw('COALESCE(detalle_pedidos.bodega_id, pedidos.bodega_id)'), array_map('intval', $filtros['bodega_ids'])))
             ->when($filtros['desde'] !== '', fn (Builder $query) => $query->where('pedidos.fecha', '>=', $filtros['desde']))
             ->when($filtros['hasta'] !== '', fn (Builder $query) => $query->where('pedidos.fecha', '<', $this->diaSiguiente($filtros['hasta'])))
             ->when($filtros['producto_ids'] !== [], fn (Builder $query) => $query->whereIn('detalle_pedidos.producto_id', $filtros['producto_ids']));
@@ -131,14 +101,14 @@ class DashboardController extends Controller
     private function gastos(array $filtros): EloquentBuilder
     {
         return Gasto::query()
-            ->when($filtros['bodega_ids'] !== [], fn ($query) => $query->whereIn('bodega_id', array_filter($filtros['bodega_ids'], fn (string $id) => $id !== 'mayorista')))
+            ->when($filtros['bodega_ids'] !== [], fn ($query) => $query->whereIn('bodega_id', $filtros['bodega_ids']))
             ->when($filtros['desde'] !== '', fn ($query) => $query->where('fecha_gasto', '>=', $filtros['desde']))
             ->when($filtros['hasta'] !== '', fn ($query) => $query->where('fecha_gasto', '<', $this->diaSiguiente($filtros['hasta'])));
     }
 
     /**
-     * Units sold per bodega split by product categoria. Mayorista orders are
-     * pulled out of their bodega and grouped in their own "Mayorista" row.
+     * Units sold per bodega split by product categoria, wholesale sales
+     * counted in the bodega they left from like any other.
      *
      * @return array{categorias: list<string>, filas: list<array{almacen: string, cantidades: array<string, int>, total: int, valores: array<string, float>}>, totales: array<string, int>}
      */
@@ -148,7 +118,7 @@ class DashboardController extends Controller
 
         $ventas = $this->detalles($filtros)
             ->leftJoin('categorias', 'categorias.id', '=', 'productos.categoria_id')
-            ->selectRaw("CASE WHEN pedidos.tipo_precio = 'MAYORISTA' THEN 'mayorista' ELSE COALESCE(detalle_pedidos.bodega_id, pedidos.bodega_id) END as grupo")
+            ->selectRaw('COALESCE(detalle_pedidos.bodega_id, pedidos.bodega_id) as grupo')
             ->selectRaw('COALESCE(categorias.nombre_categoria, ?) as categoria, SUM(detalle_pedidos.cantidad) as cantidad, SUM(detalle_pedidos.subtotal) as valor', [$sinCategoria])
             ->groupBy('grupo', 'categoria')
             ->get();
@@ -164,18 +134,14 @@ class DashboardController extends Controller
 
         $filas = [];
         $bodegas = Bodega::permitidas()->orderBy('nombre_bodega')
-            ->when($filtros['bodega_ids'] !== [], fn ($query) => $query->whereKey(array_filter($filtros['bodega_ids'], fn (string $id) => $id !== 'mayorista')))
+            ->when($filtros['bodega_ids'] !== [], fn ($query) => $query->whereKey($filtros['bodega_ids']))
             ->get(['id', 'nombre_bodega']);
 
         foreach ($bodegas as $bodega) {
             $filas['b'.$bodega->id] = $vacia($bodega->nombre_bodega);
         }
-        if (auth()->user()->puedeVerPrecio('valor_mayorista') && ($filtros['bodega_ids'] === [] || in_array('mayorista', $filtros['bodega_ids'], true))) {
-            $filas['mayorista'] = $vacia('Mayorista');
-        }
-
         foreach ($ventas as $venta) {
-            $clave = $venta->grupo === 'mayorista' ? 'mayorista' : 'b'.$venta->grupo;
+            $clave = 'b'.$venta->grupo;
 
             if (! isset($filas[$clave])) {
                 continue;
@@ -212,7 +178,7 @@ class DashboardController extends Controller
             ->when($filtraPorProducto,
                 fn ($query) => $query->whereIn('id', (clone $detalles)->select('pedidos.id')),
                 fn ($query) => $query
-                    ->when($filtros['bodega_ids'] !== [], fn ($query) => $this->limitarPorBodegas($query, $filtros, 'pedidos.bodega_id'))
+                    ->when($filtros['bodega_ids'] !== [], fn ($query) => $query->whereIn('pedidos.bodega_id', $filtros['bodega_ids']))
                     ->when($filtros['desde'] !== '', fn ($query) => $query->where('fecha', '>=', $filtros['desde']))
                     ->when($filtros['hasta'] !== '', fn ($query) => $query->where('fecha', '<', $this->diaSiguiente($filtros['hasta']))));
     }

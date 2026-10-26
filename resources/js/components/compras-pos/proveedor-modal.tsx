@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { iniciales } from '@/components/pos/pos-cliente-card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { ProveedorPos } from '@/types';
@@ -210,27 +211,40 @@ export default function ProveedorModal({
     );
 }
 
-function Dato({ label, value }: { label: string; value: string | null }) {
-    return (
-        <div className="min-w-0">
-            <span className="text-muted-foreground">{label}: </span>
-            <span className="break-words">{value || '—'}</span>
-        </div>
-    );
-}
-
-/** The selected proveedor's data, under the "Seleccionar proveedor" button. */
+/** The selected proveedor, compact: who it is and how to reach them. */
 export function ProveedorCard({ proveedor }: { proveedor: ProveedorPos }) {
+    const contacto = [
+        proveedor.nit_proveedor ? `NIT ${proveedor.nit_proveedor}` : null,
+        proveedor.telefono_proveedor,
+        proveedor.ciudad_proveedor,
+    ].filter(Boolean);
+
     return (
         <div
-            className="bg-muted/40 grid gap-1 rounded-md border p-3 text-sm"
+            className="bg-muted/40 flex items-center gap-3 rounded-md border p-3 text-sm"
             data-test="compras-pos-proveedor-card"
         >
-            <p className="font-semibold">{proveedor.nombre_proveedor}</p>
-            <Dato label="NIT" value={proveedor.nit_proveedor} />
-            <Dato label="Teléfono" value={proveedor.telefono_proveedor} />
-            <Dato label="Ciudad" value={proveedor.ciudad_proveedor} />
-            <Dato label="Dirección" value={proveedor.direccion_proveedor} />
+            <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+                {iniciales(proveedor.nombre_proveedor)}
+            </span>
+            <div className="min-w-0">
+                <p className="truncate font-semibold">
+                    {proveedor.nombre_proveedor}
+                </p>
+                <p className="text-muted-foreground truncate text-xs">
+                    {contacto.length > 0
+                        ? contacto.join(' · ')
+                        : 'Sin datos de contacto'}
+                </p>
+                {proveedor.direccion_proveedor ? (
+                    <p
+                        className="text-muted-foreground truncate text-xs"
+                        title={proveedor.direccion_proveedor}
+                    >
+                        {proveedor.direccion_proveedor}
+                    </p>
+                ) : null}
+            </div>
         </div>
     );
 }

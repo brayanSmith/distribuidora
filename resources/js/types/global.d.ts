@@ -42,6 +42,7 @@ declare module '@inertiajs/core' {
             canRecibirCompras: boolean;
             canViewEntregas: boolean;
             canViewSeparados: boolean;
+            canExportarCatalogo: boolean;
             /** Public VAPID key for push notifications (null signed out). */
             vapidPublicKey: string | null;
             canViewPedidos: boolean;

@@ -74,6 +74,8 @@ class HandleInertiaRequests extends Middleware
             'canRecibirCompras' => fn () => $user?->can('compras.recibir') ?? false,
             'canViewEntregas' => fn () => $user?->can('entregas.view') ?? false,
             'canViewSeparados' => fn () => $user?->can('separados.view') ?? false,
+            // The "Catálogo PDF" button of the header.
+            'canExportarCatalogo' => fn () => $user?->can('productos.export') ?? false,
             'canViewPedidos' => fn () => $user?->can('pedidos.view') ?? false,
             'canViewProductos' => fn () => $user?->can('productos.view') ?? false,
             // What the user may import from a file (productos, medios de pago...).

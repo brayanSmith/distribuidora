@@ -4,12 +4,16 @@ import {
     Hash,
     Mail,
     MapPin,
+    Palette,
     Pencil,
     Phone,
     ReceiptText,
     Save,
 } from 'lucide-react';
 import { useState } from 'react';
+import RedesSocialesCampo, {
+    IconoRed,
+} from '@/components/empresa/redes-sociales-campo';
 import Heading from '@/components/heading';
 import ImageField from '@/components/image-field';
 import type { FormatoRecorte } from '@/components/image-drop-cropper';
@@ -17,17 +21,29 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { edit, update } from '@/routes/empresa';
 import { edit as voucherEdit } from '@/routes/empresa/voucher';
-import type { Empresa, EmpresaPermissions, FormatoLogo } from '@/types';
+import type {
+    Empresa,
+    EmpresaPermissions,
+    FormatoLogo,
+    RedDisponible,
+} from '@/types';
 
 type Props = {
     empresa: Empresa | null;
     permissions: EmpresaPermissions;
+    /** The networks a company can pick, with their icons. */
+    redesDisponibles: RedDisponible[];
 };
 
-export default function EmpresaEdit({ empresa, permissions }: Props) {
+export default function EmpresaEdit({
+    empresa,
+    permissions,
+    redesDisponibles,
+}: Props) {
     // Shown as a card so nothing is changed by mistake; the form opens on
     // purpose (or straight away while there is no company yet).
     const [editando, setEditando] = useState(
@@ -50,6 +66,7 @@ export default function EmpresaEdit({ empresa, permissions }: Props) {
                 {!editando && empresa ? (
                     <EmpresaTarjeta
                         empresa={empresa}
+                        redesDisponibles={redesDisponibles}
                         onEditar={
                             permissions.canUpdate
                                 ? () => setEditando(true)
@@ -195,6 +212,12 @@ export default function EmpresaEdit({ empresa, permissions }: Props) {
                                     </div>
                                 ) : null}
 
+                                <MarcaCampos
+                                    empresa={empresa}
+                                    errors={errors}
+                                    redesDisponibles={redesDisponibles}
+                                />
+
                                 <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-4">
                                     {empresa ? (
                                         <Button
@@ -231,9 +254,11 @@ export default function EmpresaEdit({ empresa, permissions }: Props) {
  */
 function EmpresaTarjeta({
     empresa,
+    redesDisponibles,
     onEditar,
 }: {
     empresa: Empresa;
+    redesDisponibles: RedDisponible[];
     onEditar?: () => void;
 }) {
     const datos: { icono: typeof Mail; label: string; valor: string | null }[] =
@@ -375,6 +400,231 @@ function EmpresaTarjeta({
                     </figure>
                 </div>
             </div>
+
+            <div
+                className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t px-5 py-4"
+                data-test="empresa-marca"
+            >
+                <div className="flex items-center gap-2">
+                    {[
+                        empresa.color_primario ?? COLORES_POR_DEFECTO.primario,
+                        empresa.color_acento ?? COLORES_POR_DEFECTO.acento,
+                    ].map((color, indice) => (
+                        <span
+                            key={indice}
+                            className="size-6 rounded-full border shadow-xs"
+                            style={{ background: color }}
+                            title={color}
+                        />
+                    ))}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="text-muted-foreground text-xs">Marca</div>
+                    <div className="truncate">
+                        {empresa.eslogan_empresa || (
+                            <span className="text-muted-foreground italic">
+                                Sin eslogan
+                            </span>
+                        )}
+                    </div>
+                </div>
+                {empresa.redes.map((red, indice) => (
+                    <span
+                        key={indice}
+                        className="flex items-center gap-1.5 text-sm"
+                        title={red.nombre}
+                    >
+                        <IconoRed
+                            red={red.red}
+                            disponibles={redesDisponibles}
+                            imagen={red.icono_url}
+                        />
+                        {red.valor}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/** The brand colors while the company has not chosen its own (as Empresa::COLOR_*). */
+const COLORES_POR_DEFECTO = { primario: '#3b0764', acento: '#a855f7' };
+
+/**
+ * The company's brand: its colors and what it says of itself. The product
+ * catalog is drawn with them.
+ */
+function MarcaCampos({
+    empresa,
+    errors,
+    redesDisponibles,
+}: {
+    empresa: Empresa | null;
+    errors: Partial<Record<string, string>>;
+    redesDisponibles: RedDisponible[];
+}) {
+    const [primario, setPrimario] = useState(empresa?.color_primario ?? '');
+    const [acento, setAcento] = useState(empresa?.color_acento ?? '');
+
+    const texto = (
+        campo: keyof Empresa,
+        label: string,
+        placeholder: string,
+    ) => (
+        <div className="grid gap-2">
+            <Label htmlFor={campo}>{label}</Label>
+            <Input
+                id={campo}
+                name={campo}
+                defaultValue={(empresa?.[campo] as string | null) ?? ''}
+                placeholder={placeholder}
+            />
+            <InputError message={errors[campo]} />
+        </div>
+    );
+
+    return (
+        <fieldset className="grid gap-4 border-t pt-5">
+            <legend className="sr-only">Marca</legend>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <div className="flex items-center gap-2 font-medium">
+                        <Palette className="size-4" />
+                        Marca
+                    </div>
+                    <p className="text-muted-foreground text-sm">
+                        Colores y textos con los que se diseña el catálogo de
+                        productos.
+                    </p>
+                </div>
+                <div
+                    className="h-3 w-40 rounded-full"
+                    style={{
+                        background: `linear-gradient(90deg, ${primario || COLORES_POR_DEFECTO.primario}, ${acento || COLORES_POR_DEFECTO.acento})`,
+                    }}
+                    data-test="empresa-marca-muestra"
+                />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+                <ColorCampo
+                    name="color_primario"
+                    label="Color principal"
+                    descripcion="Títulos, encabezados y fondos."
+                    value={primario}
+                    porDefecto={COLORES_POR_DEFECTO.primario}
+                    onChange={setPrimario}
+                    error={errors.color_primario}
+                />
+                <ColorCampo
+                    name="color_acento"
+                    label="Color de acento"
+                    descripcion="Precios y detalles que resaltan."
+                    value={acento}
+                    porDefecto={COLORES_POR_DEFECTO.acento}
+                    onChange={setAcento}
+                    error={errors.color_acento}
+                />
+
+                <div className="sm:col-span-2">
+                    {texto(
+                        'eslogan_empresa',
+                        'Eslogan',
+                        'Ej. Todo para tu belleza al mejor precio',
+                    )}
+                </div>
+
+                <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="descripcion_empresa">Descripción</Label>
+                    <Textarea
+                        id="descripcion_empresa"
+                        name="descripcion_empresa"
+                        defaultValue={empresa?.descripcion_empresa ?? ''}
+                        placeholder="Una o dos frases sobre lo que ofreces."
+                        maxLength={400}
+                    />
+                    <InputError message={errors.descripcion_empresa} />
+                </div>
+
+                <div className="grid gap-2 sm:col-span-2">
+                    <Label>Redes sociales</Label>
+                    <RedesSocialesCampo
+                        redes={empresa?.redes ?? []}
+                        disponibles={redesDisponibles}
+                        errors={errors}
+                    />
+                    <p className="text-muted-foreground text-xs">
+                        Aparecen al pie del catálogo, en este orden. Si tu red
+                        no está en la lista, elige “Otra red” y sube su ícono.
+                    </p>
+                </div>
+
+                <div className="sm:col-span-2">
+                    {texto(
+                        'colaboracion_empresa',
+                        'En colaboración de',
+                        'Marca o aliado que aparece al pie del catálogo',
+                    )}
+                </div>
+            </div>
+        </fieldset>
+    );
+}
+
+/**
+ * A brand color: picked or typed (#rrggbb). Empty uses the default one.
+ */
+function ColorCampo({
+    name,
+    label,
+    descripcion,
+    value,
+    porDefecto,
+    onChange,
+    error,
+}: {
+    name: string;
+    label: string;
+    descripcion: string;
+    value: string;
+    porDefecto: string;
+    onChange: (valor: string) => void;
+    error?: string;
+}) {
+    return (
+        <div className="grid content-start gap-2">
+            <Label htmlFor={name}>{label}</Label>
+            <div className="flex items-center gap-2">
+                <input
+                    type="color"
+                    aria-label={`Elegir ${label.toLowerCase()}`}
+                    value={value || porDefecto}
+                    onChange={(evento) => onChange(evento.target.value)}
+                    className="size-9 shrink-0 cursor-pointer rounded-md border bg-transparent p-0.5"
+                />
+                <Input
+                    id={name}
+                    name={name}
+                    value={value}
+                    placeholder={porDefecto}
+                    onChange={(evento) => onChange(evento.target.value.trim())}
+                    maxLength={7}
+                    className="font-mono uppercase"
+                    data-test={`empresa-${name}`}
+                />
+                {value ? (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onChange('')}
+                    >
+                        Por defecto
+                    </Button>
+                ) : null}
+            </div>
+            <p className="text-muted-foreground text-xs">{descripcion}</p>
+            <InputError message={error} />
         </div>
     );
 }

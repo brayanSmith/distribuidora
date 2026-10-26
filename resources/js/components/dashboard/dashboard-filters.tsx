@@ -1,11 +1,12 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { BarChart3, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import MultiCombobox from '@/components/multi-combobox';
 import { Button } from '@/components/ui/button';
-import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { fechaMasDias, formatoFecha } from '@/lib/vencimiento';
 import { dashboard } from '@/routes';
 import type {
     DashboardBodegaOption,
@@ -19,9 +20,6 @@ type Props = {
     productos: DashboardProductoOption[];
 };
 
-/** Not a real bodega: groups the orders sold with the MAYORISTA price. */
-const MAYORISTA = 'mayorista';
-
 const SIN_FILTROS: DashboardFiltros = {
     bodega_ids: [],
     desde: '',
@@ -31,6 +29,41 @@ const SIN_FILTROS: DashboardFiltros = {
 
 const estaVacio = (valor: string | string[]) =>
     Array.isArray(valor) ? valor.length === 0 : valor === '';
+
+type Periodo = 'todo' | 'semana' | 'mes' | 'anio' | 'personalizado';
+
+/** The quick periods: up to today, going back these many days. */
+const PERIODOS: { value: Periodo; label: string; dias?: number }[] = [
+    { value: 'todo', label: 'Todo' },
+    { value: 'semana', label: 'Última semana', dias: 7 },
+    { value: 'mes', label: 'Último mes', dias: 30 },
+    { value: 'anio', label: 'Último año', dias: 365 },
+    { value: 'personalizado', label: 'Personalizado' },
+];
+
+/** The dates of a quick period (today included). */
+function rangoDe(dias: number): { desde: string; hasta: string } {
+    return { desde: fechaMasDias(-(dias - 1)), hasta: fechaMasDias(0) };
+}
+
+/** Which period some dates are: a quick one when they match it exactly. */
+function periodoDe(desde: string, hasta: string): Periodo {
+    if (!desde && !hasta) {
+        return 'todo';
+    }
+
+    const rapido = PERIODOS.find((periodo) => {
+        if (!periodo.dias) {
+            return false;
+        }
+
+        const rango = rangoDe(periodo.dias);
+
+        return rango.desde === desde && rango.hasta === hasta;
+    });
+
+    return rapido?.value ?? 'personalizado';
+}
 
 /**
  * Filters shared by the dashboard widgets and table. Changes stay in a draft
@@ -56,19 +89,32 @@ export default function DashboardFilters({
     );
     const hayCambios = JSON.stringify(borrador) !== filtrosKey;
 
-    const { puedeMayorista } = useTiposPrecio();
+    // "Personalizado" can be chosen before any date is typed.
+    const [personalizado, setPersonalizado] = useState(
+        () => periodoDe(filtros.desde, filtros.hasta) === 'personalizado',
+    );
+    const periodo: Periodo = personalizado
+        ? 'personalizado'
+        : periodoDe(borrador.desde, borrador.hasta);
+
+    const elegirPeriodo = (valor: Periodo) => {
+        const elegido = PERIODOS.find((opcion) => opcion.value === valor);
+        setPersonalizado(valor === 'personalizado');
+
+        if (valor === 'todo') {
+            cambiar({ desde: '', hasta: '' });
+        } else if (elegido?.dias) {
+            cambiar(rangoDe(elegido.dias));
+        }
+    };
 
     const bodegaOptions = useMemo(
-        () => [
-            ...bodegas.map((bodega) => ({
+        () =>
+            bodegas.map((bodega) => ({
                 value: String(bodega.id),
                 label: bodega.nombre_bodega,
             })),
-            ...(puedeMayorista
-                ? [{ value: MAYORISTA, label: 'Mayorista' }]
-                : []),
-        ],
-        [bodegas, puedeMayorista],
+        [bodegas],
     );
 
     const productoOptions = useMemo(
@@ -101,6 +147,7 @@ export default function DashboardFilters({
     };
 
     const limpiar = () => {
+        setPersonalizado(false);
         setBorrador(SIN_FILTROS);
         analizar(SIN_FILTROS);
     };
@@ -114,6 +161,41 @@ export default function DashboardFilters({
                 analizar(borrador);
             }}
         >
+            <div className="space-y-1.5">
+                <Label>Periodo</Label>
+                <div
+                    className="flex flex-wrap gap-2"
+                    role="radiogroup"
+                    aria-label="Periodo"
+                    data-test="dashboard-filter-periodo"
+                >
+                    {PERIODOS.map((opcion) => (
+                        <button
+                            key={opcion.value}
+                            type="button"
+                            role="radio"
+                            aria-checked={periodo === opcion.value}
+                            onClick={() => elegirPeriodo(opcion.value)}
+                            className={cn(
+                                'rounded-full border px-3 py-1 text-sm transition-colors',
+                                periodo === opcion.value
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-card hover:bg-accent',
+                            )}
+                            data-test={`dashboard-periodo-${opcion.value}`}
+                        >
+                            {opcion.label}
+                        </button>
+                    ))}
+                </div>
+                {periodo !== 'todo' && periodo !== 'personalizado' ? (
+                    <p className="text-muted-foreground text-xs">
+                        Del {formatoFecha(borrador.desde)} al{' '}
+                        {formatoFecha(borrador.hasta)}
+                    </p>
+                ) : null}
+            </div>
+
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <div className="space-y-1.5">
                     <Label>Bodegas</Label>
@@ -129,33 +211,37 @@ export default function DashboardFilters({
                     />
                 </div>
 
-                <div className="space-y-1.5">
-                    <Label htmlFor="dashboard-desde">Desde</Label>
-                    <Input
-                        id="dashboard-desde"
-                        type="date"
-                        value={borrador.desde}
-                        max={borrador.hasta || undefined}
-                        onChange={(event) =>
-                            cambiar({ desde: event.target.value })
-                        }
-                        data-test="dashboard-filter-desde"
-                    />
-                </div>
+                {periodo === 'personalizado' ? (
+                    <>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="dashboard-desde">Desde</Label>
+                            <Input
+                                id="dashboard-desde"
+                                type="date"
+                                value={borrador.desde}
+                                max={borrador.hasta || undefined}
+                                onChange={(event) =>
+                                    cambiar({ desde: event.target.value })
+                                }
+                                data-test="dashboard-filter-desde"
+                            />
+                        </div>
 
-                <div className="space-y-1.5">
-                    <Label htmlFor="dashboard-hasta">Hasta</Label>
-                    <Input
-                        id="dashboard-hasta"
-                        type="date"
-                        value={borrador.hasta}
-                        min={borrador.desde || undefined}
-                        onChange={(event) =>
-                            cambiar({ hasta: event.target.value })
-                        }
-                        data-test="dashboard-filter-hasta"
-                    />
-                </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="dashboard-hasta">Hasta</Label>
+                            <Input
+                                id="dashboard-hasta"
+                                type="date"
+                                value={borrador.hasta}
+                                min={borrador.desde || undefined}
+                                onChange={(event) =>
+                                    cambiar({ hasta: event.target.value })
+                                }
+                                data-test="dashboard-filter-hasta"
+                            />
+                        </div>
+                    </>
+                ) : null}
 
                 <div className="space-y-1.5 xl:col-span-2">
                     <Label>Productos</Label>

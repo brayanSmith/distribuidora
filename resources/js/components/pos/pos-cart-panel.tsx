@@ -1,14 +1,17 @@
 import { useTiposPrecio } from '@/hooks/use-tipos-precio';
 import {
     History,
+    PackageSearch,
+    Plus,
     RotateCcw,
     ShoppingCart,
     Trash2,
     UserRound,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Combobox from '@/components/combobox';
 import InputError from '@/components/input-error';
+import PanelSeccion from '@/components/pos/panel-seccion';
 import PosCartItem from '@/components/pos/pos-cart-item';
 import PosClienteCard from '@/components/pos/pos-cliente-card';
 import { Button } from '@/components/ui/button';
@@ -140,142 +143,179 @@ export default function PosCartPanel({
 
     const { subtotal, total } = calcularTotales(cart.totalBruto, header);
     const datosBloqueados = edicion !== undefined && !edicion.puedeCambiarDatos;
+    const [verObservacion, setVerObservacion] = useState(false);
+    const unidades = cart.lines.reduce((suma, line) => suma + line.cantidad, 0);
+    const vendedor =
+        vendedorOptions.find((option) => option.value === header.vendedorId)
+            ?.label ?? '—';
 
     return (
-        <div className="bg-card flex flex-col overflow-hidden rounded-lg border lg:max-h-[calc(100svh-6rem)]">
-            <div className="bg-primary text-primary-foreground flex shrink-0 items-center justify-between p-4">
-                <span className="flex items-center gap-2 font-semibold">
-                    <ShoppingCart className="size-4" />
-                    {edicion ? edicion.titulo : 'Facturar'}
-                </span>
-                <span className="font-semibold">
+        <div className="bg-card flex flex-col overflow-hidden rounded-lg border shadow-sm lg:max-h-[calc(100svh-6rem)]">
+            <div className="bg-primary text-primary-foreground flex shrink-0 items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2 font-semibold">
+                        <ShoppingCart className="size-4 shrink-0" />
+                        <span className="truncate">
+                            {edicion ? edicion.titulo : 'Facturar'}
+                        </span>
+                    </div>
+                    <div className="text-primary-foreground/75 text-xs">
+                        {cart.lines.length}{' '}
+                        {cart.lines.length === 1 ? 'producto' : 'productos'} ·{' '}
+                        {unidades} {unidades === 1 ? 'unidad' : 'unidades'}
+                    </div>
+                </div>
+                <span className="text-lg font-bold tabular-nums">
                     {currencyFormatter.format(total)}
                 </span>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-                <div className="grid gap-2">
-                    <Label required>Cliente</Label>
-                    <div className="flex gap-2">
-                        <Button
+            <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+                <PanelSeccion
+                    titulo="Cliente"
+                    accion={
+                        cliente ? (
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={onOpenHistorial}
+                                    data-test="pos-cliente-historial"
+                                >
+                                    <History className="size-3.5" />
+                                    Historial
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={onOpenClientePicker}
+                                    disabled={datosBloqueados}
+                                    data-test="pos-cliente"
+                                >
+                                    <UserRound className="size-3.5" />
+                                    Cambiar
+                                    <kbd className="opacity-60">F3</kbd>
+                                </Button>
+                            </div>
+                        ) : null
+                    }
+                >
+                    {cliente ? (
+                        <PosClienteCard cliente={cliente} />
+                    ) : (
+                        <button
                             type="button"
-                            variant="outline"
-                            className="flex-1 justify-start"
                             onClick={onOpenClientePicker}
                             disabled={datosBloqueados}
                             data-test="pos-cliente"
+                            className="hover:border-primary hover:bg-primary/5 text-muted-foreground hover:text-foreground flex w-full items-center gap-3 rounded-md border-2 border-dashed p-3 text-left text-sm transition-colors"
                         >
-                            <UserRound className="size-4" />
-                            {cliente
-                                ? 'Cambiar cliente'
-                                : 'Seleccionar cliente'}
-                            <kbd className="text-muted-foreground ml-auto text-xs">
-                                F3
-                            </kbd>
-                        </Button>
-                        {cliente ? (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onOpenHistorial}
-                                data-test="pos-cliente-historial"
-                            >
-                                <History className="size-4" />
-                                Historial
-                            </Button>
-                        ) : null}
-                    </div>
-                    {cliente ? <PosClienteCard cliente={cliente} /> : null}
+                            <UserRound className="size-5 shrink-0" />
+                            <span className="flex-1 font-medium">
+                                Seleccionar cliente
+                            </span>
+                            <kbd className="text-xs opacity-70">F3</kbd>
+                        </button>
+                    )}
                     <InputError message={errors.cliente_id} />
-                </div>
+                </PanelSeccion>
 
-                <div className="grid grid-cols-2 gap-2">
-                    <div className="grid gap-2">
-                        <Label required>Bodega</Label>
-                        {datosBloqueados ? (
-                            <Input
-                                value={
-                                    bodegaOptions.find(
-                                        (option) =>
-                                            option.value === header.bodegaId,
-                                    )?.label ?? ''
-                                }
-                                readOnly
-                                className="bg-muted/40"
-                                data-test="pos-bodega"
-                            />
-                        ) : (
-                            <Combobox
-                                options={bodegaOptions}
-                                value={header.bodegaId}
+                <PanelSeccion titulo="Datos de la venta">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-1.5">
+                            <Label required className="text-xs">
+                                Bodega
+                            </Label>
+                            {datosBloqueados ? (
+                                <Input
+                                    value={
+                                        bodegaOptions.find(
+                                            (option) =>
+                                                option.value ===
+                                                header.bodegaId,
+                                        )?.label ?? ''
+                                    }
+                                    readOnly
+                                    className="bg-muted/40"
+                                    data-test="pos-bodega"
+                                />
+                            ) : (
+                                <Combobox
+                                    options={bodegaOptions}
+                                    value={header.bodegaId}
+                                    onValueChange={(value) =>
+                                        onFieldChange('bodegaId', value)
+                                    }
+                                    searchPlaceholder="Buscar bodega..."
+                                    emptyText="No se encontraron bodegas."
+                                    dataTest="pos-bodega"
+                                />
+                            )}
+                            <InputError message={errors.bodega_id} />
+                        </div>
+
+                        <div className="grid gap-1.5">
+                            <Label required className="text-xs">
+                                Tipo de precio
+                            </Label>
+                            <Select
+                                disabled={datosBloqueados}
+                                value={header.tipoPrecio}
                                 onValueChange={(value) =>
-                                    onFieldChange('bodegaId', value)
+                                    onFieldChange(
+                                        'tipoPrecio',
+                                        value as TipoPrecioPedido,
+                                    )
                                 }
-                                searchPlaceholder="Buscar bodega..."
-                                emptyText="No se encontraron bodegas."
-                                dataTest="pos-bodega"
-                            />
-                        )}
-                        <InputError message={errors.bodega_id} />
+                            >
+                                <SelectTrigger
+                                    className="w-full"
+                                    data-test="pos-tipo-precio"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {tiposPedido.includes('DETAL') ? (
+                                        <SelectItem value="DETAL">
+                                            Detal
+                                        </SelectItem>
+                                    ) : null}
+                                    {tiposPedido.includes('MAYORISTA') ? (
+                                        <SelectItem value="MAYORISTA">
+                                            Mayorista
+                                        </SelectItem>
+                                    ) : null}
+                                    {tiposPedido.includes('OTRO') ? (
+                                        <SelectItem value="OTRO">
+                                            Costo
+                                        </SelectItem>
+                                    ) : null}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.tipo_precio} />
+                        </div>
                     </div>
-
-                    <div className="grid gap-2">
-                        <Label required>Vendedor</Label>
-                        {/* Always the logged-in user: shown, not edited. */}
-                        <Input
-                            value={
-                                vendedorOptions.find(
-                                    (option) =>
-                                        option.value === header.vendedorId,
-                                )?.label ?? ''
-                            }
-                            readOnly
-                            className="bg-muted/40"
-                            data-test="pos-vendedor"
-                        />
-                        <InputError message={errors.user_id} />
-                    </div>
-                </div>
-
-                <div className="grid gap-2">
-                    <Label required>Tipo de precio</Label>
-                    <Select
-                        disabled={datosBloqueados}
-                        value={header.tipoPrecio}
-                        onValueChange={(value) =>
-                            onFieldChange(
-                                'tipoPrecio',
-                                value as TipoPrecioPedido,
-                            )
-                        }
+                    {/* Always the logged-in user (or who sold an edited pedido): shown, not edited. */}
+                    <p
+                        className="text-muted-foreground text-xs"
+                        data-test="pos-vendedor"
                     >
-                        <SelectTrigger
-                            className="w-full"
-                            data-test="pos-tipo-precio"
-                        >
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {tiposPedido.includes('DETAL') ? (
-                                <SelectItem value="DETAL">Detal</SelectItem>
-                            ) : null}
-                            {tiposPedido.includes('MAYORISTA') ? (
-                                <SelectItem value="MAYORISTA">
-                                    Mayorista
-                                </SelectItem>
-                            ) : null}
-                            {tiposPedido.includes('OTRO') ? (
-                                <SelectItem value="OTRO">Costo</SelectItem>
-                            ) : null}
-                        </SelectContent>
-                    </Select>
-                    <InputError message={errors.tipo_precio} />
-                </div>
+                        Vendedor:{' '}
+                        <span className="text-foreground font-medium">
+                            {vendedor}
+                        </span>
+                    </p>
+                    <InputError message={errors.user_id} />
+                </PanelSeccion>
 
-                <div className="grid gap-1">
-                    <div className="flex items-center justify-between">
-                        <Label>Productos agregados</Label>
-                        {cart.lines.length > 0 && !edicion ? (
+                <PanelSeccion
+                    titulo={`Productos${cart.lines.length > 0 ? ` (${cart.lines.length})` : ''}`}
+                    accion={
+                        cart.lines.length > 0 && !edicion ? (
                             <button
                                 type="button"
                                 onClick={cart.clear}
@@ -285,15 +325,19 @@ export default function PosCartPanel({
                                 <Trash2 className="size-3.5" />
                                 Remover lista
                             </button>
-                        ) : null}
-                    </div>
-
+                        ) : null
+                    }
+                >
                     {cart.lines.length === 0 ? (
-                        <p className="text-muted-foreground py-4 text-center text-sm">
+                        <div className="text-muted-foreground flex flex-col items-center gap-1.5 rounded-md border border-dashed py-6 text-center text-sm">
+                            <PackageSearch className="size-6 opacity-60" />
                             Tu carrito está vacío.
-                        </p>
+                            <span className="text-xs">
+                                Toca un producto del catálogo para agregarlo.
+                            </span>
+                        </div>
                     ) : (
-                        <div>
+                        <div className="grid gap-2">
                             {cart.lines.map((line) => (
                                 <PosCartItem
                                     key={line.key}
@@ -331,110 +375,142 @@ export default function PosCartPanel({
                         </div>
                     )}
                     <InputError message={errors.detalles} />
-                </div>
+                </PanelSeccion>
 
-                <div className="flex items-center justify-between gap-4">
-                    {edicion ? (
-                        // An edited pedido keeps its turno.
-                        <span className="text-muted-foreground text-sm">
-                            {edicion.turno
-                                ? `Turno ${edicion.turno}`
-                                : 'Sin turno'}
-                        </span>
-                    ) : (
+                <PanelSeccion titulo="Opciones">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        {edicion ? (
+                            // An edited pedido keeps its turno.
+                            <span className="text-muted-foreground text-sm">
+                                {edicion.turno
+                                    ? `Turno ${edicion.turno}`
+                                    : 'Sin turno'}
+                            </span>
+                        ) : (
+                            <Label
+                                htmlFor="pos-aplica-turno"
+                                className="flex items-center gap-2"
+                            >
+                                <Switch
+                                    id="pos-aplica-turno"
+                                    checked={header.aplicaTurno}
+                                    onCheckedChange={(checked) =>
+                                        onFieldChange('aplicaTurno', checked)
+                                    }
+                                    data-test="pos-aplica-turno"
+                                />
+                                Aplica turno
+                            </Label>
+                        )}
+
                         <Label
-                            htmlFor="pos-aplica-turno"
+                            htmlFor="pos-facturacion-electronica"
                             className="flex items-center gap-2"
                         >
-                            <Switch
-                                id="pos-aplica-turno"
-                                checked={header.aplicaTurno}
+                            <Checkbox
+                                id="pos-facturacion-electronica"
+                                disabled={datosBloqueados}
+                                checked={header.facturacionElectronica}
                                 onCheckedChange={(checked) =>
-                                    onFieldChange('aplicaTurno', checked)
+                                    onFieldChange(
+                                        'facturacionElectronica',
+                                        checked === true,
+                                    )
                                 }
-                                data-test="pos-aplica-turno"
+                                data-test="pos-facturacion-electronica"
                             />
-                            Aplica turno
+                            Facturación electrónica
                         </Label>
+                    </div>
+
+                    {verObservacion || header.observacion ? (
+                        <div className="grid gap-1.5">
+                            <Label
+                                htmlFor="pos-observacion"
+                                className="text-xs"
+                            >
+                                Observación
+                            </Label>
+                            <Textarea
+                                id="pos-observacion"
+                                rows={2}
+                                autoFocus={
+                                    verObservacion && !header.observacion
+                                }
+                                value={header.observacion}
+                                onChange={(event) =>
+                                    onFieldChange(
+                                        'observacion',
+                                        event.target.value,
+                                    )
+                                }
+                                data-test="pos-observacion"
+                            />
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => setVerObservacion(true)}
+                            className="text-primary flex items-center gap-1 justify-self-start text-sm hover:underline"
+                            data-test="pos-agregar-observacion"
+                        >
+                            <Plus className="size-3.5" />
+                            Agregar observación
+                        </button>
                     )}
-
-                    <Label
-                        htmlFor="pos-facturacion-electronica"
-                        className="flex items-center gap-2"
-                    >
-                        <Checkbox
-                            id="pos-facturacion-electronica"
-                            disabled={datosBloqueados}
-                            checked={header.facturacionElectronica}
-                            onCheckedChange={(checked) =>
-                                onFieldChange(
-                                    'facturacionElectronica',
-                                    checked === true,
-                                )
-                            }
-                            data-test="pos-facturacion-electronica"
-                        />
-                        Facturación electrónica
-                    </Label>
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="pos-observacion">Observación</Label>
-                    <Textarea
-                        id="pos-observacion"
-                        rows={2}
-                        value={header.observacion}
-                        onChange={(event) =>
-                            onFieldChange('observacion', event.target.value)
-                        }
-                        data-test="pos-observacion"
-                    />
                     <InputError message={errors.observacion} />
-                </div>
+                </PanelSeccion>
             </div>
 
-            <div className="bg-card shrink-0 space-y-3 border-t p-4">
-                <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                            Total Bruto:
+            <div className="bg-muted/30 shrink-0 space-y-3 border-t p-4">
+                <div className="space-y-0.5 text-sm">
+                    <div className="text-muted-foreground flex justify-between">
+                        <span>Total bruto</span>
+                        <span className="tabular-nums">
+                            {currencyFormatter.format(cart.totalBruto)}
                         </span>
-                        <span>{currencyFormatter.format(cart.totalBruto)}</span>
                     </div>
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Subtotal:</span>
-                        <span>{currencyFormatter.format(subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between text-base font-semibold">
-                        <span>Total:</span>
-                        <span>{currencyFormatter.format(total)}</span>
+                    {subtotal !== cart.totalBruto ? (
+                        <div className="text-muted-foreground flex justify-between">
+                            <span>Subtotal</span>
+                            <span className="tabular-nums">
+                                {currencyFormatter.format(subtotal)}
+                            </span>
+                        </div>
+                    ) : null}
+                    <div className="flex items-baseline justify-between pt-1">
+                        <span className="font-semibold">Total</span>
+                        <span className="text-2xl font-bold tabular-nums">
+                            {currencyFormatter.format(total)}
+                        </span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                    <Button
-                        type="button"
-                        disabled={!canProceder || processing}
-                        onClick={onProceedToPay}
-                        data-test="pos-proceder-pago"
-                    >
-                        {edicion ? 'Revisar y guardar' : 'Proceder al Pago'}
-                        <kbd className="text-xs opacity-70">F9</kbd>
-                    </Button>
+                <Button
+                    type="button"
+                    size="lg"
+                    className="h-11 w-full text-base"
+                    disabled={!canProceder || processing}
+                    onClick={onProceedToPay}
+                    data-test="pos-proceder-pago"
+                >
+                    {edicion ? 'Revisar y guardar' : 'Proceder al pago'}
+                    <kbd className="text-xs opacity-70">F9</kbd>
+                </Button>
 
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="text-destructive hover:text-destructive"
-                        loading={processing}
-                        onClick={onReset}
-                        data-test="pos-resetear-pedido"
-                    >
-                        <RotateCcw className="size-4" />
-                        {edicion ? 'Descartar cambios' : 'Resetear pedido'}
-                        <kbd className="text-xs opacity-70">F8</kbd>
-                    </Button>
-                </div>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-destructive w-full"
+                    loading={processing}
+                    onClick={onReset}
+                    data-test="pos-resetear-pedido"
+                >
+                    <RotateCcw className="size-4" />
+                    {edicion ? 'Descartar cambios' : 'Resetear pedido'}
+                    <kbd className="text-xs opacity-70">F8</kbd>
+                </Button>
             </div>
         </div>
     );

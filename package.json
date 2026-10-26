@@ -46,6 +46,7 @@
         "input-otp": "^1.4.2",
         "laravel-vite-plugin": "^3.0.0",
         "lucide-react": "^0.475.0",
+        "puppeteer": "^25.16.0",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
         "react-dropzone": "^20.1.2",

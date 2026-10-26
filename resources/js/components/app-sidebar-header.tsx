@@ -1,8 +1,9 @@
 import { usePage, usePoll } from '@inertiajs/react';
-import { Upload } from 'lucide-react';
+import { BookOpen, Upload } from 'lucide-react';
 import { useEffect } from 'react';
 import ActivarNotificacionesBoton from '@/components/activar-notificaciones-boton';
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import CatalogoPdfModal from '@/components/catalogo/catalogo-pdf-modal';
 import ImportarModal from '@/components/importaciones/importar-modal';
 import ColaSincronizacionIndicador from '@/components/cola-sincronizacion-indicador';
 import { Button } from '@/components/ui/button';
@@ -14,8 +15,12 @@ export function AppSidebarHeader({
 }: {
     breadcrumbs?: BreadcrumbItemType[];
 }) {
-    const { tiposImportacion, importacionesSinLeer, importacionesEnCurso } =
-        usePage().props;
+    const {
+        tiposImportacion,
+        importacionesSinLeer,
+        importacionesEnCurso,
+        canExportarCatalogo,
+    } = usePage().props;
     const puedeImportar = tiposImportacion.length > 0;
 
     // While an import runs, check now and then whether it finished so the
@@ -43,6 +48,23 @@ export function AppSidebarHeader({
             <div className="ml-auto flex items-center gap-2">
                 <ActivarNotificacionesBoton />
                 <ColaSincronizacionIndicador />
+                {canExportarCatalogo ? (
+                    <CatalogoPdfModal>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            aria-label="Catálogo PDF"
+                            data-test="header-catalogo-pdf"
+                            className="group/catalogo relative gap-0 px-2 has-[>svg]:px-2"
+                        >
+                            <BookOpen />
+                            {/* Only the icon until the cursor is over it. */}
+                            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/catalogo:ml-2 group-hover/catalogo:max-w-40 group-hover/catalogo:opacity-100 group-focus-visible/catalogo:ml-2 group-focus-visible/catalogo:max-w-40 group-focus-visible/catalogo:opacity-100">
+                                Catálogo PDF
+                            </span>
+                        </Button>
+                    </CatalogoPdfModal>
+                ) : null}
                 {puedeImportar ? (
                     <ImportarModal>
                         <Button

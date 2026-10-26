@@ -1,8 +1,6 @@
 import { X } from 'lucide-react';
-import { useState } from 'react';
+import CantidadStepper from '@/components/pos/cantidad-stepper';
 import TipoPrecioToggle from '@/components/pos/tipo-precio-toggle';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import type { PosCartLine, TipoPrecioLinea } from '@/hooks/use-pos-cart';
 
 type Props = {
@@ -31,6 +29,10 @@ const currencyFormatter = new Intl.NumberFormat('es-CO', {
     maximumFractionDigits: 0,
 });
 
+/**
+ * A product in the cart: its name and line total on top, and below how it
+ * is sold (tipo de precio), how many and at what unit price.
+ */
 export default function PosCartItem({
     line,
     onCantidadChange,
@@ -42,93 +44,83 @@ export default function PosCartItem({
     editable = true,
     removible = true,
 }: Props) {
-    // What is being typed in the quantity field; null shows the line's own.
-    const [cantidadTexto, setCantidadTexto] = useState<string | null>(null);
-
     return (
         <div
-            className="flex items-start gap-2 border-b py-2 last:border-b-0"
+            className="hover:border-primary/40 grid gap-2 rounded-md border p-2.5 transition-colors"
             data-test="pos-cart-item"
         >
-            <button
-                type="button"
-                onClick={onEdit}
-                disabled={!editable}
-                title={
-                    editable
-                        ? 'Editar cantidad, valor o bodega'
-                        : 'No tienes permiso para modificar esta línea'
-                }
-                data-test="pos-cart-item-edit"
-                className="hover:bg-accent min-w-0 flex-1 rounded p-1 text-left disabled:hover:bg-transparent"
-            >
-                <p
-                    className="text-sm font-medium break-words"
-                    title={line.nombre}
+            <div className="flex items-start gap-2">
+                <button
+                    type="button"
+                    onClick={onEdit}
+                    disabled={!editable}
+                    title={
+                        editable
+                            ? 'Editar cantidad, valor o bodega'
+                            : 'No tienes permiso para modificar esta línea'
+                    }
+                    data-test="pos-cart-item-edit"
+                    className="min-w-0 flex-1 text-left enabled:hover:underline disabled:cursor-default"
                 >
-                    {line.nombre}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                    {ETIQUETAS[tipoPrecio]} ·{line.bodegaNombre} ·
+                    <p
+                        className="line-clamp-2 text-sm leading-snug font-medium break-words"
+                        title={line.nombre}
+                    >
+                        {line.nombre}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                        {ETIQUETAS[tipoPrecio]} · {line.bodegaNombre}
+                    </p>
+                </button>
+                <span className="shrink-0 text-sm font-semibold tabular-nums">
                     {currencyFormatter.format(
                         line.cantidad * line.precioUnitario,
                     )}
-                </p>
-            </button>
+                </span>
+                {removible ? (
+                    <button
+                        type="button"
+                        onClick={onRemove}
+                        aria-label="Quitar del carrito"
+                        data-test="pos-cart-item-remove"
+                        className="text-muted-foreground hover:text-destructive -mt-0.5 -mr-0.5 rounded p-0.5"
+                    >
+                        <X className="size-4" />
+                    </button>
+                ) : null}
+            </div>
 
-            <TipoPrecioToggle
-                value={tipoPrecio}
-                onChange={onTipoPrecioChange}
-                dataTest="pos-cart-item-tipo"
-                disabled={!editable}
-            />
-
-            <Input
-                type="number"
-                min={1}
-                value={cantidadTexto ?? line.cantidad}
-                onChange={(event) => {
-                    setCantidadTexto(event.target.value);
-
-                    // An emptied field waits for the new number instead of
-                    // taking the line out of the cart.
-                    const cantidad = Number(event.target.value);
-
-                    if (cantidad > 0) {
-                        onCantidadChange(cantidad);
-                    }
-                }}
-                onBlur={() => setCantidadTexto(null)}
-                className="h-8 w-16 text-right"
-                disabled={!editable}
-                data-test="pos-cart-item-cantidad"
-            />
-
-            <Input
-                type="number"
-                min={0}
-                value={line.precioUnitario}
-                onChange={(event) =>
-                    onPrecioChange(Number(event.target.value) || 0)
-                }
-                className="h-8 w-24 text-right"
-                disabled={!editable}
-                data-test="pos-cart-item-precio"
-            />
-
-            {removible ? (
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={onRemove}
-                    data-test="pos-cart-item-remove"
-                >
-                    <X className="size-4" />
-                </Button>
-            ) : (
-                <span className="w-9" />
-            )}
+            <div className="flex items-center gap-2">
+                <TipoPrecioToggle
+                    value={tipoPrecio}
+                    onChange={onTipoPrecioChange}
+                    dataTest="pos-cart-item-tipo"
+                    disabled={!editable}
+                />
+                <CantidadStepper
+                    value={line.cantidad}
+                    onChange={onCantidadChange}
+                    disabled={!editable}
+                    dataTest="pos-cart-item-cantidad"
+                />
+                <div className="relative min-w-0 flex-1">
+                    <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs">
+                        $
+                    </span>
+                    <input
+                        type="number"
+                        min={0}
+                        value={line.precioUnitario}
+                        onChange={(event) =>
+                            onPrecioChange(Number(event.target.value) || 0)
+                        }
+                        disabled={!editable}
+                        aria-label="Precio unitario"
+                        className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-md border bg-transparent pr-2 pl-5 text-right text-sm tabular-nums outline-none focus-visible:ring-[3px] disabled:opacity-60"
+                        data-test="pos-cart-item-precio"
+                    />
+                </div>
+            </div>
         </div>
     );
 }

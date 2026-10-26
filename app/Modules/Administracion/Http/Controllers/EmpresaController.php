@@ -5,6 +5,7 @@ namespace App\Modules\Administracion\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Administracion\Http\Requests\UpdateEmpresaRequest;
 use App\Modules\Administracion\Models\Empresa;
+use App\Support\RedesSociales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -23,6 +24,7 @@ class EmpresaController extends Controller
 
         return Inertia::render('empresa/edit', [
             'empresa' => Empresa::first(),
+            'redesDisponibles' => RedesSociales::catalogo(),
             'permissions' => [
                 'canUpdate' => $request->user()->can('empresa.update'),
             ],
@@ -37,7 +39,11 @@ class EmpresaController extends Controller
         Gate::authorize('empresa.update');
 
         $empresa = Empresa::first();
-        $data = $request->safe()->except(['logo_empresa', 'remove_logo_empresa', 'icono_empresa', 'remove_icono_empresa']);
+        $data = $request->safe()->except(['logo_empresa', 'remove_logo_empresa', 'icono_empresa', 'remove_icono_empresa', 'redes_sociales', 'redes_sociales_enviadas']);
+
+        if ($request->boolean('redes_sociales_enviadas')) {
+            $data['redes_sociales'] = $this->redes($request, $empresa);
+        }
 
         foreach (['logo_empresa', 'icono_empresa'] as $campo) {
             $data = [...$data, ...$this->imagen($request, $empresa, $campo)];
@@ -52,6 +58,41 @@ class EmpresaController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Company profile updated.')]);
 
         return to_route('empresa.edit');
+    }
+
+    /**
+     * The networks as sent, in their order. A custom one keeps its uploaded
+     * icon (a new file replaces it); icons no longer used are deleted.
+     *
+     * @return list<array{red: string, valor: string, nombre?: string, icono?: string}>|null
+     */
+    private function redes(UpdateEmpresaRequest $request, ?Empresa $empresa): ?array
+    {
+        $anteriores = collect($empresa?->redes_sociales ?? [])->pluck('icono')->filter()->values();
+        $redes = [];
+
+        foreach (array_values($request->input('redes_sociales', [])) as $indice => $red) {
+            $personalizada = $red['red'] === RedesSociales::PERSONALIZADA;
+            $icono = null;
+
+            if ($personalizada && $request->hasFile("redes_sociales.{$indice}.icono_archivo")) {
+                $icono = $request->file("redes_sociales.{$indice}.icono_archivo")->store('empresa/redes', 'public');
+            } elseif ($personalizada && $anteriores->contains($red['icono'] ?? null)) {
+                // Only an icon the company already had: never any other file.
+                $icono = $red['icono'];
+            }
+
+            $redes[] = array_filter([
+                'red' => $red['red'],
+                'valor' => trim($red['valor']),
+                'nombre' => $personalizada ? trim((string) ($red['nombre'] ?? '')) : null,
+                'icono' => $icono,
+            ], fn (?string $valor): bool => $valor !== null && $valor !== '');
+        }
+
+        Storage::disk('public')->delete($anteriores->diff(array_column($redes, 'icono'))->all());
+
+        return $redes === [] ? null : $redes;
     }
 
     /**
