@@ -1,8 +1,11 @@
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
-import { initializeThemeColor } from '@/hooks/use-theme-color';
+import {
+    applyEmpresaTheme,
+    initializeThemeColor,
+} from '@/hooks/use-theme-color';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -43,3 +46,8 @@ void createInertiaApp({
 // This will set light / dark mode on load...
 initializeTheme();
 initializeThemeColor();
+
+// The company's colors may change while the app is open (Empresas).
+router.on('navigate', (event) =>
+    applyEmpresaTheme(event.detail.page.props.tema),
+);

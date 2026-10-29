@@ -4,6 +4,7 @@ import {
     Hash,
     Mail,
     MapPin,
+    PanelLeft,
     Palette,
     Pencil,
     Phone,
@@ -217,6 +218,8 @@ export default function EmpresaEdit({
                                     errors={errors}
                                     redesDisponibles={redesDisponibles}
                                 />
+
+                                <TemaCampos empresa={empresa} errors={errors} />
 
                                 <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-4">
                                     {empresa ? (
@@ -565,6 +568,156 @@ function MarcaCampos({
                         'En colaboración de',
                         'Marca o aliado que aparece al pie del catálogo',
                     )}
+                </div>
+            </div>
+        </fieldset>
+    );
+}
+
+/** The app's own colors (app.css), what an empty field keeps. */
+const TEMA_ORIGINAL = {
+    menu: '#1f2937',
+    plataforma: '#2563eb',
+    plataforma_oscuro: '#1f2937',
+};
+
+/** Black or white, whichever reads on the color (as Empresa::textoSobre). */
+function textoSobre(color: string): string {
+    const [rojo, verde, azul] = [1, 3, 5].map(
+        (inicio) => parseInt(color.slice(inicio, inicio + 2), 16) / 255,
+    );
+
+    return 0.2126 * rojo + 0.7152 * verde + 0.0722 * azul > 0.6
+        ? '#0f172a'
+        : '#ffffff';
+}
+
+const esColor = (valor: string) => /^#[0-9a-fA-F]{6}$/.test(valor);
+
+/**
+ * The app's colors for everyone: the side menu and the platform color
+ * (buttons, selected item, focus), light and dark.
+ */
+function TemaCampos({
+    empresa,
+    errors,
+}: {
+    empresa: Empresa | null;
+    errors: Partial<Record<string, string>>;
+}) {
+    const [menu, setMenu] = useState(empresa?.color_menu ?? '');
+    const [plataforma, setPlataforma] = useState(
+        empresa?.color_plataforma ?? '',
+    );
+    const [oscuro, setOscuro] = useState(
+        empresa?.color_plataforma_oscuro ?? '',
+    );
+
+    const fondoMenu = esColor(menu) ? menu : TEMA_ORIGINAL.menu;
+    const colorBoton = esColor(plataforma)
+        ? plataforma
+        : TEMA_ORIGINAL.plataforma;
+
+    const usarMarca = () => {
+        setMenu(empresa?.color_primario || COLORES_POR_DEFECTO.primario);
+        setPlataforma(empresa?.color_acento || COLORES_POR_DEFECTO.acento);
+    };
+
+    return (
+        <fieldset className="grid gap-4 border-t pt-5">
+            <legend className="sr-only">Colores de la plataforma</legend>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <div className="flex items-center gap-2 font-medium">
+                        <PanelLeft className="size-4" />
+                        Colores de la plataforma
+                    </div>
+                    <p className="text-muted-foreground text-sm">
+                        El menú lateral y el color de botones y selecciones,
+                        iguales para todos los usuarios.
+                    </p>
+                </div>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={usarMarca}
+                    data-test="empresa-tema-marca"
+                >
+                    <Palette />
+                    Usar los colores de la marca
+                </Button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_200px]">
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <ColorCampo
+                        name="color_menu"
+                        label="Menú lateral"
+                        descripcion="Fondo del menú en el tema claro."
+                        value={menu}
+                        porDefecto={TEMA_ORIGINAL.menu}
+                        onChange={setMenu}
+                        error={errors.color_menu}
+                    />
+                    <ColorCampo
+                        name="color_plataforma"
+                        label="Color de la plataforma"
+                        descripcion="Botones, opción seleccionada y contornos."
+                        value={plataforma}
+                        porDefecto={TEMA_ORIGINAL.plataforma}
+                        onChange={setPlataforma}
+                        error={errors.color_plataforma}
+                    />
+                    <ColorCampo
+                        name="color_plataforma_oscuro"
+                        label="Color de la plataforma (modo oscuro)"
+                        descripcion="Lo mismo, cuando el tema oscuro está activo."
+                        value={oscuro}
+                        porDefecto={TEMA_ORIGINAL.plataforma_oscuro}
+                        onChange={setOscuro}
+                        error={errors.color_plataforma_oscuro}
+                    />
+                </div>
+
+                <div
+                    className="flex h-36 overflow-hidden rounded-lg border text-[10px]"
+                    aria-hidden
+                    data-test="empresa-tema-muestra"
+                >
+                    <div
+                        className="flex w-20 flex-col gap-1 p-2"
+                        style={{
+                            background: fondoMenu,
+                            color: textoSobre(fondoMenu),
+                        }}
+                    >
+                        <div className="mb-1 font-semibold">Menú</div>
+                        <div
+                            className="rounded px-1.5 py-1"
+                            style={{
+                                background: colorBoton,
+                                color: textoSobre(colorBoton),
+                            }}
+                        >
+                            Pedidos
+                        </div>
+                        <div className="px-1.5 py-1 opacity-80">Productos</div>
+                        <div className="px-1.5 py-1 opacity-80">Clientes</div>
+                    </div>
+                    <div className="bg-background flex flex-1 flex-col justify-end gap-2 p-2">
+                        <div className="bg-muted h-2 w-3/4 rounded" />
+                        <div className="bg-muted h-2 w-1/2 rounded" />
+                        <div
+                            className="mt-auto self-end rounded px-2 py-1 font-medium"
+                            style={{
+                                background: colorBoton,
+                                color: textoSobre(colorBoton),
+                            }}
+                        >
+                            Guardar
+                        </div>
+                    </div>
                 </div>
             </div>
         </fieldset>

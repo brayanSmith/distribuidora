@@ -15,7 +15,6 @@ import {
 } from '@dnd-kit/sortable';
 import { Head, http, router } from '@inertiajs/react';
 import {
-    BookOpen,
     FileText,
     LayoutGrid,
     ListPlus,
@@ -75,7 +74,6 @@ const AGREGAR: { tipo: TipoBloqueCatalogo; icono: typeof Plus }[] = [
     { tipo: 'categoria', icono: LayoutGrid },
     { tipo: 'texto', icono: FileText },
     { tipo: 'salto', icono: SeparatorHorizontal },
-    { tipo: 'portada', icono: BookOpen },
 ];
 
 const TAMANOS = [
@@ -357,6 +355,19 @@ export default function CatalogoPlantillaEditar({
                                         ))}
                                     </ToggleGroup>
                                 </div>
+                                <label className="flex items-center gap-2 pb-1 text-sm">
+                                    <Switch
+                                        checked={ajustes.presentacion}
+                                        onCheckedChange={(presentacion) =>
+                                            setAjustes((actuales) => ({
+                                                ...actuales,
+                                                presentacion,
+                                            }))
+                                        }
+                                        data-test="catalogo-presentacion"
+                                    />
+                                    Presentación al inicio
+                                </label>
                             </div>
                         </div>
 

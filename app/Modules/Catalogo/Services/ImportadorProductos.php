@@ -3,11 +3,13 @@
 namespace App\Modules\Catalogo\Services;
 
 use App\Modules\Catalogo\Models\Categoria;
+use App\Modules\Catalogo\Models\ImagenProducto;
 use App\Modules\Catalogo\Models\Importacion;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Catalogo\Models\SubCategoria;
 use App\Support\Importaciones\FilaInvalida;
 use App\Support\Importaciones\Importador;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -20,8 +22,11 @@ class ImportadorProductos extends Importador
     /** Columns of the file, in the order the template lists them. */
     public const COLUMNAS = [
         'sku', 'marca', 'referencia', 'descripcion', 'categoria', 'subcategoria',
-        'costo', 'valor_detal', 'valor_mayorista', 'inventariable',
+        'costo', 'valor_detal', 'valor_mayorista', 'inventariable', 'imagen_adjunta',
     ];
+
+    /** As many as the producto form takes. */
+    private const MAX_IMAGENES = 10;
 
     /** Other names a header may have, by the column they stand for. */
     private const ALIAS = [
@@ -32,6 +37,9 @@ class ImportadorProductos extends Importador
         'costo_producto' => 'costo',
         'detal' => 'valor_detal',
         'mayorista' => 'valor_mayorista',
+        'imagen' => 'imagen_adjunta',
+        'imagenes' => 'imagen_adjunta',
+        'imagenes_adjuntas' => 'imagen_adjunta',
     ];
 
     /** @var array<string, Categoria> */
@@ -47,7 +55,12 @@ class ImportadorProductos extends Importador
 
     public function filaDeEjemplo(): array
     {
-        return ['SKU-001', 'Marca', 'Referencia', 'Descripción', 'Categoría', 'Subcategoría', '100000', '150000', '130000', 'si'];
+        return ['SKU-001', 'Marca', 'Referencia', 'Descripción', 'Categoría', 'Subcategoría', '100000', '150000', '130000', 'si', 'SKU-001.jpg, SKU-001-lateral.jpg'];
+    }
+
+    public function columnaImagenes(): ?string
+    {
+        return 'imagen_adjunta';
     }
 
     protected function alias(): array
@@ -58,6 +71,11 @@ class ImportadorProductos extends Importador
     protected function procesarFila(Importacion $importacion, array $fila): void
     {
         $datos = $this->validar($fila);
+        $imagenes = $this->imagenesAdjuntas($importacion, $fila);
+
+        if ($imagenes !== null && count($imagenes) > self::MAX_IMAGENES) {
+            throw new FilaInvalida('Un producto puede tener hasta '.self::MAX_IMAGENES.' imágenes.');
+        }
 
         $categoria = $datos['categoria'] !== null ? $this->categoria($datos['categoria']) : null;
         $subCategoria = $categoria !== null && $datos['subcategoria'] !== null
@@ -81,18 +99,42 @@ class ImportadorProductos extends Importador
             : null;
 
         if ($producto === null) {
-            Producto::create($atributos + ['sku' => $datos['sku']]);
+            $producto = Producto::create($atributos + ['sku' => $datos['sku']]);
             $importacion->creados++;
+        } else {
+            if ($producto->trashed()) {
+                $producto->restore();
+            }
 
-            return;
+            $producto->update($atributos);
+            $importacion->actualizados++;
         }
 
-        if ($producto->trashed()) {
-            $producto->restore();
+        if ($imagenes !== null && $imagenes !== []) {
+            $this->reemplazarImagenes($producto, $imagenes);
         }
+    }
 
-        $producto->update($atributos);
-        $importacion->actualizados++;
+    /**
+     * The images the row names become the producto's, in that order (the
+     * first one is the cover). Each is copied, so several productos may name
+     * the same image.
+     *
+     * @param  list<string>  $rutas  Attached images on the local disk.
+     */
+    private function reemplazarImagenes(Producto $producto, array $rutas): void
+    {
+        $producto->imagenes()->get()->each(function (ImagenProducto $imagen): void {
+            Storage::disk('public')->delete($imagen->imagen_producto);
+            $imagen->delete();
+        });
+
+        foreach ($rutas as $orden => $ruta) {
+            $destino = 'productos/'.Str::random(40).'.'.pathinfo($ruta, PATHINFO_EXTENSION);
+            Storage::disk('public')->writeStream($destino, Storage::disk('local')->readStream($ruta));
+
+            $producto->imagenes()->create(['imagen_producto' => $destino, 'orden' => $orden + 1]);
+        }
     }
 
     /**

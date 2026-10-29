@@ -3,7 +3,6 @@ import { CSS } from '@dnd-kit/utilities';
 import {
     AlignCenter,
     AlignLeft,
-    BookOpen,
     ChevronDown,
     Copy,
     FileText,
@@ -43,7 +42,6 @@ type Props = {
 };
 
 const ICONOS = {
-    portada: BookOpen,
     categoria: LayoutGrid,
     texto: FileText,
     salto: SeparatorHorizontal,
@@ -102,9 +100,7 @@ export default function BloqueCatalogoEditor({
               ]
                   .filter(Boolean)
                   .join(' · ')
-            : bloque.tipo === 'portada' && bloque.titulo
-              ? bloque.titulo
-              : meta.descripcion;
+            : meta.descripcion;
 
     return (
         <div
@@ -177,44 +173,6 @@ export default function BloqueCatalogoEditor({
 
             {abierto ? (
                 <div className="grid gap-3 border-t p-3">
-                    {bloque.tipo === 'portada' ? (
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="grid gap-1.5">
-                                <Label>Título</Label>
-                                <Input
-                                    value={bloque.titulo ?? ''}
-                                    onChange={(event) =>
-                                        cambiar({ titulo: event.target.value })
-                                    }
-                                    placeholder="El nombre de la plantilla"
-                                    maxLength={80}
-                                />
-                            </div>
-                            <div className="grid gap-1.5">
-                                <Label>Subtítulo</Label>
-                                <Input
-                                    value={bloque.subtitulo ?? ''}
-                                    onChange={(event) =>
-                                        cambiar({
-                                            subtitulo: event.target.value,
-                                        })
-                                    }
-                                    placeholder="El eslogan de la empresa"
-                                    maxLength={160}
-                                />
-                            </div>
-                            <label className="flex items-center gap-2 text-sm">
-                                <Checkbox
-                                    checked={bloque.cifras !== false}
-                                    onCheckedChange={(marcado) =>
-                                        cambiar({ cifras: marcado === true })
-                                    }
-                                />
-                                Mostrar categorías y cantidad de productos
-                            </label>
-                        </div>
-                    ) : null}
-
                     {bloque.tipo === 'categoria' ? (
                         <>
                             <div className="grid gap-3 sm:grid-cols-2">

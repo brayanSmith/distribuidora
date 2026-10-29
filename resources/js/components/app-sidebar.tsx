@@ -122,6 +122,12 @@ export function AppSidebar() {
                     MonitorSmartphone,
                 ),
                 ...entry(
+                    page.props.canCreateCompras,
+                    'POS Compras',
+                    comprasPos,
+                    PackagePlus,
+                ),
+                ...entry(
                     page.props.canViewGastos,
                     'Gastos',
                     gastosIndex,
@@ -177,12 +183,6 @@ export function AppSidebar() {
         {
             label: 'Compras',
             items: [
-                ...entry(
-                    page.props.canCreateCompras,
-                    'POS Compras',
-                    comprasPos,
-                    PackagePlus,
-                ),
                 ...entry(
                     page.props.canViewCompras,
                     'Compras',

@@ -32,6 +32,7 @@ class Importacion extends Model
         'archivo',
         'nombre_original',
         'mapeo',
+        'carpeta_imagenes',
         'estado',
         'total_filas',
         'procesadas',

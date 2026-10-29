@@ -102,7 +102,7 @@ export default function CatalogoPdfModal({ children }: PropsWithChildren) {
     const [soloConStock, setSoloConStock] = useState(true);
     const [precio, setPrecio] = useState<Precio>('detal');
     const [columnas, setColumnas] = useState('4');
-    const [portada, setPortada] = useState(true);
+    const [presentacion, setPresentacion] = useState(true);
     const [subcategorias, setSubcategorias] = useState(true);
     const [titulo, setTitulo] = useState('');
     const [plantillaId, setPlantillaId] = useState('');
@@ -182,7 +182,7 @@ export default function CatalogoPdfModal({ children }: PropsWithChildren) {
         solo_con_stock: soloConStock,
         precio,
         columnas: Number(columnas),
-        portada,
+        ajustes: { presentacion },
         subcategorias,
         titulo: titulo.trim() || undefined,
         plantilla_id: plantillaId ? Number(plantillaId) : undefined,
@@ -194,7 +194,7 @@ export default function CatalogoPdfModal({ children }: PropsWithChildren) {
                 query: {
                     ...opciones,
                     solo_con_stock: soloConStock ? 1 : 0,
-                    portada: portada ? 1 : 0,
+                    ajustes: { presentacion: presentacion ? 1 : 0 },
                     subcategorias: subcategorias ? 1 : 0,
                 },
             }).url,
@@ -293,7 +293,7 @@ export default function CatalogoPdfModal({ children }: PropsWithChildren) {
                                 options={[
                                     {
                                         value: '',
-                                        label: 'Automático: portada y categorías',
+                                        label: 'Automático: todas las categorías',
                                     },
                                     ...datos.plantillas.map((plantilla) => ({
                                         value: String(plantilla.id),
@@ -306,8 +306,8 @@ export default function CatalogoPdfModal({ children }: PropsWithChildren) {
                             />
                             {plantillaId ? (
                                 <p className="text-muted-foreground text-xs">
-                                    Las categorías, la portada y el tamaño de
-                                    las tarjetas los define la plantilla.
+                                    Las categorías, la presentación y el tamaño
+                                    de las tarjetas los define la plantilla.
                                 </p>
                             ) : null}
                         </div>
@@ -408,10 +408,10 @@ export default function CatalogoPdfModal({ children }: PropsWithChildren) {
                                 )}
                             >
                                 <Switch
-                                    checked={portada}
-                                    onCheckedChange={setPortada}
+                                    checked={presentacion}
+                                    onCheckedChange={setPresentacion}
                                 />
-                                Con portada
+                                Con presentación
                             </label>
                             <label
                                 className={cn(

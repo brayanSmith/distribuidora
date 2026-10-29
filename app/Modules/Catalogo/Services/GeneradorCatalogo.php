@@ -23,10 +23,10 @@ class GeneradorCatalogo
     /**
      * The options as a catalog uses them, with defaults for what is missing.
      * With "bloques" (a design) the catalog follows them; without, it is the
-     * automatic one: cover and the categorías chosen.
+     * automatic one: the categorías chosen.
      *
      * @param  array<string, mixed>  $opciones
-     * @return array{categoria_ids: list<int>, solo_con_stock: bool, precio: string, columnas: int, portada: bool, titulo: string, encabezado: bool, pie: bool, subcategorias: bool, ajustes: array<string, mixed>, plantilla: ?string, bloques: ?list<array<string, mixed>>}
+     * @return array{categoria_ids: list<int>, solo_con_stock: bool, precio: string, columnas: int, titulo: string, encabezado: bool, pie: bool, subcategorias: bool, ajustes: array<string, mixed>, plantilla: ?string, bloques: ?list<array<string, mixed>>}
      */
     public static function normalizar(array $opciones): array
     {
@@ -35,7 +35,6 @@ class GeneradorCatalogo
             'solo_con_stock' => (bool) ($opciones['solo_con_stock'] ?? false),
             'precio' => in_array($opciones['precio'] ?? null, ['detal', 'mayorista', 'ninguno'], true) ? $opciones['precio'] : 'detal',
             'columnas' => in_array((int) ($opciones['columnas'] ?? 4), [2, 3, 4], true) ? (int) ($opciones['columnas'] ?? 4) : 4,
-            'portada' => (bool) ($opciones['portada'] ?? true),
             'titulo' => trim((string) ($opciones['titulo'] ?? '')) ?: 'Catálogo de productos',
             'encabezado' => (bool) ($opciones['encabezado'] ?? true),
             'pie' => (bool) ($opciones['pie'] ?? true),
@@ -71,17 +70,45 @@ class GeneradorCatalogo
             ->filter()
             ->values();
 
-        $categorias = $secciones->where('tipo', 'categoria');
+        // Categorías are numbered in the order they come.
+        $numero = 0;
 
-        // The cover tells what the catalog has.
         return $secciones
-            ->map(fn (array $seccion): array => $seccion['tipo'] === 'portada' ? [
-                ...$seccion,
-                'titulo' => $seccion['titulo'] ?? $opciones['titulo'],
-                'total' => $categorias->sum(fn (array $categoria): int => $categoria['productos']->count()),
-                'categorias' => $categorias->pluck('titulo')->unique()->values()->all(),
-            ] : $seccion)
+            ->map(function (array $seccion) use (&$numero): array {
+                return $seccion['tipo'] === 'categoria' ? [...$seccion, 'numero' => ++$numero] : $seccion;
+            })
             ->all();
+    }
+
+    /**
+     * The band that opens the catalog: its title, what it has and the price
+     * it shows. Null when the design leaves it out or there is nothing.
+     *
+     * @param  array<string, mixed>  $opciones
+     * @param  list<array<string, mixed>>  $secciones
+     * @return array{titulo: string, precio: ?string, total: int, categorias: list<array{titulo: string, total: int}>}|null
+     */
+    private function presentacion(array $opciones, array $secciones): ?array
+    {
+        $categorias = collect($secciones)->where('tipo', 'categoria');
+
+        if (! $opciones['ajustes']['presentacion'] || $categorias->isEmpty()) {
+            return null;
+        }
+
+        return [
+            'titulo' => $opciones['titulo'],
+            'precio' => match ($opciones['precio']) {
+                'detal' => 'Precios al detal',
+                'mayorista' => 'Precios mayoristas',
+                default => null,
+            },
+            'total' => $categorias->sum(fn (array $categoria): int => $categoria['productos']->count()),
+            'categorias' => $categorias
+                ->map(fn (array $categoria): array => ['titulo' => $categoria['titulo'], 'total' => $categoria['productos']->count()])
+                ->values()
+                ->all(),
+        ];
     }
 
     /**
@@ -135,10 +162,13 @@ class GeneradorCatalogo
     {
         $opciones = self::normalizar($opciones);
 
+        $secciones = $this->secciones($opciones, $porCategoria, $web);
+
         return view('pdf.catalogo', [
             ...$this->marca($opciones, $web),
             'opciones' => $opciones,
-            'secciones' => $this->secciones($opciones, $porCategoria, $web),
+            'secciones' => $secciones,
+            'presentacion' => $this->presentacion($opciones, $secciones),
             'web' => $web,
         ])->render();
     }
@@ -227,8 +257,8 @@ class GeneradorCatalogo
     }
 
     /**
-     * The design of a catalog without one: the cover (if asked for) and a
-     * block per categoría that has productos, by name.
+     * The design of a catalog without one: a block per categoría that has
+     * productos, by name.
      *
      * @param  array<string, mixed>  $opciones
      * @param  Collection<int, array<string, mixed>>  $productos
@@ -236,7 +266,7 @@ class GeneradorCatalogo
      */
     private function bloquesAutomaticos(array $opciones, Collection $productos): array
     {
-        $categorias = $productos
+        return $productos
             ->unique('categoria_id')
             ->sortBy('categoria', SORT_NATURAL | SORT_FLAG_CASE)
             ->map(fn (array $producto): array => [
@@ -252,10 +282,6 @@ class GeneradorCatalogo
             ])
             ->values()
             ->all();
-
-        $portada = ['id' => 'portada', 'tipo' => 'portada', 'visible' => true, 'titulo' => null, 'subtitulo' => null, 'cifras' => true];
-
-        return $opciones['portada'] ? [$portada, ...$categorias] : $categorias;
     }
 
     /**

@@ -51,6 +51,8 @@ class ExportacionProductosController extends Controller
                         'valor_detal' => $precio('valor_detal', $producto->valor_detal),
                         'valor_mayorista' => $precio('valor_mayorista', $producto->valor_mayorista),
                         'inventariable' => $producto->inventariable ? 'si' : 'no',
+                        // Left empty: re-importing the file keeps the images the productos have.
+                        'imagen_adjunta' => null,
                     ]);
                 });
 

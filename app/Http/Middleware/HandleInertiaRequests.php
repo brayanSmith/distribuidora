@@ -51,6 +51,11 @@ class HandleInertiaRequests extends Middleware
             'name' => fn () => app(Branding::class)->name(),
             'logoUrl' => fn () => app(Branding::class)->logoUrl(),
             'iconoUrl' => fn () => app(Branding::class)->iconoUrl(),
+            // The company's app colors, as chosen and as the CSS that applies them.
+            'tema' => fn () => [
+                ...app(Branding::class)->tema(),
+                'css' => app(Branding::class)->temaCss(),
+            ],
             'auth' => [
                 'user' => $user,
             ],

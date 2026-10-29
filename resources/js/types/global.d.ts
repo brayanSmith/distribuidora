@@ -1,5 +1,6 @@
 import type { Auth } from '@/types/auth';
 import type { TipoImportacion } from '@/types/importaciones';
+import type { TemaEmpresa } from '@/hooks/use-theme-color';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -13,6 +14,8 @@ declare module '@inertiajs/core' {
             name: string;
             /** The company logo from "Empresas", when one was uploaded. */
             logoUrl: string | null;
+            /** The company's app colors (menu and platform), from "Empresas". */
+            tema: TemaEmpresa;
             /** The company icon (or its logo while there is none): tab, sidebar, notifications. */
             iconoUrl: string | null;
             auth: Auth;

@@ -32,7 +32,7 @@ test('asking for a catalog queues it with the chosen options', function () {
             'solo_con_stock' => true,
             'precio' => 'mayorista',
             'columnas' => 4,
-            'portada' => false,
+            'ajustes' => ['presentacion' => false],
             'titulo' => 'Lista de precios',
         ])
         ->assertCreated()
@@ -40,7 +40,8 @@ test('asking for a catalog queues it with the chosen options', function () {
         ->assertJsonPath('catalogo.titulo', 'Lista de precios');
 
     $catalogo = CatalogoPdf::sole();
-    expect($catalogo->opciones)->toMatchArray(['precio' => 'mayorista', 'columnas' => 4, 'portada' => false, 'solo_con_stock' => true]);
+    expect($catalogo->opciones)->toMatchArray(['precio' => 'mayorista', 'columnas' => 4, 'solo_con_stock' => true])
+        ->and($catalogo->opciones['ajustes']['presentacion'])->toBeFalse();
     Queue::assertPushed(GenerarCatalogoPdfJob::class, fn ($job) => $job->catalogoId === $catalogo->id);
 });
 

@@ -21,6 +21,7 @@ Route::patch('sub-categorias/{sub_categoria}', [SubCategoriaController::class, '
 Route::delete('sub-categorias/{sub_categoria}', [SubCategoriaController::class, 'destroy'])->name('sub-categorias.destroy');
 
 Route::post('importaciones/previa', [ImportacionController::class, 'previa'])->name('importaciones.previa');
+Route::post('importaciones/imagenes', [ImportacionController::class, 'imagen'])->name('importaciones.imagenes');
 Route::post('importaciones', [ImportacionController::class, 'store'])->name('importaciones.store');
 Route::get('importaciones/plantilla', [ImportacionController::class, 'plantilla'])->name('importaciones.plantilla');
 Route::patch('importaciones/leidas', [ImportacionController::class, 'marcarTodasLeidas'])->name('importaciones.leidas');

@@ -2,6 +2,7 @@ import { router, useHttp } from '@inertiajs/react';
 import { ArrowLeft, FileDown, FileSpreadsheet, Upload } from 'lucide-react';
 import { useState } from 'react';
 import BarraProgreso from '@/components/importaciones/barra-progreso';
+import ImagenesAdjuntas from '@/components/importaciones/imagenes-adjuntas';
 import MapeoColumnas from '@/components/importaciones/mapeo-columnas';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,7 @@ import type { PreviaImportacion, TipoImportacion } from '@/types';
 /** What each type does with an existing record, shown under its columns. */
 const AYUDA: Record<string, string> = {
     productos:
-        'Si el SKU ya existe se actualiza el producto; las categorías y subcategorías que no existan se crean solas.',
+        'Si el SKU ya existe se actualiza el producto; las categorías y subcategorías que no existan se crean solas. Las imágenes que nombre la columna imagen_adjunta las subes en el siguiente paso.',
     pucs: 'Si la subcuenta ya existe se actualiza el medio de pago. El tipo es un número del 1 al 9.',
 };
 
@@ -50,6 +51,7 @@ export default function ImportarArchivo({
     const [previa, setPrevia] = useState<PreviaImportacion | null>(null);
     const [mapeo, setMapeo] = useState<Record<string, string | null>>({});
     const [enviando, setEnviando] = useState(false);
+    const [subiendoImagenes, setSubiendoImagenes] = useState(false);
     const [errores, setErrores] = useState<Record<string, string>>({});
 
     const leerArchivo = () => {
@@ -132,6 +134,16 @@ export default function ImportarArchivo({
                     }
                 />
 
+                {previa.columna_imagenes && tipoActual ? (
+                    <ImagenesAdjuntas
+                        tipo={tipoActual.value}
+                        archivoTemporal={previa.archivo_temporal}
+                        columna={previa.columna_imagenes}
+                        relacionada={Boolean(mapeo[previa.columna_imagenes])}
+                        onSubiendoChange={setSubiendoImagenes}
+                    />
+                ) : null}
+
                 {Object.values(errores).map((mensaje) => (
                     <InputError key={mensaje} message={mensaje} />
                 ))}
@@ -147,10 +159,11 @@ export default function ImportarArchivo({
                     <Button
                         onClick={importar}
                         loading={enviando}
-                        disabled={faltantes.length > 0}
+                        disabled={faltantes.length > 0 || subiendoImagenes}
                         data-test="importacion-submit"
                     >
-                        <Upload /> Importar
+                        <Upload />{' '}
+                        {subiendoImagenes ? 'Subiendo imágenes…' : 'Importar'}
                     </Button>
                 </div>
             </div>

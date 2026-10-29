@@ -7,6 +7,7 @@ use App\Modules\Catalogo\Models\CatalogoPlantilla;
 use App\Modules\Catalogo\Models\Categoria;
 use App\Modules\Catalogo\Models\Producto;
 use App\Modules\Catalogo\Models\SubCategoria;
+use App\Modules\Catalogo\Services\DisenoCatalogo;
 use App\Modules\Catalogo\Services\GeneradorCatalogo;
 use App\Modules\Inventario\Models\Bodega;
 use App\Modules\Inventario\Models\StockBodega;
@@ -40,7 +41,7 @@ test('a design is saved with its blocks, completed with their defaults', functio
             'encabezado' => true,
             'pie' => false,
             'bloques' => [
-                bloque('portada', ['titulo' => 'Lista 2026']),
+                bloque('texto', ['texto' => 'Lista 2026']),
                 bloque('categoria', ['categoria_id' => $this->llantas->id, 'tamano' => '2']),
                 bloque('salto'),
             ],
@@ -53,7 +54,7 @@ test('a design is saved with its blocks, completed with their defaults', functio
         ->nombre->toBe('Mayoristas')
         ->columnas->toBe(3)
         ->pie->toBeFalse()
-        ->and(collect($plantilla->bloques)->pluck('tipo')->all())->toBe(['portada', 'categoria', 'salto'])
+        ->and(collect($plantilla->bloques)->pluck('tipo')->all())->toBe(['texto', 'categoria', 'salto'])
         ->and($plantilla->bloques[1])->toMatchArray(['tamano' => '2', 'orden' => 'nombre', 'solo_con_stock' => false]);
 
     $this->actingAs($this->owner)->get(route('catalogo-plantillas.edit', $plantilla))
@@ -91,7 +92,7 @@ test('the catalog follows the blocks: their order, titles, texts and what each s
             bloque('salto'),
             bloque('categoria', ['categoria_id' => $this->llantas->id, 'orden' => 'precio_desc']),
             bloque('categoria', ['categoria_id' => $this->llantas->id, 'titulo' => 'Llantas disponibles', 'solo_con_stock' => true]),
-            bloque('portada', ['visible' => false]),
+            bloque('texto', ['visible' => false, 'texto' => 'Texto oculto']),
         ],
     ]);
 
@@ -100,7 +101,7 @@ test('the catalog follows the blocks: their order, titles, texts and what each s
         ->toContain('Formas de pago')
         ->toContain('Nequi y efectivo')
         ->toContain('class="salto"')
-        ->not->toContain('class="portada"')
+        ->not->toContain('Texto oculto')
         ->and(strpos($html, 'Lubricantes'))->toBeLessThan(strpos($html, 'Formas de pago'))
         // Most expensive first.
         ->and(strpos($html, 'CARA'))->toBeLessThan(strpos($html, 'BARATA'));
@@ -156,18 +157,18 @@ test('a categoría shows its productos by subcategoría, those without one last'
 
     $html = app(GeneradorCatalogo::class)->html(['categoria_ids' => [$this->llantas->id]]);
 
-    expect($html)->toContain('<h3>Rin 12</h3>')->toContain('<h3>Otros</h3>')
+    expect($html)->toContain('<h3 class="subcategoria">Rin 12</h3>')->toContain('<h3 class="subcategoria">Otros</h3>')
         ->and(strpos($html, 'Rin 12'))->toBeLessThan(strpos($html, 'Rin 13'))
-        ->and(strpos($html, 'Rin 13'))->toBeLessThan(strpos($html, '<h3>Otros</h3>'))
+        ->and(strpos($html, 'Rin 13'))->toBeLessThan(strpos($html, '<h3 class="subcategoria">Otros</h3>'))
         ->and(strpos($html, 'PEQUENA'))->toBeLessThan(strpos($html, 'CARA'))
         // BARATA has no subcategoría.
-        ->and(strpos($html, '<h3>Otros</h3>'))->toBeLessThan(strpos($html, 'BARATA'));
+        ->and(strpos($html, '<h3 class="subcategoria">Otros</h3>'))->toBeLessThan(strpos($html, 'BARATA'));
 
     $sinDividir = app(GeneradorCatalogo::class)->html([
         'bloques' => [bloque('categoria', ['categoria_id' => $this->llantas->id, 'subcategorias' => false])],
     ]);
 
-    expect($sinDividir)->toContain('CARA')->not->toContain('<h3>Rin 13</h3>');
+    expect($sinDividir)->toContain('CARA')->not->toContain('<h3 class="subcategoria">Rin 13</h3>');
 
     // A categoría without subcategorías keeps a single grid.
     expect(app(GeneradorCatalogo::class)->html(['categoria_ids' => [$this->aceites->id]]))->not->toContain('class="subcategoria"');
@@ -182,7 +183,7 @@ test('a design says what its page header and footer show', function () {
     ]);
 
     // Nothing said: the company's own.
-    expect(app(GeneradorCatalogo::class)->html(['portada' => false], web: true))
+    expect(app(GeneradorCatalogo::class)->html([], web: true))
         ->toContain('Eslogan de la empresa')
         ->toContain('Descripción de la empresa')
         ->toContain('En colaboración de')
@@ -224,4 +225,26 @@ test('a design says what its page header and footer show', function () {
             ->where('empresa.redes.1.id', 'tiktok|@motos')
             ->has('redesDisponibles')
         );
+});
+
+test('the catalog opens with a band of its figures and numbers its categorías', function () {
+    $html = app(GeneradorCatalogo::class)->html(['titulo' => 'Lista de precios', 'precio' => 'detal']);
+
+    expect($html)
+        ->toContain('class="presentacion"')
+        ->toContain('Lista de precios')
+        ->toContain('Precios al detal')
+        // Aceites first, then Llantas: by name.
+        ->toContain('<span class="categoria__numero">01</span>')
+        ->toContain('<span class="categoria__numero">02</span>')
+        ->and(strpos($html, '<h2>Aceites</h2>'))->toBeLessThan(strpos($html, '<h2>Llantas</h2>'));
+
+    $sinPresentacion = app(GeneradorCatalogo::class)->html(['ajustes' => ['presentacion' => false]]);
+
+    expect($sinPresentacion)->not->toContain('class="presentacion"');
+
+    // A cover saved before covers were removed is left out.
+    $bloques = DisenoCatalogo::normalizar([bloque('portada'), bloque('salto')]);
+
+    expect(array_column($bloques, 'tipo'))->toBe(['salto']);
 });

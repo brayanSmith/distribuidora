@@ -30,6 +30,9 @@ class UpdateEmpresaRequest extends FormRequest
             'remove_icono_empresa' => ['boolean'],
             'color_primario' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'color_acento' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'color_menu' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'color_plataforma' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'color_plataforma_oscuro' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'eslogan_empresa' => ['nullable', 'string', 'max:120'],
             'descripcion_empresa' => ['nullable', 'string', 'max:400'],
             // The form says it sent them, so an empty list clears them.
@@ -52,6 +55,9 @@ class UpdateEmpresaRequest extends FormRequest
         return [
             'color_primario.regex' => 'Elige un color válido.',
             'color_acento.regex' => 'Elige un color válido.',
+            'color_menu.regex' => 'Elige un color válido.',
+            'color_plataforma.regex' => 'Elige un color válido.',
+            'color_plataforma_oscuro.regex' => 'Elige un color válido.',
             'redes_sociales.*.valor.required' => 'Escribe el usuario, número o enlace.',
             'redes_sociales.*.nombre.required_if' => 'Escribe el nombre de la red.',
             'redes_sociales.*.icono_archivo.image' => 'El ícono debe ser una imagen.',

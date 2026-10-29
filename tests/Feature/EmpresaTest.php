@@ -190,3 +190,49 @@ test('a network must be a known one, with its value and a custom one with its na
         'redes_sociales.2.nombre' => 'Escribe el nombre de la red.',
     ]);
 });
+
+test('the company sets the app colors for everyone', function () {
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+    Empresa::factory()->create();
+
+    $this->actingAs($owner)->patch(route('empresa.update'), [
+        'nombre_empresa' => 'Black purple',
+        'color_menu' => '#3b0764',
+        'color_plataforma' => '#fde047',
+    ])->assertSessionHasNoErrors();
+
+    // Branding is resolved once per request: a real one starts fresh.
+    app()->forgetScopedInstances();
+
+    $otro = User::factory()->create();
+    asignarRol($otro, 'Member');
+
+    $this->actingAs($otro)->get(route('dashboard'))
+        // Painted from the first load, before any script runs.
+        ->assertSee('<style id="empresa-tema">', false)
+        ->assertSee('--sidebar: #3b0764', false)
+        // A light color takes dark text on it.
+        ->assertSee('--primary-foreground: #0f172a', false)
+        ->assertInertia(fn ($page) => $page
+            ->where('tema.menu', '#3b0764')
+            ->where('tema.plataforma', '#fde047')
+            ->where('tema.plataforma_oscuro', null)
+            ->where('tema.css', fn (string $css) => str_contains($css, '--primary: #fde047') && ! str_contains($css, ':root.dark'))
+        );
+
+    $this->actingAs($owner)->patch(route('empresa.update'), [
+        'nombre_empresa' => 'Black purple',
+        'color_plataforma_oscuro' => 'azul',
+    ])->assertSessionHasErrors(['color_plataforma_oscuro' => 'Elige un color válido.']);
+});
+
+test('without colors of its own the app keeps its look', function () {
+    Empresa::factory()->create();
+    $owner = User::factory()->create();
+    asignarRol($owner, 'Owner');
+
+    $this->actingAs($owner)->get(route('dashboard'))
+        ->assertSee('<style id="empresa-tema"></style>', false)
+        ->assertInertia(fn ($page) => $page->where('tema.css', ''));
+});

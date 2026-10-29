@@ -6,7 +6,6 @@ use Illuminate\Validation\Rule;
 
 /**
  * The blocks a catalog design is made of, printed top to bottom:
- *  - portada: the cover (title, subtitle, figures).
  *  - categoria: the productos of one categoría (own title, card size,
  *    order, only with stock, split by subcategoría).
  *  - texto: a free paragraph (conditions, payment, schedule).
@@ -14,7 +13,7 @@ use Illuminate\Validation\Rule;
  */
 class DisenoCatalogo
 {
-    public const TIPOS = ['portada', 'categoria', 'texto', 'salto'];
+    public const TIPOS = ['categoria', 'texto', 'salto'];
 
     public const TAMANOS = ['auto', '2', '3', '4'];
 
@@ -33,8 +32,6 @@ class DisenoCatalogo
             "{$campo}.*.tipo" => ['required', Rule::in(self::TIPOS)],
             "{$campo}.*.visible" => ['required', 'boolean'],
             "{$campo}.*.titulo" => ['nullable', 'string', 'max:80'],
-            "{$campo}.*.subtitulo" => ['nullable', 'string', 'max:160'],
-            "{$campo}.*.cifras" => ['sometimes', 'boolean'],
             "{$campo}.*.categoria_id" => ["required_if:{$campo}.*.tipo,categoria", 'nullable', 'integer', 'exists:categorias,id'],
             "{$campo}.*.tamano" => ['nullable', Rule::in(self::TAMANOS)],
             "{$campo}.*.orden" => ['nullable', Rule::in(self::ORDENES)],
@@ -69,11 +66,6 @@ class DisenoCatalogo
             ];
 
             $propio = match ($bloque['tipo']) {
-                'portada' => [
-                    'titulo' => self::texto($bloque['titulo'] ?? null),
-                    'subtitulo' => self::texto($bloque['subtitulo'] ?? null),
-                    'cifras' => (bool) ($bloque['cifras'] ?? true),
-                ],
                 'categoria' => [
                     'categoria_id' => isset($bloque['categoria_id']) ? (int) $bloque['categoria_id'] : null,
                     'titulo' => self::texto($bloque['titulo'] ?? null),
@@ -110,6 +102,7 @@ class DisenoCatalogo
     {
         return [
             $campo => ['nullable', 'array'],
+            "{$campo}.presentacion" => ['sometimes', 'boolean'],
             "{$campo}.encabezado_logo" => ['sometimes', 'boolean'],
             "{$campo}.encabezado_titulo" => ['nullable', 'string', 'max:80'],
             "{$campo}.encabezado_subtitulo" => ['nullable', 'string', 'max:200'],
@@ -128,13 +121,15 @@ class DisenoCatalogo
      * "En colaboración de…"); networks are hidden one by one (see
      * self::idRed), so the ones added later show.
      *
-     * @return array{encabezado_logo: bool, encabezado_titulo: ?string, encabezado_subtitulo: ?string, encabezado_mostrar_subtitulo: bool, pie_ocultar_redes: list<string>, pie_texto: ?string, pie_mostrar_texto: bool, pie_paginas: bool}
+     * @return array{presentacion: bool, encabezado_logo: bool, encabezado_titulo: ?string, encabezado_subtitulo: ?string, encabezado_mostrar_subtitulo: bool, pie_ocultar_redes: list<string>, pie_texto: ?string, pie_mostrar_texto: bool, pie_paginas: bool}
      */
     public static function normalizarAjustes(mixed $ajustes): array
     {
         $ajustes = is_array($ajustes) ? $ajustes : [];
 
         return [
+            // The band that opens the catalog (title, figures, categorías).
+            'presentacion' => (bool) ($ajustes['presentacion'] ?? true),
             'encabezado_logo' => (bool) ($ajustes['encabezado_logo'] ?? true),
             'encabezado_titulo' => self::texto($ajustes['encabezado_titulo'] ?? null),
             'encabezado_subtitulo' => self::texto($ajustes['encabezado_subtitulo'] ?? null),

@@ -306,3 +306,117 @@ test('a previewed file can only be imported by the user who uploaded it', functi
 
     expect(Importacion::count())->toBe(0);
 });
+
+/**
+ * Previews a productos file and attaches the given images to it, as the dialog does.
+ *
+ * @param  list<string>  $imagenes
+ * @return array<string, mixed>
+ */
+function previaConImagenes(User $user, string $csv, array $imagenes): array
+{
+    $previa = test()->actingAs($user)
+        ->post(route('importaciones.previa'), ['tipo' => 'productos', 'archivo' => csvProductos($csv)])
+        ->json();
+
+    foreach ($imagenes as $nombre) {
+        test()->actingAs($user)->post(route('importaciones.imagenes'), [
+            'tipo' => 'productos',
+            'archivo_temporal' => $previa['archivo_temporal'],
+            'imagen' => UploadedFile::fake()->image($nombre),
+        ], ['Accept' => 'application/json'])->assertOk()->assertJson(['nombre' => $nombre]);
+    }
+
+    return $previa;
+}
+
+test('the template has a column for the attached images', function () {
+    $contenido = $this->actingAs($this->owner)->get(route('importaciones.plantilla', ['tipo' => 'productos']))->streamedContent();
+
+    expect($contenido)->toContain('inventariable,imagen_adjunta')->toContain('SKU-001.jpg, SKU-001-lateral.jpg');
+});
+
+test('the images uploaded with a file are matched by the names its rows write, several separated by commas', function () {
+    Storage::fake('public');
+    $existente = Producto::factory()->create(['sku' => 'A-2']);
+    $vieja = $existente->imagenes()->create(['imagen_producto' => UploadedFile::fake()->image('vieja.jpg')->store('productos', 'public'), 'orden' => 1]);
+
+    $csv = "sku,referencia,imagen_adjunta\nA-1,Llanta,\"a1-frente.JPG, a1-lado.png\"\nA-2,Rin,comun.jpg\nA-3,Tapa,COMUN.jpg\nA-4,Sin foto,\n";
+    $previa = previaConImagenes($this->owner, $csv, ['A1-frente.jpg', 'a1-lado.png', 'comun.jpg']);
+
+    expect($previa['columna_imagenes'])->toBe('imagen_adjunta');
+
+    $this->actingAs($this->owner)->post(route('importaciones.store'), [
+        'tipo' => 'productos',
+        'archivo_temporal' => $previa['archivo_temporal'],
+        'mapeo' => ['sku' => 'sku', 'referencia' => 'referencia', 'imagen_adjunta' => 'imagen_adjunta'],
+    ])->assertSessionHasNoErrors();
+
+    $importacion = Importacion::firstOrFail();
+    expect($importacion->con_error)->toBe(0)->and($importacion->creados)->toBe(3);
+
+    $a1 = Producto::where('sku', 'A-1')->firstOrFail()->imagenes;
+    expect($a1)->toHaveCount(2)->and($a1->pluck('orden')->all())->toBe([1, 2]);
+    $a1->each(fn ($imagen) => Storage::disk('public')->assertExists($imagen->imagen_producto));
+
+    // The same image may go to several productos; it replaces what one had.
+    expect(Producto::where('sku', 'A-3')->firstOrFail()->imagenes)->toHaveCount(1)
+        ->and($existente->imagenes()->count())->toBe(1)
+        ->and($existente->imagenes()->first()->is($vieja))->toBeFalse()
+        ->and(Producto::where('sku', 'A-4')->firstOrFail()->imagenes)->toHaveCount(0);
+    Storage::disk('public')->assertMissing($vieja->imagen_producto);
+
+    // Once imported, the images kept aside are gone.
+    Storage::disk('local')->assertMissing($importacion->carpeta_imagenes);
+});
+
+test('a row naming an image that was not uploaded fails, and without uploaded images the column is left alone', function () {
+    Storage::fake('public');
+
+    $previa = previaConImagenes($this->owner, "sku,imagen_adjunta\nA-1,a1.jpg\nA-2,falta.jpg\n", ['a1.jpg']);
+
+    $this->actingAs($this->owner)->post(route('importaciones.store'), [
+        'tipo' => 'productos',
+        'archivo_temporal' => $previa['archivo_temporal'],
+    ]);
+
+    $importacion = Importacion::firstOrFail();
+    expect($importacion->creados)->toBe(1)
+        ->and($importacion->con_error)->toBe(1)
+        ->and($importacion->errores[0]['mensaje'])->toContain('falta.jpg')
+        ->and(Producto::where('sku', 'A-2')->exists())->toBeFalse();
+
+    // A file imported without images (an export, say) keeps the ones the productos have.
+    $this->actingAs($this->owner)->post(route('importaciones.store'), [
+        'tipo' => 'productos',
+        'archivo' => csvProductos("sku,imagen_adjunta\nA-1,otra.jpg\n"),
+    ]);
+
+    expect(Importacion::latest('id')->firstOrFail()->con_error)->toBe(0)
+        ->and(Producto::where('sku', 'A-1')->firstOrFail()->imagenes)->toHaveCount(1);
+});
+
+test('only images are attached, and only to a file the user previewed', function () {
+    $previa = previaConImagenes($this->owner, "sku\nA-1\n", []);
+
+    $this->actingAs($this->owner)->post(route('importaciones.imagenes'), [
+        'tipo' => 'productos',
+        'archivo_temporal' => $previa['archivo_temporal'],
+        'imagen' => UploadedFile::fake()->create('lista.pdf', 10, 'application/pdf'),
+    ], ['Accept' => 'application/json'])->assertJsonValidationErrors('imagen');
+
+    $otro = User::factory()->create();
+    asignarRol($otro, 'Owner');
+
+    $this->actingAs($otro)->post(route('importaciones.imagenes'), [
+        'tipo' => 'productos',
+        'archivo_temporal' => $previa['archivo_temporal'],
+        'imagen' => UploadedFile::fake()->image('a.jpg'),
+    ], ['Accept' => 'application/json'])->assertStatus(422);
+
+    $this->actingAs($this->owner)->post(route('importaciones.imagenes'), [
+        'tipo' => 'pucs',
+        'archivo_temporal' => $previa['archivo_temporal'],
+        'imagen' => UploadedFile::fake()->image('a.jpg'),
+    ], ['Accept' => 'application/json'])->assertStatus(422);
+});

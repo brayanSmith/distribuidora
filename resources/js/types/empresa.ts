@@ -15,6 +15,10 @@ export type Empresa = {
     /** Brand colors (#rrggbb); the catalog uses defaults while empty. */
     color_primario: string | null;
     color_acento: string | null;
+    /** The app's colors for everyone; empty keeps the app's own. */
+    color_menu: string | null;
+    color_plataforma: string | null;
+    color_plataforma_oscuro: string | null;
     eslogan_empresa: string | null;
     descripcion_empresa: string | null;
     /** The networks the company lists, in its order. */

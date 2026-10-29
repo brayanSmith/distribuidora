@@ -31,6 +31,8 @@
         </style>
 
         @php($branding = app(\App\Support\Branding::class))
+        {{-- The company's app colors (Empresas); kept up to date by the browser after. --}}
+        <style id="empresa-tema">{!! $branding->temaCss() !!}</style>
         @if ($branding->iconoUrl())
             <link rel="icon" href="{{ $branding->iconoUrl() }}">
             <link rel="apple-touch-icon" href="{{ $branding->iconoUrl() }}">

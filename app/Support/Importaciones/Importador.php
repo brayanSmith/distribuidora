@@ -51,6 +51,26 @@ abstract class Importador
     }
 
     /**
+     * The column that names the images attached to the import (null: this
+     * type takes none).
+     */
+    public function columnaImagenes(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * The name an attached image is kept under, so a row finds it by the name
+     * it writes whatever its case or folder.
+     */
+    public static function archivoImagen(string $nombre): string
+    {
+        $nombre = Str::lower(trim(Str::afterLast(str_replace('\\', '/', $nombre), '/')));
+
+        return md5($nombre).'.'.pathinfo($nombre, PATHINFO_EXTENSION);
+    }
+
+    /**
      * What the file has, to relate its headers with the columns: its headers
      * (the key the rows use and the name as written), a few rows and the
      * header suggested for each column (same name or a known alias).
@@ -134,6 +154,10 @@ abstract class Importador
 
         Storage::disk('local')->delete($importacion->archivo);
 
+        if ($importacion->carpeta_imagenes !== null) {
+            Storage::disk('local')->deleteDirectory($importacion->carpeta_imagenes);
+        }
+
         ImportacionTerminada::avisar($importacion);
     }
 
@@ -170,6 +194,45 @@ abstract class Importador
         $valor = trim((string) ($fila[$columna] ?? ''));
 
         return $valor === '' ? null : $valor;
+    }
+
+    /**
+     * The attached images a row names in its image column (several separated
+     * by commas), as paths of the local disk in that order. Null when the row
+     * names none or no images were attached to the import (the column is then
+     * left alone, as when re-importing an export).
+     *
+     * @param  array<string, mixed>  $fila
+     * @return list<string>|null
+     *
+     * @throws FilaInvalida When a named image was not attached.
+     */
+    protected function imagenesAdjuntas(Importacion $importacion, array $fila): ?array
+    {
+        $columna = $this->columnaImagenes();
+        $valor = $columna !== null ? $this->texto($fila, $columna) : null;
+
+        if ($valor === null || $importacion->carpeta_imagenes === null) {
+            return null;
+        }
+
+        $rutas = [];
+
+        foreach (preg_split('/[,;]/', $valor) as $nombre) {
+            if (trim($nombre) === '') {
+                continue;
+            }
+
+            $ruta = $importacion->carpeta_imagenes.'/'.self::archivoImagen($nombre);
+
+            if (! Storage::disk('local')->exists($ruta)) {
+                throw new FilaInvalida('No se subió la imagen «'.trim($nombre).'» (revisa el nombre y la extensión).');
+            }
+
+            $rutas[] = $ruta;
+        }
+
+        return array_values(array_unique($rutas));
     }
 
     /**

@@ -36,6 +36,8 @@ export type PreviaImportacion = {
     nombre_original: string;
     columnas: string[];
     obligatorias: string[];
+    /** The column that names the attached images (null: the type takes none). */
+    columna_imagenes: string | null;
     /** The headers of the file: the key the rows use and the name as written. */
     encabezados: { clave: string; nombre: string }[];
     /** First rows, by header key. */

@@ -6,7 +6,7 @@
 
 import type { RedSocialEmpresa } from '@/types';
 
-export type TipoBloqueCatalogo = 'portada' | 'categoria' | 'texto' | 'salto';
+export type TipoBloqueCatalogo = 'categoria' | 'texto' | 'salto';
 
 export type TamanoTarjetas = 'auto' | '2' | '3' | '4';
 
@@ -17,10 +17,6 @@ export type BloqueCatalogo = {
     tipo: TipoBloqueCatalogo;
     visible: boolean;
     titulo?: string | null;
-    /** Portada: the line under the title (the slogan when empty). */
-    subtitulo?: string | null;
-    /** Portada: products and categorías counted. */
-    cifras?: boolean;
     categoria_id?: number | null;
     tamano?: TamanoTarjetas;
     orden?: OrdenProductos;
@@ -49,10 +45,6 @@ export const BLOQUES_CATALOGO: Record<
     TipoBloqueCatalogo,
     { label: string; descripcion: string }
 > = {
-    portada: {
-        label: 'Portada',
-        descripcion: 'Página de presentación con los colores de la marca.',
-    },
     categoria: {
         label: 'Categoría',
         descripcion: 'Los productos de una categoría.',
@@ -90,15 +82,6 @@ export function nuevoBloque(
     categoriaId: number | null = null,
 ): BloqueCatalogo {
     switch (tipo) {
-        case 'portada':
-            return {
-                id: nuevoId(),
-                tipo,
-                visible: true,
-                titulo: null,
-                subtitulo: null,
-                cifras: true,
-            };
         case 'categoria':
             return {
                 id: nuevoId(),
@@ -126,16 +109,13 @@ export function nuevoBloque(
     }
 }
 
-/** Where a new design starts: the cover and every categoría, by name. */
+/** Where a new design starts: every categoría, by name. */
 export function bloquesIniciales(
     categorias: CategoriaOpcion[],
 ): BloqueCatalogo[] {
-    return [
-        nuevoBloque('portada'),
-        ...categorias.map((categoria) =>
-            nuevoBloque('categoria', categoria.id),
-        ),
-    ];
+    return categorias.map((categoria) =>
+        nuevoBloque('categoria', categoria.id),
+    );
 }
 
 /**
@@ -143,6 +123,8 @@ export function bloquesIniciales(
  * (slogan, description, "En colaboración de…").
  */
 export type AjustesCatalogo = {
+    /** The band that opens the catalog: title, figures and the index. */
+    presentacion: boolean;
     encabezado_logo: boolean;
     encabezado_titulo: string | null;
     encabezado_subtitulo: string | null;
@@ -155,6 +137,7 @@ export type AjustesCatalogo = {
 };
 
 export const AJUSTES_POR_DEFECTO: AjustesCatalogo = {
+    presentacion: true,
     encabezado_logo: true,
     encabezado_titulo: null,
     encabezado_subtitulo: null,

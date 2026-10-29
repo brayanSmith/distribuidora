@@ -21,7 +21,7 @@ class CatalogoPlantillaFactory extends Factory
         return [
             'nombre' => 'Catálogo '.fake()->word(),
             'bloques' => [
-                ['id' => (string) Str::uuid(), 'tipo' => 'portada', 'visible' => true],
+                ['id' => (string) Str::uuid(), 'tipo' => 'texto', 'visible' => true, 'texto' => 'Envíos a todo el país.'],
             ],
             'columnas' => 4,
             'encabezado' => true,

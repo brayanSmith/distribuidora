@@ -5,6 +5,7 @@ namespace App\Modules\Catalogo\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Catalogo\Http\Requests\StoreImportacionRequest;
 use App\Modules\Catalogo\Models\Importacion;
+use App\Support\Importaciones\Importador;
 use App\Support\Importaciones\ImportarArchivoJob;
 use App\Support\Importaciones\TiposImportacion;
 use Illuminate\Http\JsonResponse;
@@ -45,8 +46,40 @@ class ImportacionController extends Controller
             'nombre_original' => $archivo->getClientOriginalName(),
             'columnas' => $importador->columnas(),
             'obligatorias' => $importador->columnasObligatorias(),
+            'columna_imagenes' => $importador->columnaImagenes(),
             ...$importador->previa(Storage::disk('local')->path($ruta)),
         ]);
+    }
+
+    /**
+     * Keep one image aside for a previewed file; its rows name it in the
+     * image column. The same name again replaces it.
+     */
+    public function imagen(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'tipo' => ['required', Rule::in(TiposImportacion::claves())],
+            'archivo_temporal' => ['required', 'string', 'regex:/^[A-Za-z0-9]{40}\.(csv|txt|xlsx)$/'],
+            'imagen' => ['required', 'image', 'extensions:jpg,jpeg,png,webp,gif', 'max:4096'],
+        ]);
+
+        Gate::authorize(TiposImportacion::permiso($datos['tipo']));
+
+        abort_if(TiposImportacion::importador($datos['tipo'])->columnaImagenes() === null, 422, __('This import does not take images.'));
+        abort_unless(
+            Storage::disk('local')->exists(self::carpetaTemporal($request).'/'.$datos['archivo_temporal']),
+            422,
+            __('The file is no longer available; upload it again.'),
+        );
+
+        $nombre = $request->file('imagen')->getClientOriginalName();
+        $request->file('imagen')->storeAs(
+            self::carpetaImagenes($request, $datos['archivo_temporal']),
+            Importador::archivoImagen($nombre),
+            'local',
+        );
+
+        return response()->json(['nombre' => $nombre]);
     }
 
     /**
@@ -60,6 +93,8 @@ class ImportacionController extends Controller
 
         Gate::authorize(TiposImportacion::permiso($tipo));
 
+        $carpetaImagenes = null;
+
         if ($request->hasFile('archivo')) {
             $archivo = $request->file('archivo');
             $ruta = $archivo->store('importaciones', 'local');
@@ -69,6 +104,9 @@ class ImportacionController extends Controller
             $ruta = self::carpetaTemporal($request).'/'.$request->validated('archivo_temporal');
             abort_unless(Storage::disk('local')->exists($ruta), 422, __('The file is no longer available; upload it again.'));
             $nombre = $request->validated('nombre_original') ?? basename($ruta);
+
+            $carpeta = self::carpetaImagenes($request, $request->validated('archivo_temporal'));
+            $carpetaImagenes = Storage::disk('local')->files($carpeta) !== [] ? $carpeta : null;
         }
 
         $columnas = TiposImportacion::importador($tipo)->columnas();
@@ -80,6 +118,7 @@ class ImportacionController extends Controller
             'archivo' => $ruta,
             'nombre_original' => $nombre,
             'mapeo' => $mapeo === null ? null : array_intersect_key($mapeo, array_flip($columnas)),
+            'carpeta_imagenes' => $carpetaImagenes,
         ]);
 
         ImportarArchivoJob::dispatch($importacion->id);
@@ -95,6 +134,14 @@ class ImportacionController extends Controller
     private static function carpetaTemporal(Request $request): string
     {
         return 'importaciones/previas/'.$request->user()->id;
+    }
+
+    /**
+     * Where the images attached to a previewed file wait, next to it.
+     */
+    private static function carpetaImagenes(Request $request, string $archivoTemporal): string
+    {
+        return self::carpetaTemporal($request).'/'.pathinfo($archivoTemporal, PATHINFO_FILENAME).'-imagenes';
     }
 
     /**
